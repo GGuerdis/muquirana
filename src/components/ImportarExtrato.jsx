@@ -19,6 +19,7 @@ import { sugerirCategoria, aprenderComImportacao, gruposParaCategorizar } from '
 import { extrairLinhasPdf } from '../lib/pdfTexto.js'
 import { lerExtratoSantander, juntarExtratos } from '../lib/santander.js'
 import AvisoNavegador from './AvisoNavegador.jsx'
+import AvisoVersao, { useVersaoNova } from './AvisoVersao.jsx'
 
 const ACOES_CONTA = [
   { valor: 'lancar', rotulo: 'Lançar' },
@@ -66,6 +67,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
   const [ajustes, setAjustes] = useState({}) // posicao → mudanças feitas na prévia
   const [regrasImp, setRegrasImp] = useState({}) // regras desta importação
   const [usarSaldoInicial, setUsarSaldoInicial] = useState(true)
+  const versaoNova = useVersaoNova() // versão velha no aparelho: atualizar antes de importar
   const [aceitarDiferenca, setAceitarDiferenca] = useState(false) // importar mesmo com o saldo diferente do banco
   const [filtro, setFiltro] = useState('atencao')
   const [limite, setLimite] = useState(POR_PAGINA)
@@ -233,6 +235,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
 
   async function importar() {
     if (ocupado || !dest || bloqueado) return
+    if (versaoNova) return setErro('Atualize o app antes de importar (toque em Atualizar agora, no topo).')
     if (travadoPorSaldo) return setErro('O saldo não vai bater com o banco. Confira as linhas ou confirme que quer importar assim.')
     if (!podeEditar) return setErro('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
     if (!aGravar.length) return setErro('Nada selecionado para importar.')
@@ -393,8 +396,8 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
         <>
           {erro && <p className="erro" role="alert">{erro}</p>}
           {extrato && (
-            <button className="botao primario cheio" disabled={ocupado || !aGravar.length || bloqueado || travadoPorSaldo} onClick={importar}>
-              {ocupado ? 'Importando…' : bloqueado ? 'Conferência falhou: nada será importado' : travadoPorSaldo ? 'O saldo não bate com o banco' : aGravar.length ? `Importar ${aGravar.length} lançamento(s)` : 'Nada para importar'}
+            <button className="botao primario cheio" disabled={ocupado || !aGravar.length || bloqueado || travadoPorSaldo || !!versaoNova} onClick={importar}>
+              {ocupado ? 'Importando…' : versaoNova ? 'Atualize o app antes de importar' : bloqueado ? 'Conferência falhou: nada será importado' : travadoPorSaldo ? 'O saldo não bate com o banco' : aGravar.length ? `Importar ${aGravar.length} lançamento(s)` : 'Nada para importar'}
             </button>
           )}
         </>
@@ -403,6 +406,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
       <input ref={arquivo} type="file" multiple accept=".ofx,.OFX,.pdf,.PDF,application/pdf,application/x-ofx,application/ofx,text/plain" hidden onChange={lerArquivos} />
 
       <AvisoNavegador forte />
+      <AvisoVersao nova={versaoNova} texto="Este aparelho está com uma versão antiga do Muquirana." />
       {lendo && <p className="conferencia">⏳ Lendo PDF {lendo.atual} de {lendo.total}…</p>}
 
       {!extrato && !lendo && (

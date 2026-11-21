@@ -2,10 +2,22 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Versão = data e hora da publicação (horário de Brasília). Vai no app e em versao.json, que não fica guardado
+// no aparelho: assim o app descobre quando está rodando uma versão velha e se atualiza.
+const VERSAO = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ')
+
 export default defineConfig({
   base: './',
+  define: { __VERSAO__: JSON.stringify(VERSAO) },
   plugins: [
     react(),
+    {
+      name: 'muquirana-versao',
+      apply: 'build',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'versao.json', source: JSON.stringify({ versao: VERSAO }) })
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {

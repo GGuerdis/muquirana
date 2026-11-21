@@ -9,6 +9,7 @@ import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
 import { salvarConfig } from '../lib/db.js'
 import { fazerBackup } from '../lib/backupArquivo.js'
+import { VERSAO } from '../lib/versao.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
 import { PainelConta } from '../components/Nuvem.jsx'
 import { PainelEspaco } from '../components/Espacos.jsx'
@@ -193,7 +194,7 @@ export default function Ajustes() {
         </div>
       </section>
 
-      <p className="rodape-app">Muquirana v0.2 · cada tostão conta 🪙</p>
+      <p className="rodape-app">Muquirana · versão {VERSAO} · cada tostão conta 🪙</p>
 
       {importando && <ImportarExtrato aoFechar={() => setImportando(false)} aoImportar={() => setCategorizando(true)} />}
       {categorizando && <CategorizarRapido aoFechar={() => setCategorizando(false)} />}

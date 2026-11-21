@@ -9,6 +9,7 @@ import Historico from './pages/Historico.jsx'
 import BoasVindas from './pages/BoasVindas.jsx'
 import AvisoNavegador from './components/AvisoNavegador.jsx'
 import AvisoRecusa from './components/AvisoRecusa.jsx'
+import AvisoVersao, { useVersaoNova } from './components/AvisoVersao.jsx'
 import { mesAtual } from './lib/datas.js'
 import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
@@ -60,6 +61,7 @@ function Telas() {
   const dados = useDados()
   const { config, contas, abrirLancamento, podeEditar, avisar, espacoAtual } = dados
   const { logado, estado } = useNuvem()
+  const versaoNova = useVersaoNova()
   // Logo depois de entrar na conta (3 minutos), a cada sincronização: apaga contas/cartões/categorias repetidos
   // que nunca foram usados (acontece quando o aparelho já tinha os dados iniciais e a conta também).
   // Só nessa janela, para nunca mexer numa conta que a pessoa criou de propósito depois.
@@ -94,6 +96,7 @@ function Telas() {
     <>
       <main>
         <AvisoNavegador />
+        <AvisoVersao nova={versaoNova} />
         <AvisoRecusa />
         {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
         {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} />}
