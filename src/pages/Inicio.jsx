@@ -46,6 +46,7 @@ export default function Inicio({ mes, setMes, irPara }) {
     <div className="pagina">
       <section className="cartao-topo">
         <SeloSincronizacao />
+        <button className="botao-engrenagem" onClick={() => irPara('ajustes')} aria-label="Ajustes">⚙️</button>
         <div className="saudacao">
           <Mascote rosto={humor.rosto} />
           <p className="balao">{humor.mensagem}</p>

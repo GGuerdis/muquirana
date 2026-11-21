@@ -353,3 +353,40 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 .cartao-topo .selo-erro { color: #fecaca; }
 .lista-simples { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .regras-imp h3 { margin-bottom: 4px; }
+
+/* ---------- Gráficos (cores validadas para daltonismo, claro e escuro) ---------- */
+:root { --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a; }
+@media (prefers-color-scheme: dark) { :root { --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; } }
+.grafico { position: relative; width: 100%; touch-action: pan-y; }
+.grafico svg { display: block; overflow: visible; }
+.grafico .grade { stroke: var(--borda); stroke-width: 1; }
+.grafico .eixo-zero { stroke: var(--texto-3); stroke-width: 1; }
+.grafico .rotulo-eixo { fill: var(--texto-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.grafico .mira { stroke: var(--texto-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.grafico .marcador { stroke: var(--superficie); stroke-width: 2; }
+.grafico .faixa-ativa { fill: var(--superficie-2); }
+.tooltip-grafico {
+  position: absolute; top: 0; width: 160px; background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px;
+  padding: 8px 10px; font-size: 0.8rem; box-shadow: 0 4px 14px rgb(0 0 0 / 0.12); pointer-events: none; display: flex; flex-direction: column; gap: 2px; z-index: 2;
+}
+.tooltip-grafico b { font-variant-numeric: tabular-nums; }
+.tooltip-grafico i, .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.82rem; color: var(--texto-2); }
+.tabela-rolavel { overflow-x: auto; }
+.tabela-dados { width: 100%; border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.tabela-dados th, .tabela-dados td { padding: 6px 8px; border-bottom: 1px solid var(--borda); text-align: right; white-space: nowrap; }
+.tabela-dados th:first-child, .tabela-dados td:first-child { text-align: left; }
+.tabela-dados th { color: var(--texto-2); font-weight: 600; }
+.comparacao { gap: 4px; }
+.linha-comparacao { display: grid; grid-template-columns: 1fr 1.3fr 1.3fr 0.9fr; gap: 6px; align-items: baseline; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.linha-comparacao span:not(:first-child) { text-align: right; }
+.linha-comparacao.cabeca { color: var(--texto-3); font-size: 0.78rem; font-weight: 600; order: -1; }
+.comparacao { display: flex; flex-direction: column; }
+.variacao { font-weight: 650; font-size: 0.82rem; white-space: nowrap; }
+.variacao.boa { color: var(--entrada); }
+.variacao.ruim { color: var(--saida); }
+.barra-trilho.dupla { height: 6px; margin-top: 3px; }
+.botao-icone:disabled { opacity: 0.3; }
+.botao-engrenagem { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgb(255 255 255 / 0.12); color: #fff; font-size: 1.1rem; display: grid; place-items: center; }
+.cartao-topo { position: relative; }
+.comparacao h3 { order: -2; }

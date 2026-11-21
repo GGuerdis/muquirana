@@ -5,6 +5,7 @@ import Inicio from './pages/Inicio.jsx'
 import Lancamentos from './pages/Lancamentos.jsx'
 import Cartoes from './pages/Cartoes.jsx'
 import Ajustes from './pages/Ajustes.jsx'
+import Historico from './pages/Historico.jsx'
 import BoasVindas from './pages/BoasVindas.jsx'
 import { mesAtual } from './lib/datas.js'
 import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
@@ -14,8 +15,8 @@ const ABAS = [
   { id: 'inicio', rotulo: 'Início', icone: '🏠' },
   { id: 'lancamentos', rotulo: 'Lançamentos', icone: '📋' },
   { id: 'novo' },
+  { id: 'historico', rotulo: 'Histórico', icone: '📈' },
   { id: 'cartoes', rotulo: 'Cartões', icone: '💳' },
-  { id: 'ajustes', rotulo: 'Ajustes', icone: '⚙️' },
 ]
 
 export default function App({ migrou = null }) {
@@ -71,6 +72,7 @@ function Telas() {
       <main>
         {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
         {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} />}
+        {aba === 'historico' && <Historico />}
         {aba === 'cartoes' && <Cartoes />}
         {aba === 'ajustes' && <Ajustes />}
       </main>
