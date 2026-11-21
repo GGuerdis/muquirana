@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { ItemLancamento } from '../components/Pecas.jsx'
+import { CabecaPagina, ItemLancamento } from '../components/Pecas.jsx'
+import { IconeMais } from '../components/Icones.jsx'
 import { FormCartao } from '../components/Formularios.jsx'
 import { CampoValor, Chips } from '../components/Campos.jsx'
 import Folha from '../components/Folha.jsx'
@@ -10,13 +11,13 @@ import { resumoFatura, faturasPendentes, limiteUsado } from '../lib/fatura.js'
 import { pagarFatura, apagarLancamento } from '../lib/lancamentos.js'
 
 const STATUS = {
-  aberta: { rotulo: 'Aberta', icone: '🟢' },
+  aberta: { rotulo: 'Aberta', icone: '🟣' },
   fechada: { rotulo: 'Fechada', icone: '🔒' },
   paga: { rotulo: 'Paga', icone: '✅' },
   atrasada: { rotulo: 'Atrasada', icone: '⚠️' },
 }
 
-export default function Cartoes() {
+export default function Cartoes({ irPara }) {
   const { cartoes, lancamentos, cartaoPorId, avisar } = useDados()
   const [idSel, setIdSel] = useState(null)
   const [fatura, setFatura] = useState(null)
@@ -33,7 +34,7 @@ export default function Cartoes() {
   if (!cartoes.length) {
     return (
       <div className="pagina">
-        <h1 className="titulo-pagina">Cartões</h1>
+        <CabecaPagina titulo="Cartões" irPara={irPara} />
         <div className="painel vazio-grande">
           <p>💳</p>
           <p>Nenhum cartão cadastrado.</p>
@@ -57,10 +58,9 @@ export default function Cartoes() {
 
   return (
     <div className="pagina">
-      <div className="painel-titulo">
-        <h1 className="titulo-pagina">Cartões</h1>
-        <button className="link" onClick={() => setEditando('novo')}>+ Novo</button>
-      </div>
+      <CabecaPagina titulo="Cartões" irPara={irPara} acoes={
+        <button className="botao-acao" onClick={() => setEditando('novo')}><IconeMais /> Novo cartão</button>
+      } />
 
       {cartoes.length > 1 && (
         <Chips rolavel opcoes={cartoes.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: '💳' }))} valor={cartao.id} aoMudar={(id) => { setIdSel(id); setFatura(null) }} />
@@ -69,7 +69,7 @@ export default function Cartoes() {
       <section className="cartao-credito">
         <div className="painel-titulo">
           <strong>💳 {cartao.nome}</strong>
-          <button className="link claro" onClick={() => setEditando(cartao)}>Editar</button>
+          <button className="link" onClick={() => setEditando(cartao)}>Editar</button>
         </div>
         {cartao.limite > 0 && (
           <>

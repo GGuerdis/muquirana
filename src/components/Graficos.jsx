@@ -151,7 +151,7 @@ export function GraficoLinha({ pontos, series, formatar, rotuloAcessivel }) {
           <text key={i} x={x(i)} y={ALTURA - 8} className="rotulo-eixo" textAnchor="middle">{p.rotulo}</text>
         ))}
         {ativo != null && <line x1={x(ativo)} x2={x(ativo)} y1={M.topo} y2={M.topo + h} className="mira" />}
-        {series.map((s, si) => <path key={s.nome} d={caminho(si)} fill="none" stroke={s.cor} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />)}
+        {series.map((s, si) => <path key={s.nome} d={caminho(si)} fill="none" stroke={s.cor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="linha-serie" style={{ color: s.cor }} />)}
         {ativo != null && series.map((s, si) => pontos[ativo].valores[si] != null && (
           <circle key={s.nome} cx={x(ativo)} cy={y(pontos[ativo].valores[si])} r="5" fill={s.cor} className="marcador" />
         ))}

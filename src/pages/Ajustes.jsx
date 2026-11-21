@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDados } from '../dados.jsx'
+import { CabecaPagina } from '../components/Pecas.jsx'
 import { FormConta, FormCartao, FormCategoria, FormRecorrente } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
@@ -17,7 +18,7 @@ import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
 
-export default function Ajustes() {
+export default function Ajustes({ irPara }) {
   const { contas, cartoes, categorias, lancamentos, regras, recorrentes, orcamentos, categoriaPorId, contaPorId, cartaoPorId, zoeira, config, avisar } = useDados()
   const [apagandoRegras, setApagandoRegras] = useState(false)
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
@@ -58,7 +59,7 @@ export default function Ajustes() {
 
   return (
     <div className="pagina">
-      <h1 className="titulo-pagina">Ajustes</h1>
+      <CabecaPagina titulo="Ajustes" irPara={irPara} voltar />
 
       <PainelConta />
       <PainelEspaco />

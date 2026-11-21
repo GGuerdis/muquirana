@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { SeletorMes, ItemLancamento } from '../components/Pecas.jsx'
+import { CabecaPagina, SeletorMes, ItemLancamento } from '../components/Pecas.jsx'
 import { Chips } from '../components/Campos.jsx'
+import { IconeEtiqueta, IconeImportar } from '../components/Icones.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import CategorizarRapido from '../components/CategorizarRapido.jsx'
 import { formatar } from '../lib/dinheiro.js'
@@ -17,7 +18,7 @@ const FILTROS = [
 
 const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-export default function Lancamentos({ mes, setMes }) {
+export default function Lancamentos({ mes, setMes, irPara }) {
   const { lancamentos, categoriaPorId } = useDados()
   const [filtro, setFiltro] = useState('todos')
   const [busca, setBusca] = useState('')
@@ -39,31 +40,37 @@ export default function Lancamentos({ mes, setMes }) {
     return [...grupos.entries()]
   }, [lancamentos, mes, filtro, busca, categoriaPorId])
 
+  const totais = useMemo(() => dias.flatMap(([, itens]) => itens).reduce((t, l) => ({ entrou: t.entrou + (l.tipo === 'receita' ? l.valor : 0), saiu: t.saiu + (l.tipo === 'despesa' ? l.valor : 0), n: t.n + 1 }), { entrou: 0, saiu: 0, n: 0 }), [dias])
   const totalDia = (itens) => itens.reduce((s, l) => s + (l.tipo === 'receita' ? l.valor : l.tipo === 'despesa' ? -l.valor : 0), 0)
 
   return (
     <div className="pagina">
-      <div className="painel-titulo">
-        <h1 className="titulo-pagina">Lançamentos</h1>
-        <span className="acoes-titulo">
-          <button className="link" onClick={() => setCategorizando(true)}>🏷️ Categorizar</button>
-          <button className="link" onClick={() => setImportando(true)}>⬇ Importar</button>
-        </span>
-      </div>
+      <CabecaPagina titulo="Lançamentos" irPara={irPara} acoes={<>
+        <button className="botao-acao" onClick={() => setCategorizando(true)}><IconeEtiqueta /> Categorizar</button>
+        <button className="botao-acao" onClick={() => setImportando(true)}><IconeImportar /> Importar</button>
+      </>} />
       <SeletorMes mes={mes} aoMudar={setMes} />
-      <input className="busca" type="search" placeholder="🔍 Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      {totais.n > 0 && (
+        <div className="faixa-totais">
+          <span>{totais.n} lançamento(s)</span>
+          <span><span className="entrada">+ {formatar(totais.entrou)}</span> · <span>− {formatar(totais.saiu)}</span></span>
+        </div>
+      )}
+      <input className="busca" type="search" placeholder="Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
       <Chips rolavel opcoes={FILTROS} valor={filtro} aoMudar={setFiltro} />
 
-      {dias.length === 0 && <p className="vazio">Nada por aqui neste mês.</p>}
+      {dias.length === 0 && <div className="painel vazio-grande"><p>🪙</p><p>{busca ? 'Nada encontrado com essa busca.' : 'Nada por aqui neste mês. Até o Muquirana ficou surpreso.'}</p></div>}
       {dias.map(([data, itens]) => {
         const t = totalDia(itens)
         return (
-          <section key={data} className="painel dia">
+          <section key={data} className="dia-grupo">
             <div className="dia-topo">
               <span>{rotuloDia(data)}</span>
-              {t !== 0 && <span className={t > 0 ? 'entrada' : 'saida'}>{t > 0 ? '+' : '−'} {formatar(Math.abs(t))}</span>}
+              {t !== 0 && <span className={t > 0 ? 'entrada' : ''}>{t > 0 ? '+' : '−'} {formatar(Math.abs(t))}</span>}
             </div>
-            {itens.map((l) => <ItemLancamento key={l.id} l={l} />)}
+            <div className="painel dia">
+              {itens.map((l) => <ItemLancamento key={l.id} l={l} />)}
+            </div>
           </section>
         )
       })}

@@ -39,9 +39,9 @@ export function Chips({ opcoes, valor, aoMudar, rolavel = false }) {
   )
 }
 
-export function Abas({ opcoes, valor, aoMudar }) {
+export function Abas({ opcoes, valor, aoMudar, pequenas = false }) {
   return (
-    <div className="abas" role="tablist">
+    <div className={`abas ${pequenas ? 'pequenas' : ''}`} role="tablist">
       {opcoes.map((o) => (
         <button
           type="button"

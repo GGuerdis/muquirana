@@ -14,13 +14,14 @@ import { mesAtual } from './lib/datas.js'
 import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
 import { juntarRepetidos } from './lib/repetidos.js'
+import { IconeInicio, IconeLista, IconeGrafico, IconeCartao } from './components/Icones.jsx'
 
 const ABAS = [
-  { id: 'inicio', rotulo: 'Início', icone: '🏠' },
-  { id: 'lancamentos', rotulo: 'Lançamentos', icone: '📋' },
+  { id: 'inicio', rotulo: 'Início', icone: <IconeInicio /> },
+  { id: 'lancamentos', rotulo: 'Lançamentos', icone: <IconeLista /> },
   { id: 'novo' },
-  { id: 'historico', rotulo: 'Histórico', icone: '📈' },
-  { id: 'cartoes', rotulo: 'Cartões', icone: '💳' },
+  { id: 'historico', rotulo: 'Histórico', icone: <IconeGrafico /> },
+  { id: 'cartoes', rotulo: 'Cartões', icone: <IconeCartao /> },
 ]
 
 export default function App({ migrou = null }) {
@@ -57,6 +58,20 @@ export default function App({ migrou = null }) {
   )
 }
 
+// Fundo Synthwave: estrelas (à noite), sol listrado e chão quadriculado (completo só no Início)
+function Cenario({ completo = false }) {
+  return (
+    <>
+      <div className={`cenario ${completo ? 'completo' : ''}`} aria-hidden="true">
+        <div className="estrelas" />
+        <div className="chao" />
+      </div>
+      {/* o sol fica preso ao topo da página (rola junto), para não brilhar atrás dos cartões lá embaixo */}
+      {completo && <div className="sol" aria-hidden="true" />}
+    </>
+  )
+}
+
 function Telas() {
   const dados = useDados()
   const { config, contas, abrirLancamento, podeEditar, avisar, espacoAtual } = dados
@@ -85,24 +100,25 @@ function Telas() {
   useEffect(() => {
     if (!config.boasVindas && logado && contas.length > 0) salvarConfig('boasVindas', true)
   }, [config.boasVindas, logado, contas.length])
-  const [aba, setAba] = useState('inicio')
+  const [aba, setAba] = useState(() => (import.meta.env.DEV && new URLSearchParams(location.search).get('aba')) || 'inicio')
   const [mes, setMes] = useState(mesAtual())
 
-  if (!config.boasVindas) return <BoasVindas />
+  if (!config.boasVindas) return <><Cenario completo /><BoasVindas /></>
 
   const irPara = (id) => { setAba(id); window.scrollTo(0, 0) }
 
   return (
     <>
+      <Cenario completo={aba === 'inicio'} />
       <main>
         <AvisoNavegador />
         <AvisoVersao nova={versaoNova} />
         <AvisoRecusa />
         {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
-        {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} />}
-        {aba === 'historico' && <Historico />}
-        {aba === 'cartoes' && <Cartoes />}
-        {aba === 'ajustes' && <Ajustes />}
+        {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} irPara={irPara} />}
+        {aba === 'historico' && <Historico irPara={irPara} />}
+        {aba === 'cartoes' && <Cartoes irPara={irPara} />}
+        {aba === 'ajustes' && <Ajustes irPara={irPara} />}
       </main>
       <nav className="barra-nav">
         {ABAS.map((a) =>

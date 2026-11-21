@@ -24,11 +24,14 @@ export default function LembreteBackup() {
 
   return (
     <section className="painel lembrete-backup">
-      <strong>💾 {l.nunca ? 'Você ainda não fez nenhum backup' : `Faz ${l.dias} dias desde o último backup`}</strong>
-      <span className="dica">Guarde uma cópia do seu histórico (no Drive, no e-mail...). Se o celular sumir, você restaura em Ajustes.</span>
-      <div className="linha-botoes">
-        <button className="botao secundario" disabled={ocupado} onClick={() => adiarBackup()}>Lembrar depois</button>
-        <button className="botao primario cheio" disabled={ocupado} onClick={fazer}>Fazer backup agora</button>
+      <span className="lembrete-icone" aria-hidden="true">💾</span>
+      <div className="lembrete-textos">
+        <strong>{l.nunca ? 'Você ainda não fez nenhum backup' : `Faz ${l.dias} dias desde o último backup`}</strong>
+        <span className="dica">Guarde uma cópia do seu histórico no Drive ou no e-mail.</span>
+        <div className="lembrete-botoes">
+          <button className="botao primario mini" disabled={ocupado} onClick={fazer}>Fazer backup</button>
+          <button className="link" disabled={ocupado} onClick={() => adiarBackup()}>Depois</button>
+        </div>
       </div>
     </section>
   )

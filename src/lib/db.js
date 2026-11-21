@@ -57,7 +57,7 @@ export function conectarNuvem() {
   })
 }
 
-const CATEGORIAS_PADRAO = [
+export const CATEGORIAS_PADRAO = [
   ['despesa', '🍔', 'Alimentação'],
   ['despesa', '🛒', 'Mercado'],
   ['despesa', '🏠', 'Moradia'],

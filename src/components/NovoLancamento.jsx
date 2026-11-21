@@ -1,6 +1,7 @@
 // Formulário de lançamento rápido (novo ou edição)
 import { useRef, useState } from 'react'
 import Folha from './Folha.jsx'
+import { IconeCategoria } from './Pecas.jsx'
 import { Abas, CampoValor, Chips, Campo } from './Campos.jsx'
 import { useDados } from '../dados.jsx'
 import { hoje, ontem, dataCurta, dataValida, nomeMes, mesDe, somarMesesData } from '../lib/datas.js'
@@ -213,7 +214,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
                 onClick={() => escolherCategoria(c.id)}
                 aria-pressed={f.categoriaId === c.id}
               >
-                <span className="categoria-emoji">{c.emoji}</span>
+                <IconeCategoria categoria={c} pequeno />
                 <span className="categoria-nome">{c.nome}</span>
               </button>
             ))}

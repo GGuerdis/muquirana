@@ -21,7 +21,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest}'], // inclui o leitor de PDF (funciona offline)
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest,woff2}'], // inclui o leitor de PDF (funciona offline)
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       includeAssets: ['icone.svg', 'apple-touch-icon.png'],
@@ -30,8 +30,8 @@ export default defineConfig({
         short_name: 'Muquirana',
         description: 'Controle financeiro pessoal: cada tostão conta.',
         lang: 'pt-BR',
-        theme_color: '#14532d',
-        background_color: '#14532d',
+        theme_color: '#1d0640',
+        background_color: '#14002b',
         display: 'standalone',
         orientation: 'portrait',
         start_url: './',

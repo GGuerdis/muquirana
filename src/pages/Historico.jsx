@@ -2,12 +2,14 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { Abas, Chips } from '../components/Campos.jsx'
+import { CabecaPagina, ResumoEntradasSaidas } from '../components/Pecas.jsx'
 import { GraficoBarras, GraficoLinha, Legenda, TabelaDados } from '../components/Graficos.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { hoje as hojeTexto, mesAtual, nomeMes, somarMeses } from '../lib/datas.js'
 import { movimentos, saldoInicialDe, serie, compararMeses, compararAnos, periodosDisponiveis } from '../lib/historico.js'
 
-const COR = { saldo: 'var(--serie-1)', entradas: 'var(--serie-3)', saidas: 'var(--serie-2)', a: 'var(--serie-1)', b: 'var(--serie-2)' }
+// entrou em ciano e saiu em magenta (como no Início); comparações: A ciano, B magenta
+const COR = { saldo: 'var(--serie-1)', entradas: 'var(--serie-1)', saidas: 'var(--serie-2)', a: 'var(--serie-1)', b: 'var(--serie-2)' }
 const TODAS = '__todas__'
 // Nas comparações, o mês sempre com o ano ("outubro 2026"), para não confundir
 const mesComAno = (m, curto = false) => { const n = nomeMes(m, curto); return /\d/.test(n) ? n : `${n} ${curto ? m.slice(2, 4) : m.slice(0, 4)}` }
@@ -19,7 +21,7 @@ function Variacao({ valor, inverso = false }) {
   return <span className={`variacao ${valor === 0 ? '' : bom ? 'boa' : 'ruim'}`}>{subiu ? '▲' : valor < 0 ? '▼' : '='} {Math.abs(valor).toLocaleString('pt-BR')}%</span>
 }
 
-export default function Historico() {
+export default function Historico({ irPara }) {
   const { contas, lancamentos, categoriaPorId } = useDados()
   const hoje = hojeTexto()
   // conta padrão: a que tem mais movimentações
@@ -58,7 +60,7 @@ export default function Historico() {
   if (!lancamentos.length) {
     return (
       <div className="pagina">
-        <h1 className="titulo-pagina">Histórico</h1>
+        <CabecaPagina titulo="Histórico" irPara={irPara} />
         <div className="painel vazio-grande"><p>📈</p><p>Ainda não há lançamentos. Importe seus extratos em Lançamentos → Importar extrato para ver todo o seu histórico aqui.</p></div>
       </div>
     )
@@ -66,7 +68,7 @@ export default function Historico() {
 
   return (
     <div className="pagina">
-      <h1 className="titulo-pagina">Histórico</h1>
+      <CabecaPagina titulo="Histórico" irPara={irPara} />
 
       <Chips rolavel valor={conta} aoMudar={setContaSel} opcoes={[
         ...contas.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: c.emoji })),
@@ -77,7 +79,7 @@ export default function Historico() {
 
       {modo === 'evolucao' && (
         <>
-          <Abas opcoes={[{ valor: 'ano', rotulo: 'Anual' }, { valor: 'mes', rotulo: 'Mês' }, { valor: 'dia', rotulo: 'Dia' }]} valor={gran} aoMudar={setGran} />
+          <Abas pequenas opcoes={[{ valor: 'ano', rotulo: 'Anual' }, { valor: 'mes', rotulo: 'Mês' }, { valor: 'dia', rotulo: 'Dia' }]} valor={gran} aoMudar={setGran} />
           {gran === 'mes' && (
             <div className="seletor-mes">
               <button className="botao-icone" aria-label="Ano anterior" onClick={() => setAno(ano - 1)} disabled={ano <= disp.anos[0]}>‹</button>
@@ -93,11 +95,7 @@ export default function Historico() {
             </div>
           )}
 
-          <section className="resumo-mes">
-            <div><span className="rotulo">Entrou</span><strong className="entrada">{formatar(totais.entradas)}</strong></div>
-            <div><span className="rotulo">Saiu</span><strong className="saida">{formatar(totais.saidas)}</strong></div>
-            <div><span className="rotulo">{totais.entradas >= totais.saidas ? 'Sobrou' : 'Faltou'}</span><strong className={totais.entradas >= totais.saidas ? 'entrada' : 'saida'}>{formatar(Math.abs(totais.entradas - totais.saidas))}</strong></div>
-          </section>
+          <ResumoEntradasSaidas entrou={totais.entradas} saiu={totais.saidas} rotulo={gran === 'ano' ? 'no período' : gran === 'mes' ? `em ${ano}` : 'no mês'} />
 
           <section className="painel">
             <h3>Saldo de {nomeConta} {gran === 'ano' ? 'no fim de cada ano' : gran === 'mes' ? `no fim de cada mês de ${ano}` : `no fim de cada dia`}</h3>
@@ -132,7 +130,7 @@ export default function Historico() {
 
       {modo === 'comparar' && (
         <>
-          <Abas opcoes={[{ valor: 'anos', rotulo: 'Anos' }, { valor: 'meses', rotulo: 'Meses' }]} valor={compara} aoMudar={setCompara} />
+          <Abas pequenas opcoes={[{ valor: 'anos', rotulo: 'Anos' }, { valor: 'meses', rotulo: 'Meses' }]} valor={compara} aoMudar={setCompara} />
 
           {compara === 'anos' && (
             <>
@@ -154,7 +152,7 @@ export default function Historico() {
                 <div className="painel-titulo">
                   <h3>Mês a mês</h3>
                 </div>
-                <Abas opcoes={[{ valor: 'saidas', rotulo: 'Saídas' }, { valor: 'entradas', rotulo: 'Entradas' }, { valor: 'resultado', rotulo: 'Sobrou' }]} valor={medidaAnos} aoMudar={setMedidaAnos} />
+                <Abas pequenas opcoes={[{ valor: 'saidas', rotulo: 'Saídas' }, { valor: 'entradas', rotulo: 'Entradas' }, { valor: 'resultado', rotulo: 'Sobrou' }]} valor={medidaAnos} aoMudar={setMedidaAnos} />
                 <Legenda series={[{ nome: String(anoA), cor: COR.a }, { nome: String(anoB), cor: COR.b }]} />
                 <GraficoBarras
                   rotuloAcessivel={`${medidaAnos} por mês, ${anoA} contra ${anoB}`}

@@ -1,6 +1,7 @@
 // Contas fixas do mês, para confirmar com um toque
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
+import { IconeCategoria } from './Pecas.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { dataCurta, nomeMes } from '../lib/datas.js'
 import { contasDoMes, modeloDoMes, pularMes } from '../lib/recorrentes.js'
@@ -57,7 +58,7 @@ export default function ContasDoMes({ mes, irPara }) {
         const valor = x.lancamento ? x.lancamento.valor : r.valor
         return (
           <div key={r.id} className="linha-fixa">
-            <span className="item-emoji">{cat?.emoji || '📦'}</span>
+            <IconeCategoria categoria={cat} />
             <span className="item-textos">
               <span className="item-titulo">{r.descricao}</span>
               <span className="item-sub">vence {dataCurta(x.vencimento)} · {onde} · <span className={s.classe}>{s.rotulo}</span></span>

@@ -19,6 +19,8 @@ async function iniciar() {
   } catch (e) {
     console.error('Falha ao migrar o banco antigo', e)
   }
+  // só no desenvolvimento: ?demo carrega dados inventados para ver as telas
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) await (await import('./dev/demo.js')).carregarDemo()
   createRoot(document.getElementById('root')).render(
     <StrictMode>
       <App migrou={migrou} />

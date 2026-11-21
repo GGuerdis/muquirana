@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import Folha from './Folha.jsx'
+import { IconeCategoria } from './Pecas.jsx'
 import { CampoValor } from './Campos.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { nomeMes } from '../lib/datas.js'
@@ -42,7 +43,7 @@ export function OrcamentoDoMes({ mes, irPara }) {
           return (
             <li key={i.categoriaId} className="barra-linha">
               <div className="barra-topo">
-                <span>{cat?.emoji} {cat?.nome}</span>
+                <span className="com-icone"><IconeCategoria categoria={cat} pequeno />{cat?.nome}</span>
                 <span className="barra-valor">{formatar(i.gasto)} <small>de {formatar(i.limite)}</small></span>
               </div>
               <div className="barra-trilho"><div className={`barra orc-${i.situacao}`} style={{ width: `${Math.max(largura, i.gasto ? 2 : 0)}%` }} /></div>

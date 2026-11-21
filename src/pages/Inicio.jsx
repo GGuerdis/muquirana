@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { Mascote, SeletorMes, ItemLancamento, BarrasCategorias } from '../components/Pecas.jsx'
+import { CabecaPagina, Mascote, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas } from '../components/Pecas.jsx'
+import { IconeOlho, IconeOlhoFechado } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
-import { mesAtual, dataCurta, nomeMes } from '../lib/datas.js'
+import { mesAtual, dataCurta, nomeMes, hoje } from '../lib/datas.js'
 import { saldoConta, resumoMes, contasEstimadas } from '../lib/calculos.js'
 import { faturasPendentes } from '../lib/fatura.js'
 import { humorDoMes } from '../lib/zoeira.js'
 import { compararIds } from '../lib/ids.js'
 import { saldoPrevisto } from '../lib/recorrentes.js'
+import { salvarConfig } from '../lib/db.js'
 import ContasDoMes from '../components/ContasDoMes.jsx'
 import LembreteBackup from '../components/LembreteBackup.jsx'
 import { OrcamentoDoMes } from '../components/Orcamento.jsx'
@@ -15,10 +17,13 @@ import { SeloSincronizacao } from '../components/Nuvem.jsx'
 import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
 
 const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ atrasada', paga: 'paga' }
+const OCULTO = 'R$ •••••'
 
 export default function Inicio({ mes, setMes, irPara }) {
-  const { contas, cartoes, lancamentos, recorrentes, zoeira } = useDados()
+  const { contas, cartoes, lancamentos, recorrentes, zoeira, config } = useDados()
   const [verPrevisao, setVerPrevisao] = useState(false)
+  const ocultar = config.ocultarValores === true
+  const mostrar = (v) => (ocultar ? OCULTO : formatar(v))
   const previsao = useMemo(() => saldoPrevisto({ mes: mesAtual(), contas, cartoes, recorrentes, lancamentos }), [contas, cartoes, recorrentes, lancamentos])
 
   const saldos = useMemo(() => contas.map((c) => ({ ...c, saldo: saldoConta(c, lancamentos) })), [contas, lancamentos])
@@ -34,7 +39,8 @@ export default function Inicio({ mes, setMes, irPara }) {
   const recentes = useMemo(() => {
     const vistos = new Set()
     const lista = []
-    for (const l of [...lancamentos].sort((a, b) => b.criadoEm - a.criadoEm || compararIds(a.id, b.id))) {
+    const dia = hoje()
+    for (const l of [...lancamentos].filter((x) => x.data <= dia).sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm - a.criadoEm || compararIds(a.id, b.id))) {
       if (l.grupoParcelaId) {
         if (vistos.has(l.grupoParcelaId)) continue
         vistos.add(l.grupoParcelaId)
@@ -47,20 +53,28 @@ export default function Inicio({ mes, setMes, irPara }) {
 
   return (
     <div className="pagina">
-      <section className="cartao-topo">
-        <div className="topo-linha"><SeloSincronizacao /><SeletorEspaco /></div>
-        <button className="botao-engrenagem" onClick={() => irPara('ajustes')} aria-label="Ajustes">⚙️</button>
-        <div className="saudacao">
-          <Mascote rosto={humor.rosto} />
-          <p className="balao">{humor.mensagem}</p>
+      <CabecaPagina titulo="Muquirana" irPara={irPara} />
+      <div className="inicio-cabeca">
+        <Mascote rosto={humor.rosto} tamanho={52} />
+        <div className="textos">
+          <span className="ola"><SeloSincronizacao /><SeletorEspaco /></span>
+          <span className="frase">{humor.mensagem}</span>
         </div>
+      </div>
+
+      <section className="cartao-topo">
         <div className="saldo-total">
-          <span className="rotulo-claro">Saldo nas contas</span>
-          <strong className={saldoTotal < 0 ? 'negativo' : ''}>{formatar(saldoTotal)}</strong>
+          <div className="saldo-linha">
+            <span className="rotulo-claro">Saldo nas contas</span>
+            <button className="botao-olho" onClick={() => salvarConfig('ocultarValores', !ocultar)} aria-label={ocultar ? 'Mostrar valores' : 'Esconder valores'} aria-pressed={ocultar}>
+              {ocultar ? <IconeOlhoFechado /> : <IconeOlho />}
+            </button>
+          </div>
+          <strong className={`valor-grande ${ocultar ? 'oculto' : ''}`}>{mostrar(saldoTotal)}</strong>
           <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
-            Previsto para {dataCurta(previsao.fimMes)}: <strong className={previsao.previsto < 0 ? 'negativo' : ''}>{formatar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
+            Previsto para {dataCurta(previsao.fimMes)}: <strong>{mostrar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
           </button>
-          {verPrevisao && (
+          {verPrevisao && !ocultar && (
             <div className="previsao-detalhe">
               <span>Saldo hoje <b>{formatar(previsao.saldoHoje)}</b></span>
               {previsao.agendados !== 0 && <span>Lançamentos agendados <b>{previsao.agendados > 0 ? '+' : '−'} {formatar(Math.abs(previsao.agendados))}</b></span>}
@@ -73,13 +87,13 @@ export default function Inicio({ mes, setMes, irPara }) {
           {saldos.map((c) => (
             <div key={c.id} className={`conta-mini ${estimadas.has(c.id) ? 'estimada' : ''}`}>
               <span>{c.emoji} {c.nome}</span>
-              <strong className={c.saldo < 0 ? 'negativo' : ''}>{estimadas.has(c.id) ? '≈ ' : ''}{formatar(c.saldo)}</strong>
+              <strong>{estimadas.has(c.id) && !ocultar ? '≈ ' : ''}{mostrar(c.saldo)}</strong>
             </div>
           ))}
         </div>
         {estimadas.size > 0 && (
           <p className="nota-estimada">
-            ≈ Saldo estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta (os gastos de lá ainda não entraram). Importe o extrato dessa conta ou informe o saldo real em ⚙️ Ajustes.
+            ≈ Estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta. Importe o extrato dela ou informe o saldo real em Ajustes.
           </p>
         )}
       </section>
@@ -89,20 +103,16 @@ export default function Inicio({ mes, setMes, irPara }) {
 
       <SeletorMes mes={mes} aoMudar={setMes} />
 
-      <section className="resumo-mes">
-        <div><span className="rotulo">Entrou</span><strong className="entrada">{formatar(resumo.entrou)}</strong></div>
-        <div><span className="rotulo">Saiu</span><strong className="saida">{formatar(resumo.saiu)}</strong></div>
-        <div>
-          <span className="rotulo">{resumo.resultado >= 0 ? 'Sobrou' : 'Faltou'}</span>
-          <strong className={resumo.resultado >= 0 ? 'entrada' : 'saida'}>{formatar(Math.abs(resumo.resultado))}</strong>
-        </div>
-      </section>
+      <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} />
 
       <OrcamentoDoMes mes={mes} irPara={irPara} />
 
       <section className="painel">
-        <h3>Para onde foi o dinheiro em {nomeMes(mes)}</h3>
-        <BarrasCategorias categorias={resumo.categorias} />
+        <div className="painel-titulo">
+          <h3>Para onde foi o dinheiro</h3>
+          {resumo.categorias.length > 0 && <button className="link" onClick={() => irPara('historico')}>Histórico</button>}
+        </div>
+        <BarrasCategorias categorias={resumo.categorias} limite={5} />
       </section>
 
       <ContasDoMes mes={mes} irPara={irPara} />
