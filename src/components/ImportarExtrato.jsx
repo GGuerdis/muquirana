@@ -10,7 +10,7 @@ import { avisoDeOrcamento, textoAviso } from '../lib/orcamento.js'
 import { decodificarArquivo, lerOFX, nomeDoBanco } from '../lib/ofx.js'
 import {
   prepararImportacao, executarImportacao, problemaDoItem, resolverFatura, conferirSaldo, normalizar,
-  podeDefinirSaldoInicial, identidade, NOVA_CONTA_INVESTIMENTOS,
+  podeDefinirSaldoInicial, identidade, NOVA_CONTA_INVESTIMENTOS, nomeDaNovaConta, ehContaNova,
 } from '../lib/importacao.js'
 import { faturaAtual, faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprenderComImportacao } from '../lib/categorizar.js'
@@ -40,6 +40,13 @@ function faturaProvavel(extrato, cartao) {
   let melhor = null
   for (const [f, n] of contagem) if (!melhor || n > melhor[1] || (n === melhor[1] && f > melhor[0])) melhor = [f, n]
   return melhor ? melhor[0] : faturaAtual(cartao)
+}
+
+// "104/0999/0001234567890" → "Caixa (ag. 0999 · conta 0001234567890)" · "077" → "Inter"
+function descreverDestino(chave) {
+  const [banco, ag, conta] = String(chave).split('/')
+  const nome = nomeDoBanco(banco) || (banco.startsWith('ISPB') ? banco : `banco ${banco}`)
+  return ag && conta ? `${nome} (ag. ${ag} · conta ${conta})` : nome
 }
 
 const ehPdf = (f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf'
@@ -73,7 +80,9 @@ export default function ImportarExtrato({ aoFechar }) {
       contaPixProprio: inter ? inter.id : null,
       titular: ex.titular || config.titular || null,
       cartaoPorPagamento: {},
-      contaPorPix: {},
+      // o que você escolheu nas importações anteriores para cada conta de destino (neste aparelho)
+      contaPorPix: { ...(config.destinosPix?.conta || {}) },
+      gastoPorPix: { ...(config.destinosPix?.gasto || {}) },
       historico: ex.origem === 'pdf-santander',
     }
   }
@@ -181,8 +190,11 @@ export default function ImportarExtrato({ aoFechar }) {
     for (const i of previa?.itens || []) {
       if (i.situacao !== 'novo') continue
       if (i.grupo === 'investimento') g.investimento++
-      if (i.grupo === 'pixProprio') g.pixProprio++
-      if (i.grupo === 'pixConta') g.pixConta.set(i.contaBancaria, { n: (g.pixConta.get(i.contaBancaria)?.n || 0) + 1, contaId: i.contaOutraId })
+      if (i.grupo === 'pixProprio' && !i.contaBancaria) g.pixProprio++
+      if (i.grupo === 'pixConta' || (i.grupo === 'pixProprio' && i.contaBancaria)) {
+        const atual = g.pixConta.get(i.contaBancaria) || { n: 0, total: 0, saidas: 0, contaId: i.contaOutraId, proprio: i.grupo === 'pixProprio' }
+        g.pixConta.set(i.contaBancaria, { ...atual, n: atual.n + 1, total: atual.total + i.valor, saidas: atual.saidas + (i.entrada ? 0 : 1) })
+      }
       if (i.grupo === 'pagamentoCartao') g.pagamentoCartao.set(i.identidade, { n: (g.pagamentoCartao.get(i.identidade)?.n || 0) + 1, cartaoId: i.cartaoPagoId })
     }
     return g
@@ -200,6 +212,10 @@ export default function ImportarExtrato({ aoFechar }) {
         nomeContaInvestimentos: `Investimentos ${contaPorId.get(dest.id)?.nome ?? ''}`.trim(),
       })
       await aprenderComImportacao(aGravar)
+      const conta = Object.fromEntries(Object.entries(regrasImp.contaPorPix || {}).filter(([, v]) => v === null || (v && !ehContaNova(v))))
+      if (Object.keys(conta).length || Object.keys(regrasImp.gastoPorPix || {}).length) {
+        await salvarConfig('destinosPix', { conta: { ...(config.destinosPix?.conta || {}), ...conta }, gasto: { ...(config.destinosPix?.gasto || {}), ...(regrasImp.gastoPorPix || {}) } })
+      }
       if (extrato.titular && (!config.titular || extrato.titular.length > config.titular.length)) await salvarConfig('titular', extrato.titular)
       let mensagem = zoeira ? `${n} lançamento(s) importado(s). Menos digitação, mais tempo para economizar!` : `${n} lançamento(s) importado(s).`
       if (orcamentos.length) {
@@ -334,15 +350,37 @@ export default function ImportarExtrato({ aoFechar }) {
                   </select>
                 </label>
               )}
-              {[...grupos.pixConta.entries()].map(([chave, g]) => (
-                <label key={chave} className="campo">
-                  <span className="rotulo">{g.n} PIX com a conta {chave}{nomeDoBanco(chave.slice(0, 3)) ? ` (${nomeDoBanco(chave.slice(0, 3))})` : ''}: é sua? Transferir para</span>
-                  <select className="seletor" value={regrasImp.contaPorPix?.[chave] !== undefined ? (regrasImp.contaPorPix[chave] ?? '') : (g.contaId ?? '')} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPorPix: { ...r.contaPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
-                    {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
-                    <option value="">Não é minha: lançar como gasto/receita</option>
-                  </select>
-                </label>
-              ))}
+              {[...grupos.pixConta.entries()].map(([chave, g]) => {
+                const escolhida = regrasImp.contaPorPix?.[chave] !== undefined ? (regrasImp.contaPorPix[chave] ?? '') : (g.contaId ?? '')
+                const nomeNova = nomeDaNovaConta(escolhida)
+                const gasto = regrasImp.gastoPorPix?.[chave] ?? ''
+                return (
+                  <div key={chave} className="regra-destino">
+                    <label className="campo">
+                      <span className="rotulo">
+                        {g.proprio
+                          ? `${g.n} PIX com o seu nome para ${descreverDestino(chave)} (${formatar(g.total)}): transferir para`
+                          : `${g.n} PIX com a conta ${descreverDestino(chave)}: é sua? Transferir para`}
+                      </span>
+                      <select className="seletor" value={escolhida} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPorPix: { ...r.contaPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
+                        {nomeNova && <option value={escolhida}>🏦 Nova conta "{nomeNova}"</option>}
+                        {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                        <option value="">{g.proprio ? 'Não: lançar como gasto' : 'Não é minha: lançar como gasto/receita'}</option>
+                      </select>
+                    </label>
+                    {escolhida && g.saidas > 0 && (
+                      <label className="campo">
+                        <span className="rotulo">Lá, esse dinheiro foi usado para pagar alguma coisa?</span>
+                        <select className="seletor" value={gasto} onChange={(e) => { setRegrasImp((r) => ({ ...r, gastoPorPix: { ...r.gastoPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
+                          <option value="">Não, ficou guardado lá (só transferência)</option>
+                          {categoriasDo('despesa').map((c) => <option key={c.id} value={c.id}>Sim, pagamento: {c.emoji} {c.nome}</option>)}
+                        </select>
+                        {gasto && <span className="dica">Cada PIX entra como transferência e, no mesmo dia, como gasto em {categoriaPorId.get(gasto)?.nome} saindo de {nomeNova || contaPorId.get(escolhida)?.nome}. Assim o gasto aparece nos relatórios e o saldo de lá não fica inflado.</span>}
+                      </label>
+                    )}
+                  </div>
+                )
+              })}
               {[...grupos.pagamentoCartao.entries()].map(([ident, g]) => (
                 <label key={ident} className="campo">
                   <span className="rotulo">{g.n} pagamento(s) "{ident}": fatura do cartão</span>
@@ -415,6 +453,7 @@ export default function ImportarExtrato({ aoFechar }) {
                       <select className="seletor" aria-label={i.entrada ? 'Veio da conta' : 'Foi para a conta'} value={i.contaOutraId ?? ''} onChange={(e) => mudarItem(i, { contaOutraId: e.target.value || null })}>
                         <option value="">{i.entrada ? 'Veio de qual conta?' : 'Foi para qual conta?'}</option>
                         {i.contaOutraId === NOVA_CONTA_INVESTIMENTOS && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta de investimentos</option>}
+                        {nomeDaNovaConta(i.contaOutraId) && <option value={i.contaOutraId}>🏦 Nova conta "{nomeDaNovaConta(i.contaOutraId)}"</option>}
                         {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
                       </select>
                     )}
@@ -424,6 +463,7 @@ export default function ImportarExtrato({ aoFechar }) {
                       </select>
                     )}
                   </div>
+                  {i.acao === 'transferencia' && i.gastoCategoriaId && !i.entrada && <span className="dica">E lança como gasto em {categoriaPorId.get(i.gastoCategoriaId)?.nome} na outra conta.</span>}
                   {i.acao === 'fatura' && i.faturaPaga && <span className="dica">Quita a fatura de {nomeMes(i.faturaPaga)}{i.faturaSemCompras ? ' (compras ainda não importadas)' : ''}</span>}
                   {nParecidas > 0 && (
                     <button className="link" onClick={() => mudarItem(i, Object.fromEntries(Object.entries(ajustes[i.posicao]).filter(([k]) => ['acao', 'categoriaId', 'categoriaEscolhida', 'contaOutraId', 'cartaoPagoId'].includes(k))), true)}>

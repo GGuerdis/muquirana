@@ -9,6 +9,14 @@ import { nomeDoBanco } from './ofx.js'
 export const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
 
 export const NOVA_CONTA_INVESTIMENTOS = '__nova_investimentos__'
+// Conta que ainda não existe e é criada junto com a importação (ex.: "Caixa" para PIX que você fez para a sua conta na Caixa)
+const PREFIXO_NOVA_CONTA = '__nova_conta__:'
+export const novaConta = (nome) => `${PREFIXO_NOVA_CONTA}${nome}`
+export const nomeDaNovaConta = (id) => (typeof id === 'string' && id.startsWith(PREFIXO_NOVA_CONTA) ? id.slice(PREFIXO_NOVA_CONTA.length) : null)
+export const ehContaNova = (id) => id === NOVA_CONTA_INVESTIMENTOS || nomeDaNovaConta(id) !== null
+
+// Chave de uma conta de destino vinda do extrato: "banco/agência/conta", ou só o banco quando o extrato não mostra a conta
+export const chaveDoDestino = (d) => (d?.banco ? (d.agencia && d.conta ? `${d.banco}/${d.agencia}/${d.conta}` : d.banco) : d?.ispb ? `ISPB ${d.ispb}` : null)
 
 const diasEntre = (a, b) => {
   const [y1, m1, d1] = a.split('-').map(Number)
@@ -76,7 +84,10 @@ function candidatosConta(contaId, lancamentos) {
  *   { contaInvestimentos: id | NOVA_CONTA_INVESTIMENTOS | null,
  *     contaPixProprio: id | null, titular: texto | null,
  *     cartaoPorPagamento: { [identidade]: cartaoId },
- *     contaPorPix: { 'banco/agência/conta': contaId | null } (PIX para uma conta pelo número),
+ *     contaPorPix: { 'banco/agência/conta' | 'banco': contaId | novaConta(nome) | null } (PIX para uma conta pelo número,
+ *       ou PIX com o seu nome cujo destino o extrato mostra),
+ *     gastoPorPix: { mesma chave: categoriaId } → depois da transferência, o dinheiro é usado lá para pagar algo:
+ *       entra também um gasto nessa conta, com essa categoria (para contas cujo extrato você não importa),
  *     historico: true → pagamento de fatura entra mesmo sem as compras no app }
  */
 export function prepararImportacao({ extrato, destino, faturaCartao = null, dados, sugerir = () => null, regras = {} }) {
@@ -126,6 +137,7 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       faturaSemCompras: false,
       parcela: null,
       duplicadoDe: null,
+      gastoCategoriaId: null,
     }
 
     if (existentesIds.has(idExterno)) {
@@ -171,6 +183,27 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
     // PIX/TED para você mesmo (com o seu nome): transferência entre suas contas
     if (nomeTitular && nomeTitular.test(soLetrasENumeros(desc)) && /\b(PIX|TED|DOC|TRANSF)/.test(desc)) {
       item.grupo = 'pixProprio'
+      const chaveConta = chaveDoDestino(t.destino)
+      if (chaveConta && !entrada) {
+        // o extrato diz para qual banco/conta foi
+        item.contaBancaria = chaveConta
+        item.bancoDestino = t.destino.banco ?? null
+        const escolhida = regras.contaPorPix?.[chaveConta]
+        const banco = nomeDoBanco(t.destino.banco)
+        let sugerida
+        if (escolhida !== undefined) sugerida = escolhida
+        else {
+          const mesmoNome = banco ? contas.find((c) => c.id !== destino.id && normalizar(c.nome).includes(normalizar(banco))) : null
+          if (mesmoNome) sugerida = mesmoNome.id
+          else if (banco && t.destino.banco !== extrato.banco) sugerida = novaConta(banco)
+          else sugerida = regras.contaPixProprio ?? null
+        }
+        if (sugerida && sugerida !== destino.id) {
+          const gasto = regras.gastoPorPix?.[chaveConta] ?? null
+          return { ...item, acao: 'transferencia', contaOutraId: sugerida, gastoCategoriaId: gasto, motivo: `Transferência para você mesmo${banco ? ` (${banco})` : ''}${gasto ? ', usada lá para pagar algo' : ''}` }
+        }
+        return item
+      }
       if (regras.contaPixProprio && regras.contaPixProprio !== destino.id) {
         return { ...item, acao: 'transferencia', contaOutraId: regras.contaPixProprio, motivo: 'Transferência para você mesmo' }
       }
@@ -186,7 +219,10 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       const escolhida = regras.contaPorPix?.[chaveConta]
       const banco = nomeDoBanco(contaPix[1])
       const sugerida = escolhida !== undefined ? escolhida : (banco ? contas.find((c) => c.id !== destino.id && normalizar(c.nome).includes(normalizar(banco)))?.id ?? null : null)
-      if (sugerida && sugerida !== destino.id) return { ...item, acao: 'transferencia', contaOutraId: sugerida, motivo: `Transferência ${entrada ? 'da' : 'para a'} conta ${chaveConta}` }
+      if (sugerida && sugerida !== destino.id) {
+        const gasto = !entrada ? regras.gastoPorPix?.[chaveConta] ?? null : null
+        return { ...item, acao: 'transferencia', contaOutraId: sugerida, gastoCategoriaId: gasto, motivo: `Transferência ${entrada ? 'da' : 'para a'} conta ${chaveConta}${gasto ? ', usada lá para pagar algo' : ''}` }
+      }
       return item
     }
 
@@ -232,6 +268,7 @@ export function problemaDoItem(item, destino) {
   if (destino.tipo === 'cartao' && item.acao !== 'lancar') return 'No cartão, a linha só pode ser lançada ou ignorada.'
   if (item.acao === 'lancar' && !item.categoriaId) return 'Escolha a categoria.'
   if (item.acao === 'transferencia' && (!item.contaOutraId || item.contaOutraId === destino.id)) return 'Escolha a outra conta da transferência.'
+  if (item.acao === 'transferencia' && item.gastoCategoriaId && item.entrada) return 'Só a transferência que sai daqui pode virar pagamento na outra conta.'
   if (item.acao === 'fatura') {
     if (item.entrada) return 'Entrada de dinheiro não pode ser pagamento de fatura.'
     if (!item.cartaoPagoId) return 'Escolha o cartão.'
@@ -257,19 +294,25 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
   if (saldoInicial != null && (destino.tipo !== 'conta' || !Number.isSafeInteger(saldoInicial))) throw new Error('Saldo inicial inválido.')
 
   return db.transaction('rw', db.lancamentos, db.contas, db.cartoes, db.categorias, async () => {
-    // nova conta de investimentos, se pedida
-    let idInvest = null
-    if (gravar.some((i) => i.contaOutraId === NOVA_CONTA_INVESTIMENTOS)) {
-      idInvest = await db.contas.add({ nome: nomeContaInvestimentos, emoji: '📈', saldoInicial: 0 })
+    // contas novas pedidas na importação (investimentos, ou a conta de outro banco, ex.: "Caixa")
+    const criadas = new Map()
+    for (const i of gravar) {
+      if (i.acao !== 'transferencia' || !ehContaNova(i.contaOutraId) || criadas.has(i.contaOutraId)) continue
+      const nova = i.contaOutraId === NOVA_CONTA_INVESTIMENTOS
+        ? { nome: nomeContaInvestimentos, emoji: '📈', saldoInicial: 0 }
+        : { nome: nomeDaNovaConta(i.contaOutraId).trim().slice(0, 40) || 'Outra conta', emoji: '🏦', saldoInicial: 0 }
+      criadas.set(i.contaOutraId, await db.contas.add(nova))
     }
-    const outra = (id) => (id === NOVA_CONTA_INVESTIMENTOS ? idInvest : id)
+    const outra = (id) => (criadas.has(id) ? criadas.get(id) : id)
     if (saldoInicial != null) await db.contas.update(destino.id, { saldoInicial })
 
     const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
     const refs = { contas, cartoes, categorias }
 
     // não importar duas vezes (ex.: toque duplo): confere os identificadores no banco
-    const ids = gravar.map((i) => i.idExterno)
+    const idGasto = (i) => `${i.idExterno}:gasto`
+    const comGasto = (i) => i.acao === 'transferencia' && !i.entrada && !!i.gastoCategoriaId
+    const ids = [...gravar.map((i) => i.idExterno), ...gravar.filter(comGasto).map(idGasto)]
     const jaExistem = new Set((await db.lancamentos.where('idExterno').anyOf(ids).toArray()).map((l) => l.idExterno))
     if (jaExistem.size) throw new Error('Parte destes lançamentos já foi importada. Abra a importação de novo para ver o que falta.')
     if (new Set(ids).size !== ids.length) throw new Error('Há linhas repetidas na importação.')
@@ -289,6 +332,10 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
           form = { tipo: 'transferencia', valor: i.valor, descricao: i.descricao, contaId: origem, contaDestinoId: destinoT, cartaoId: null, data: i.data, parcelas: 1, idExterno: i.idExterno }
         }
         registros.push(...registrosParaImportar(form, refs))
+        if (comGasto(i)) {
+          // o dinheiro foi usado lá para pagar algo: o gasto sai da outra conta, no mesmo dia
+          registros.push(...registrosParaImportar({ tipo: 'despesa', valor: i.valor, descricao: i.descricao, categoriaId: i.gastoCategoriaId, contaId: outra(i.contaOutraId), cartaoId: null, data: i.data, parcelas: 1, idExterno: idGasto(i) }, refs))
+        }
       } catch (e) {
         throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
       }

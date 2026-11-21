@@ -127,6 +127,8 @@ export function lerConsolidado(linhas) {
   if (!dentro) throw new Error('Não encontrei a tabela de movimentação da conta corrente.')
 
   const lista = transacoes.map((x, i) => ({ posicao: i + 1, data: x.data, valor: x.valor, descricao: limparDescricao(x.partes.filter(Boolean).join(' ')), saldoImpresso: x.saldo }))
+  const enviados = lerEnviados(linhas, dataDe)
+  const ligacao = ligarDestinos(lista, enviados)
 
   // ---------- conferência ----------
   const nome = `${MESES[mes - 1]}/${ano}`
@@ -157,8 +159,76 @@ export function lerConsolidado(linhas) {
     saldoInicial: saldoAnterior.valor,
     saldoFinal: saldoFinal.valor,
     transacoes: lista,
+    enviados: { total: enviados.length, ligados: ligacao.ligados, soltos: ligacao.soltos },
     conferencia: { ok: erros.length === 0, erros, saldosConferidos: conferidos },
   }
+}
+
+// ---------- Tabela "Transferências entre Contas, DOCs, TEDs e PIXs Enviados" ----------
+// O extrato mensal lista, no fim, para onde foi cada PIX/TED: o banco (ou o ISPB), a agência e a conta.
+// Com isso dá para saber, por exemplo, se um PIX com o seu nome foi para o Inter ou para a Caixa.
+export const BANCO_POR_ISPB = {
+  '00000000': '001', '00360305': '104', '00416968': '077', '90400888': '033', '60701190': '341',
+  '60746948': '237', '18236120': '260', '31872495': '336', '30306294': '208', '10573521': '323',
+  '08561701': '380', '92702067': '041', '58160789': '422',
+}
+const soDigitos = (s) => String(s || '').replace(/\D/g, '')
+const semZeros = (s) => soDigitos(s).replace(/^0+/, '')
+
+export function lerEnviados(linhas, dataDe) {
+  const lista = []
+  let dentro = false, coluna = null
+  for (const l of linhas) {
+    const t = textoDaLinha(l)
+    if (/Transfer[eê]ncias entre Contas.*Enviados/i.test(t)) { dentro = true; continue }
+    if (!dentro) continue
+    if (/^Data\s+Canal\s+Tipo\s+Favorecido/i.test(t)) { coluna = /ISPB/i.test(t) ? 'ispb' : 'banco'; continue }
+    if (!coluna) continue
+    const d = l.itens.find((i) => i.x < 60 && /^\d{2}\/\d{2}(\s|$)/.test(i.s))
+    const tipo = itensEntre(l, 110, 195).map((i) => i.s).join(' ').trim()
+    const favorecido = itensEntre(l, 195, 330).map((i) => i.s).join(' ').replace(/\s+/g, ' ').trim()
+    const cod = itensEntre(l, 330, 375).find((i) => /^\d+$/.test(i.s))
+    const ag = itensEntre(l, 375, 420).find((i) => /^\d+$/.test(i.s))
+    const ct = itensEntre(l, 420, 505).find((i) => /^[\d-]+$/.test(i.s))
+    const v = l.itens.find((i) => i.x >= 505 && ehValor(i.s))
+    if (!d || !cod || !v || !/^(PIX|TED|DOC|TEF|TRANSF)/i.test(tipo)) continue
+    const valor = valorBR(v.s)
+    if (!valor || valor < 0) continue
+    const banco = coluna === 'banco' ? soDigitos(cod.s).padStart(3, '0').slice(-3) : BANCO_POR_ISPB[soDigitos(cod.s).padStart(8, '0')] ?? null
+    lista.push({
+      data: dataDe(d.s.slice(0, 5)),
+      tipo: tipo.toUpperCase(),
+      favorecido,
+      banco,
+      ispb: coluna === 'ispb' ? soDigitos(cod.s).padStart(8, '0') : null,
+      agencia: ag && semZeros(ag.s) ? soDigitos(ag.s) : null,
+      conta: ct && semZeros(ct.s) ? soDigitos(ct.s) : null,
+      valor,
+    })
+  }
+  return lista
+}
+
+const diasDepois = (de, ate) => {
+  const [y1, m1, d1] = de.split('-').map(Number)
+  const [y2, m2, d2] = ate.split('-').map(Number)
+  return (Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000
+}
+
+// Liga cada linha da tabela de enviados ao lançamento da conta: mesmo valor, PIX/TED na descrição,
+// debitado no mesmo dia ou até 5 dias depois (PIX agendado em fim de semana/feriado sai no dia útil seguinte).
+export function ligarDestinos(transacoes, enviados) {
+  let ligados = 0
+  const soltos = []
+  for (const e of enviados) {
+    const opcoes = transacoes.filter((x) => !x.destino && x.valor === -e.valor && x.data && /\b(PIX|TED|DOC|TEF|TRANSF)/i.test(x.descricao) && diasDepois(e.data, x.data) >= 0 && diasDepois(e.data, x.data) <= 5)
+    if (!opcoes.length) { soltos.push(e); continue }
+    opcoes.sort((a, b) => diasDepois(e.data, a.data) - diasDepois(e.data, b.data) || a.posicao - b.posicao)
+    const { valor, data, ...destino } = e
+    opcoes[0].destino = { ...destino, dataPedido: data }
+    ligados++
+  }
+  return { ligados, soltos }
 }
 
 // ---------- Formato 2: Extrato de Conta (período) ----------
@@ -294,13 +364,18 @@ export function juntarExtratos(lidos) {
         if (JSON.stringify(deste) !== JSON.stringify(jaTem)) erros.push(`${e.nome} e ${anterior.nome} têm lançamentos diferentes no período em comum.`)
       }
     }
-    for (const x of comChave) if (!final.has(x.chave)) final.set(x.chave, x)
+    for (const x of comChave) {
+      if (!final.has(x.chave)) final.set(x.chave, x)
+      else if (x.destino && !final.get(x.chave).destino) final.set(x.chave, { ...final.get(x.chave), destino: x.destino }) // o consolidado sabe o destino; o parcial não
+    }
     if (!anterior || e.fim > anterior.fim) anterior = e
   }
 
   const transacoes = [...final.values()]
     .sort((a, b) => a.data.localeCompare(b.data))
-    .map((x, i) => ({ posicao: i + 1, fitid: null, chave: x.chave, data: x.data, valor: x.valor, descricao: x.descricao }))
+    .map((x, i) => ({ posicao: i + 1, fitid: null, chave: x.chave, data: x.data, valor: x.valor, descricao: x.descricao, ...(x.destino ? { destino: { ...x.destino } } : {}) }))
+  // PIX agendado no fim de um mês e debitado no começo do outro: está na tabela de um extrato e o débito no seguinte
+  ligarDestinos(transacoes, lidos.flatMap((e) => e.enviados?.soltos || []))
   const primeiro = ordenados[0], ultimo = anterior
   return {
     tipo: 'conta',

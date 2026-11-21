@@ -13,7 +13,7 @@ const l = (pagina, y, ...itens) => ({ pagina, y, itens: itens.map(([x, s]) => ({
  * Consolidado mensal. `linhas` = [{ data:'dd/mm' | null, desc, desc2?, valor, saldo? , separarValor? }]
  * saldoAnterior/saldoFinal em centavos; mes = 'outubro', ano = 2025; dataAnterior 'dd/mm', dataFinal 'dd/mm'
  */
-export function consolidado({ mes, ano, dataAnterior, dataFinal, saldoAnterior, lancamentos, titular = 'FULANO DE TAL SOUZA', conta = '02.000000-1', comInvestimentos = false, saldoFinalResumo = null, semSaldoFinal = false }) {
+export function consolidado({ mes, ano, dataAnterior, dataFinal, saldoAnterior, lancamentos, titular = 'FULANO DE TAL SOUZA', conta = '02.000000-1', comInvestimentos = false, saldoFinalResumo = null, semSaldoFinal = false, enviados = [] }) {
   const creditos = lancamentos.filter((x) => x.valor > 0).reduce((s, x) => s + x.valor, 0)
   const debitos = -lancamentos.filter((x) => x.valor < 0).reduce((s, x) => s + x.valor, 0)
   const saldoFinal = saldoFinalResumo ?? saldoAnterior + creditos - debitos
@@ -73,6 +73,28 @@ export function consolidado({ mes, ano, dataAnterior, dataFinal, saldoAnterior, 
     out.push(l(pagina + 1, 199, [34, 'Movimentação']))
     out.push(l(pagina + 1, 189, [34, 'Data'], [91, 'Descrição'], [237, 'Valor Principal (R$)'], [330, 'Valor Bruto (R$)']))
     out.push(l(pagina + 1, 178, [34, '30/09'], [91, 'SALDO ANTERIOR¹'], [278, '457,56'], [360, '494,75'], [449, '7,43'], [521, '487,32']))
+  }
+  if (enviados.length) {
+    // tabela "PIXs Enviados" (no fim do extrato): uma parte com o número do banco e outra com o ISPB
+    const pg = pagina + 2
+    let y2 = 500
+    out.push(l(pg, 530, [71, 'Comprovantes de Pagamento']))
+    out.push(l(pg, 520, [34, 'Transferências entre Contas, DOCs, TEDs e PIXs Enviados']))
+    for (const parte of ['banco', 'ispb']) {
+      const linhas = enviados.filter((e) => (e.ispb ? 'ispb' : 'banco') === parte)
+      if (!linhas.length) continue
+      out.push(l(pg, y2, [34, 'Data'], [54, 'Canal'], [129, 'Tipo'], [200, 'Favorecido'], parte === 'banco' ? [351, 'Banco'] : [352, 'ISPB*'], [376, 'Agência'], [459, 'Conta'], [513, 'Valor (R$)']))
+      y2 -= 11
+      for (const e of linhas) {
+        out.push(l(pg, y2, [34, `${e.data} INTERNET BANKING`], [129, e.tipo || 'PIX'], [200, e.favorecido], parte === 'banco' ? [355, e.banco] : [341, e.ispb], [384, e.agencia || '0000'], [428, e.conta || '0000000000000'], [523, brl(e.valor)]))
+        y2 -= 11
+      }
+    }
+    // linha com o mesmo formato, mas que não é PIX/TED (não pode dar destino a nenhum lançamento)
+    out.push(l(pg, y2, [34, '30/09 AGENCIA'], [129, 'DEPOSITO'], [200, 'QUALQUER'], [355, '0033'], [384, '1234'], [428, '0000000000001'], [523, '20,00']))
+    y2 -= 11
+    // outra tabela logo depois (limite da conta): não é transferência
+    out.push(l(pg, y2 - 20, [57, '2.000,00'], [105, '14/05/26'], [151, '14'], [199, '14/03/2026 a 13/04/2026'], [358, '10'], [400, '0'], [529, '0,00']))
   }
   return out
 }
