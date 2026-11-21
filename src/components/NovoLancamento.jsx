@@ -17,9 +17,9 @@ const TIPOS = [
   { valor: 'transferencia', rotulo: 'Transferência', tom: 'tom-neutro' },
 ]
 
-function estadoInicial(original, dados) {
-  if (original) {
-    const f = formDoLancamento(original)
+function estadoInicial(original, dados, modelo) {
+  if (original || modelo) {
+    const f = original ? formDoLancamento(original) : modelo
     return {
       tipo: f.tipo,
       valor: f.valor,
@@ -45,17 +45,17 @@ function estadoInicial(original, dados) {
   }
 }
 
-export default function NovoLancamento({ original, aoFechar }) {
+export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   const dados = useDados()
   const { contas, cartoes, categorias, regras, categoriaPorId, cartaoPorId, avisar, zoeira } = dados
-  const [f, setF] = useState(() => estadoInicial(original, dados))
+  const [f, setF] = useState(() => estadoInicial(original, dados, modelo))
   const [erro, setErro] = useState('')
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const salvando = useRef(false)
   const mudar = (campo) => (v) => { setErro(''); setF((x) => ({ ...x, [campo]: v })) }
   // Categoria escolhida por você não é trocada pela sugestão automática
-  const [categoriaManual, setCategoriaManual] = useState(!!original)
+  const [categoriaManual, setCategoriaManual] = useState(!!original || !!modelo)
   const escolherCategoria = (id) => { setCategoriaManual(true); mudar('categoriaId')(id) }
   const mudarDescricao = (texto) => {
     setErro('')
@@ -104,6 +104,8 @@ export default function NovoLancamento({ original, aoFechar }) {
       cartaoId: ehCartao ? idOrigem : null,
       contaDestinoId: f.tipo === 'transferencia' ? f.contaDestinoId : null,
       parcelas: ehCartao ? f.parcelas : 1,
+      // conta fixa: liga o lançamento à conta fixa e ao mês
+      ...(modelo ? { recorrenteId: modelo.recorrenteId, competencia: modelo.competencia } : {}),
     }
     const problema = validarLancamento(form, { contas, cartoes, categorias })
     if (problema) return setErro(problema)
@@ -145,7 +147,7 @@ export default function NovoLancamento({ original, aoFechar }) {
 
   return (
     <Folha
-      titulo={original ? `Editar ${tituloBase}` : 'Novo lançamento'}
+      titulo={original ? `Editar ${tituloBase}` : modelo ? `Lançar: ${modelo.descricao}` : 'Novo lançamento'}
       aoFechar={aoFechar}
       rodape={
         <>

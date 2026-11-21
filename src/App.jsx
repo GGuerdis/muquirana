@@ -17,7 +17,7 @@ const ABAS = [
 ]
 
 export default function App() {
-  const [lancAberto, setLancAberto] = useState(null) // null | 'novo' | lançamento
+  const [lancAberto, setLancAberto] = useState(null) // null | 'novo' | lançamento | { modelo }
   const [aviso, setAviso] = useState(null)
   const timer = useRef(null)
 
@@ -27,12 +27,20 @@ export default function App() {
     timer.current = setTimeout(() => setAviso(null), 3500)
   }, [])
   const abrirLancamento = useCallback((l) => setLancAberto(l || 'novo'), [])
-  const acoes = useMemo(() => ({ avisar, abrirLancamento }), [avisar, abrirLancamento])
+  const abrirModelo = useCallback((modelo) => setLancAberto({ modelo }), [])
+  const acoes = useMemo(() => ({ avisar, abrirLancamento, abrirModelo }), [avisar, abrirLancamento, abrirModelo])
 
   return (
     <ProvedorDados acoes={acoes}>
       <Telas />
-      {lancAberto && <NovoLancamento original={lancAberto === 'novo' ? null : lancAberto} aoFechar={() => setLancAberto(null)} />}
+      {lancAberto && (
+        <NovoLancamento
+          key={lancAberto === 'novo' ? 'novo' : lancAberto.modelo ? `m-${lancAberto.modelo.recorrenteId}-${lancAberto.modelo.competencia}` : `l-${lancAberto.id}`}
+          original={lancAberto === 'novo' || lancAberto.modelo ? null : lancAberto}
+          modelo={lancAberto.modelo || null}
+          aoFechar={() => setLancAberto(null)}
+        />
+      )}
       {aviso && <div className="aviso" key={aviso.chave} role="status" onClick={() => setAviso(null)}>{aviso.texto}</div>}
     </ProvedorDados>
   )

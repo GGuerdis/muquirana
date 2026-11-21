@@ -1,7 +1,9 @@
 // Formulários de conta, cartão e categoria (usados em Ajustes e Cartões)
 import { useState } from 'react'
 import Folha from './Folha.jsx'
-import { Campo, CampoValor, Chips } from './Campos.jsx'
+import { Campo, CampoValor, Chips, Abas } from './Campos.jsx'
+import { mesAtual, somarMeses, nomeMes } from '../lib/datas.js'
+import { salvarRecorrente, excluirRecorrente } from '../lib/recorrentes.js'
 import { useDados } from '../dados.jsx'
 import { saldoConta } from '../lib/calculos.js'
 import { salvarCartao, excluirCartao, salvarConta, excluirConta, salvarCategoria, excluirCategoria } from '../lib/cadastros.js'
@@ -120,6 +122,75 @@ export function FormCategoria({ categoria, tipo, aoFechar }) {
         <Campo rotulo="Ícone"><input value={f.emoji} onChange={(e) => setF({ ...f, emoji: e.target.value })} maxLength={4} className="centro" /></Campo>
         <Campo rotulo="Nome"><input value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} placeholder="Ex.: Academia" maxLength={30} /></Campo>
       </div>
+    </Folha>
+  )
+}
+
+// ---------- Conta fixa (recorrente) ----------
+export function FormRecorrente({ recorrente, aoFechar }) {
+  const { contas, cartoes, categorias, avisar } = useDados()
+  const atual = mesAtual()
+  const [f, setF] = useState(() => recorrente
+    ? { ...recorrente, origem: recorrente.cartaoId != null ? `cartao:${recorrente.cartaoId}` : `conta:${recorrente.contaId}` }
+    : { tipo: 'despesa', descricao: '', valor: 0, dia: '', categoriaId: null, origem: contas[0] ? `conta:${contas[0].id}` : null, inicio: atual, fim: null })
+  const acoes = useAcoes(aoFechar)
+  const mudar = (campo, v) => { acoes.setErro(''); setF((x) => ({ ...x, [campo]: v })) }
+
+  const meses = Array.from({ length: 37 }, (_, i) => somarMeses(atual, i - 12))
+  const cats = categorias.filter((c) => c.tipo === f.tipo)
+  const origens = [
+    ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, emoji: c.emoji })),
+    ...(f.tipo === 'despesa' ? cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' })) : []),
+  ]
+
+  const salvar = () => acoes.executar(async () => {
+    const [t, id] = (f.origem || ':').split(':')
+    await salvarRecorrente({
+      id: recorrente?.id, descricao: f.descricao, tipo: f.tipo, valor: f.valor, dia: Number(f.dia), categoriaId: f.categoriaId,
+      contaId: t === 'conta' ? Number(id) : null, cartaoId: t === 'cartao' ? Number(id) : null,
+      inicio: f.inicio, fim: f.fim || null, pulados: recorrente?.pulados,
+    })
+    avisar(recorrente ? 'Conta fixa atualizada.' : 'Conta fixa cadastrada. Ela vai aparecer no Início todo mês.')
+  })
+  const excluir = () => acoes.executar(async () => {
+    await excluirRecorrente(recorrente.id)
+    avisar('Conta fixa excluída. O que já foi lançado continua lá.')
+  })
+
+  return (
+    <Folha titulo={recorrente ? 'Editar conta fixa' : 'Nova conta fixa'} aoFechar={aoFechar} rodape={<Rodape podeExcluir={!!recorrente} acoes={acoes} aoSalvar={salvar} aoExcluir={excluir} />}>
+      <Abas opcoes={[{ valor: 'despesa', rotulo: 'Despesa', tom: 'tom-saida' }, { valor: 'receita', rotulo: 'Receita', tom: 'tom-entrada' }]} valor={f.tipo}
+        aoMudar={(tipo) => setF((x) => ({ ...x, tipo, categoriaId: tipo === x.tipo ? x.categoriaId : null, origem: tipo === 'receita' && x.origem?.startsWith('cartao:') ? (contas[0] ? `conta:${contas[0].id}` : null) : x.origem }))} />
+      <Campo rotulo="Nome"><input value={f.descricao} onChange={(e) => mudar('descricao', e.target.value)} placeholder={f.tipo === 'despesa' ? 'Ex.: Aluguel, Netflix, Luz' : 'Ex.: Salário'} maxLength={60} /></Campo>
+      <CampoValor rotulo="Valor (se varia, use o valor médio: você ajusta ao lançar)" valor={f.valor} aoMudar={(v) => mudar('valor', v)} />
+      <Campo rotulo="Dia do vencimento"><input type="number" inputMode="numeric" min="1" max="31" value={f.dia} onChange={(e) => mudar('dia', e.target.value)} /></Campo>
+      <label className="campo">
+        <span className="rotulo">Categoria</span>
+        <select className="seletor" value={f.categoriaId ?? ''} onChange={(e) => mudar('categoriaId', e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Escolha…</option>
+          {cats.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+        </select>
+      </label>
+      <div className="bloco">
+        <span className="rotulo">{f.tipo === 'receita' ? 'Entra em' : 'Paga com'}</span>
+        <Chips rolavel opcoes={origens} valor={f.origem} aoMudar={(v) => mudar('origem', v)} />
+      </div>
+      <div className="duas-colunas">
+        <label className="campo">
+          <span className="rotulo">A partir de</span>
+          <select className="seletor" value={f.inicio} onChange={(e) => mudar('inicio', e.target.value)}>
+            {meses.map((m) => <option key={m} value={m}>{nomeMes(m)}</option>)}
+          </select>
+        </label>
+        <label className="campo">
+          <span className="rotulo">Até</span>
+          <select className="seletor" value={f.fim || ''} onChange={(e) => mudar('fim', e.target.value || null)}>
+            <option value="">Sem fim</option>
+            {meses.filter((m) => m >= f.inicio).map((m) => <option key={m} value={m}>{nomeMes(m)}</option>)}
+          </select>
+        </label>
+      </div>
+      <p className="dica">Todo mês ela aparece no Início para você confirmar com um toque. Nada é lançado sozinho.</p>
     </Folha>
   )
 }

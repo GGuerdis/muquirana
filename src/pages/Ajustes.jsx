@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { FormConta, FormCartao, FormCategoria } from '../components/Formularios.jsx'
+import { FormConta, FormCartao, FormCategoria, FormRecorrente } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import { apagarRegra, apagarTodasRegras } from '../lib/categorizar.js'
@@ -10,7 +10,7 @@ import { exportarBackup, restaurarBackup, salvarConfig } from '../lib/db.js'
 import { hoje, dataCurta } from '../lib/datas.js'
 
 export default function Ajustes() {
-  const { contas, cartoes, categorias, lancamentos, regras, categoriaPorId, zoeira, config, avisar } = useDados()
+  const { contas, cartoes, categorias, lancamentos, regras, recorrentes, categoriaPorId, contaPorId, cartaoPorId, zoeira, config, avisar } = useDados()
   const [apagandoRegras, setApagandoRegras] = useState(false)
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
   const [tipoCat, setTipoCat] = useState('despesa')
@@ -115,6 +115,20 @@ export default function Ajustes() {
 
       <section className="painel">
         <div className="painel-titulo">
+          <h3>Contas fixas</h3>
+          <button className="link" onClick={() => setEditando({ tipo: 'recorrente' })}>+ Nova</button>
+        </div>
+        {recorrentes.length === 0 && <p className="vazio">Nenhuma conta fixa ainda.</p>}
+        {[...recorrentes].sort((a, b) => a.dia - b.dia).map((r) => (
+          <button key={r.id} className="linha-ajuste" onClick={() => setEditando({ tipo: 'recorrente', item: r })}>
+            <span className="quebra">{categoriaPorId.get(r.categoriaId)?.emoji || '📦'} {r.descricao}<small> · dia {r.dia} · {r.cartaoId != null ? `💳 ${cartaoPorId.get(r.cartaoId)?.nome ?? ''}` : contaPorId.get(r.contaId)?.nome ?? ''}{r.fim ? ` · até ${r.fim.split('-').reverse().join('/')}` : ''}</small></span>
+            <span className={r.tipo === 'receita' ? 'entrada' : 'discreto'}>{r.tipo === 'receita' ? '+' : ''}{formatar(r.valor)} ›</span>
+          </button>
+        ))}
+      </section>
+
+      <section className="painel">
+        <div className="painel-titulo">
           <h3>Categorias</h3>
           <button className="link" onClick={() => setEditando({ tipo: 'categoria' })}>+ Nova</button>
         </div>
@@ -185,6 +199,7 @@ export default function Ajustes() {
       <p className="rodape-app">Muquirana v0.1 · cada tostão conta 🪙</p>
 
       {importando && <ImportarExtrato aoFechar={() => setImportando(false)} />}
+      {editando?.tipo === 'recorrente' && <FormRecorrente recorrente={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'conta' && <FormConta conta={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'cartao' && <FormCartao cartao={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'categoria' && <FormCategoria categoria={editando.item} tipo={tipoCat} aoFechar={fechar} />}

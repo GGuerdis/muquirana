@@ -83,6 +83,11 @@ export async function salvarLancamento(form, original = null) {
       const repetido = await db.lancamentos.where('idExterno').equals(idExterno).filter((l) => !original || !mesmoLancamento(l, original)).count()
       if (repetido) throw new Error('Este lançamento já foi importado antes.')
     }
+    if (recorrenteId != null) {
+      const jaLancada = await db.lancamentos.where('recorrenteId').equals(recorrenteId)
+        .filter((l) => l.competencia === competencia && (!original || !mesmoLancamento(l, original))).count()
+      if (jaLancada) throw new Error('Esta conta fixa já foi lançada neste mês.')
+    }
     const n = form.parcelas ?? 1
     let faturaFixa = form.faturaFixa ?? null
     // Compra importada mantém a fatura que veio do banco, se o cartão e a data não mudaram

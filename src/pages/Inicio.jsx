@@ -1,16 +1,20 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { Mascote, SeletorMes, ItemLancamento, BarrasCategorias } from '../components/Pecas.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes } from '../lib/datas.js'
 import { saldoConta, resumoMes } from '../lib/calculos.js'
 import { faturasPendentes } from '../lib/fatura.js'
+import { humorDoMes } from '../lib/zoeira.js'
+import { saldoPrevisto } from '../lib/recorrentes.js'
+import ContasDoMes from '../components/ContasDoMes.jsx'
 
 const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ atrasada', paga: 'paga' }
-import { humorDoMes } from '../lib/zoeira.js'
 
 export default function Inicio({ mes, setMes, irPara }) {
-  const { contas, cartoes, lancamentos, zoeira } = useDados()
+  const { contas, cartoes, lancamentos, recorrentes, zoeira } = useDados()
+  const [verPrevisao, setVerPrevisao] = useState(false)
+  const previsao = useMemo(() => saldoPrevisto({ mes: mesAtual(), contas, cartoes, recorrentes, lancamentos }), [contas, cartoes, recorrentes, lancamentos])
 
   const saldos = useMemo(() => contas.map((c) => ({ ...c, saldo: saldoConta(c, lancamentos) })), [contas, lancamentos])
   const saldoTotal = saldos.reduce((s, c) => s + c.saldo, 0)
@@ -45,6 +49,17 @@ export default function Inicio({ mes, setMes, irPara }) {
         <div className="saldo-total">
           <span className="rotulo-claro">Saldo nas contas</span>
           <strong className={saldoTotal < 0 ? 'negativo' : ''}>{formatar(saldoTotal)}</strong>
+          <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
+            Previsto para {dataCurta(previsao.fimMes)}: <strong className={previsao.previsto < 0 ? 'negativo' : ''}>{formatar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
+          </button>
+          {verPrevisao && (
+            <div className="previsao-detalhe">
+              <span>Saldo hoje <b>{formatar(previsao.saldoHoje)}</b></span>
+              {previsao.agendados !== 0 && <span>Lançamentos agendados <b>{previsao.agendados > 0 ? '+' : '−'} {formatar(Math.abs(previsao.agendados))}</b></span>}
+              {previsao.contasFixas !== 0 && <span>Contas fixas a lançar <b>{previsao.contasFixas > 0 ? '+' : '−'} {formatar(Math.abs(previsao.contasFixas))}</b></span>}
+              {previsao.faturas !== 0 && <span>Faturas a pagar até {dataCurta(previsao.fimMes)} <b>− {formatar(previsao.faturas)}</b></span>}
+            </div>
+          )}
         </div>
         <div className="contas-mini">
           {saldos.map((c) => (
@@ -71,6 +86,8 @@ export default function Inicio({ mes, setMes, irPara }) {
         <h3>Para onde foi o dinheiro em {nomeMes(mes)}</h3>
         <BarrasCategorias categorias={resumo.categorias} />
       </section>
+
+      <ContasDoMes mes={mes} irPara={irPara} />
 
       {faturas.length > 0 && (
         <section className="painel">

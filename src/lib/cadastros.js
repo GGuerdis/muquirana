@@ -49,8 +49,9 @@ export async function salvarCartao(dados, hoje) {
 }
 
 export async function excluirCartao(id) {
-  return db.transaction('rw', db.cartoes, db.lancamentos, async () => {
+  return db.transaction('rw', db.cartoes, db.lancamentos, db.recorrentes, async () => {
     if ((await db.lancamentos.where('cartaoId').equals(id).count()) > 0) throw new Error('Este cartão tem lançamentos. Apague-os antes de excluir o cartão.')
+    if ((await db.recorrentes.filter((r) => r.cartaoId === id).count()) > 0) throw new Error('Este cartão é usado numa conta fixa. Troque ou exclua a conta fixa antes.')
     await db.cartoes.delete(id)
   })
 }
@@ -72,7 +73,8 @@ export async function salvarConta({ id, nome, emoji, saldoAtual }, hoje) {
 }
 
 export async function excluirConta(id) {
-  return db.transaction('rw', db.contas, db.cartoes, db.lancamentos, async () => {
+  return db.transaction('rw', db.contas, db.cartoes, db.lancamentos, db.recorrentes, async () => {
+    if ((await db.recorrentes.filter((r) => r.contaId === id).count()) > 0) throw new Error('Esta conta é usada numa conta fixa. Troque ou exclua a conta fixa antes.')
     const usada = await db.lancamentos.filter((l) => l.contaId === id || l.contaDestinoId === id).count()
     if (usada > 0) throw new Error('Esta conta tem lançamentos. Apague-os antes de excluir a conta.')
     if ((await db.cartoes.filter((c) => c.contaPagamentoId === id).count()) > 0) throw new Error('Esta conta paga a fatura de um cartão. Troque a conta no cartão antes.')
