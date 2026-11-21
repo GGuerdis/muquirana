@@ -1,0 +1,91 @@
+// Peças pequenas usadas em várias telas
+import { useDados } from '../dados.jsx'
+import { formatar } from '../lib/dinheiro.js'
+import { nomeMes, somarMeses, mesAtual, dataCurta } from '../lib/datas.js'
+
+// Mascote provisório: o rosto muda conforme o humor. Depois trocamos pela arte definitiva.
+export function Mascote({ rosto, tamanho = 64 }) {
+  return (
+    <div className="mascote" style={{ width: tamanho, height: tamanho, fontSize: tamanho * 0.55 }} aria-hidden="true">
+      <span>{rosto}</span>
+    </div>
+  )
+}
+
+export function SeletorMes({ mes, aoMudar }) {
+  return (
+    <div className="seletor-mes">
+      <button className="botao-icone" onClick={() => aoMudar(somarMeses(mes, -1))} aria-label="Mês anterior">‹</button>
+      <button className="mes-nome" onClick={() => aoMudar(mesAtual())} title="Voltar para o mês atual">{nomeMes(mes)}</button>
+      <button className="botao-icone" onClick={() => aoMudar(somarMeses(mes, 1))} aria-label="Próximo mês">›</button>
+    </div>
+  )
+}
+
+// Uma linha da lista de lançamentos
+export function ItemLancamento({ l, mostrarData = false }) {
+  const { categoriaPorId, contaPorId, cartaoPorId, abrirLancamento } = useDados()
+  const cat = categoriaPorId.get(l.categoriaId)
+  let emoji = cat?.emoji || '📦'
+  let titulo = l.descricao || cat?.nome || 'Sem descrição'
+  let onde = ''
+  let sinal = l.tipo === 'receita' ? '+' : '−'
+  let classe = l.tipo === 'receita' ? 'entrada' : 'saida'
+
+  if (l.tipo === 'transferencia') {
+    emoji = '🔁'
+    titulo = l.descricao || 'Transferência'
+    onde = `${contaPorId.get(l.contaId)?.nome ?? '?'} → ${contaPorId.get(l.contaDestinoId)?.nome ?? '?'}`
+    sinal = ''
+    classe = 'neutro'
+  } else if (l.tipo === 'pagamentoFatura') {
+    emoji = '🧾'
+    titulo = `Fatura ${cartaoPorId.get(l.cartaoId)?.nome ?? ''}`
+    onde = contaPorId.get(l.contaId)?.nome ?? ''
+    classe = 'neutro'
+  } else {
+    onde = l.cartaoId ? `💳 ${cartaoPorId.get(l.cartaoId)?.nome ?? ''}` : contaPorId.get(l.contaId)?.nome ?? ''
+    if (l.descricao && cat) onde = `${cat.nome} · ${onde}`
+  }
+  if (l.totalParcelas) titulo += ` (${l.parcela}/${l.totalParcelas})`
+
+  const clicavel = l.tipo !== 'pagamentoFatura'
+  return (
+    <button className="item-lanc" onClick={() => clicavel && abrirLancamento(l)} disabled={!clicavel}>
+      <span className="item-emoji">{emoji}</span>
+      <span className="item-textos">
+        <span className="item-titulo">{titulo}</span>
+        <span className="item-sub">{mostrarData ? `${dataCurta(l.data)} · ` : ''}{onde}</span>
+      </span>
+      <span className={`item-valor ${classe}`}>{sinal} {formatar(l.valor)}</span>
+    </button>
+  )
+}
+
+// Barras horizontais de gastos por categoria (uma série só, valores escritos ao lado)
+export function BarrasCategorias({ categorias, limite = 6 }) {
+  const { categoriaPorId } = useDados()
+  if (!categorias.length) return <p className="vazio">Nenhum gasto neste mês.</p>
+  const topo = categorias.slice(0, limite)
+  const resto = categorias.slice(limite).reduce((s, c) => s + c.valor, 0)
+  const linhas = resto ? [...topo, { categoriaId: 'outros', valor: resto }] : topo
+  const maior = linhas.reduce((m, c) => Math.max(m, c.valor), 0) || 1
+  const total = categorias.reduce((s, c) => s + c.valor, 0)
+  return (
+    <ul className="barras">
+      {linhas.map((c) => {
+        const cat = c.categoriaId === 'outros' ? { emoji: '➕', nome: 'Demais categorias' } : categoriaPorId.get(c.categoriaId) || { emoji: '📦', nome: 'Sem categoria' }
+        const pct = Math.round((c.valor / total) * 100)
+        return (
+          <li key={c.categoriaId} className="barra-linha" title={`${cat.nome}: ${formatar(c.valor)} (${pct}%)`}>
+            <div className="barra-topo">
+              <span>{cat.emoji} {cat.nome}</span>
+              <span className="barra-valor">{formatar(c.valor)} <small>{pct}%</small></span>
+            </div>
+            <div className="barra-trilho"><div className="barra" style={{ width: `${Math.max((c.valor / maior) * 100, 2)}%` }} /></div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
