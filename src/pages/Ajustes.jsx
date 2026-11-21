@@ -8,6 +8,7 @@ import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
 import { exportarBackup, salvarConfig } from '../lib/db.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
+import { PainelConta } from '../components/Nuvem.jsx'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
 
@@ -52,6 +53,8 @@ export default function Ajustes() {
   return (
     <div className="pagina">
       <h1 className="titulo-pagina">Ajustes</h1>
+
+      <PainelConta />
 
       <section className="painel">
         <label className="alternar grande">
@@ -165,7 +168,7 @@ export default function Ajustes() {
       <section className="painel">
         <h3>Backup</h3>
         <p className="dica">
-          Seus dados ficam só neste celular. Faça backup de vez em quando e guarde o arquivo no Drive ou no OneDrive.
+          Um arquivo com todos os seus dados, para guardar no Drive ou no OneDrive. Mesmo com a conta na nuvem, vale ter uma cópia de vez em quando.
           {config.ultimoBackup ? ` Último backup: ${dataCurta(config.ultimoBackup)}.` : ' Você ainda não fez nenhum backup.'}
         </p>
         <div className="linha-botoes">

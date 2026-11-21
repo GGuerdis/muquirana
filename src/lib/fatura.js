@@ -1,6 +1,7 @@
 // Regras de fatura de cartão de crédito.
 // Uma fatura é identificada pelo MÊS DE VENCIMENTO ('AAAA-MM').
 import { mesDe, partes, somarMeses, dataNoMes, diasNoMes, hoje } from './datas.js'
+import { compararIds } from './ids.js'
 
 export const diaValido = (d) => Number.isInteger(d) && d >= 1 && d <= 31
 
@@ -42,8 +43,8 @@ export function resumoFatura(cartao, fatura, lancamentos, dia = hoje()) {
   if (total > 0 && pago >= total) status = 'paga'
   else if (dia > vencimento && total > pago) status = 'atrasada'
   else if (dia >= fechamento) status = 'fechada'
-  itens.sort((x, y) => y.data.localeCompare(x.data) || y.id - x.id)
-  pagamentos.sort((x, y) => y.data.localeCompare(x.data) || y.id - x.id)
+  itens.sort((x, y) => y.data.localeCompare(x.data) || compararIds(y.id, x.id))
+  pagamentos.sort((x, y) => y.data.localeCompare(x.data) || compararIds(y.id, x.id))
   return { fatura, total, pago, restante: Math.max(total - pago, 0), fechamento, vencimento, status, itens, pagamentos }
 }
 

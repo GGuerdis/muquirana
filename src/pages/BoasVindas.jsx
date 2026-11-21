@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { Mascote } from '../components/Pecas.jsx'
 import { CampoValor, Campo } from '../components/Campos.jsx'
-import { db, salvarConfig } from '../lib/db.js'
+import { db, salvarConfig, criarDadosIniciais } from '../lib/db.js'
+import { BotaoEntrar } from '../components/Nuvem.jsx'
 import { salvarConta, salvarCartao } from '../lib/cadastros.js'
 import { diaValido } from '../lib/fatura.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
@@ -13,7 +14,7 @@ const CARTOES_SUGERIDOS = ['Santander', 'Inter']
 export default function BoasVindas() {
   const { contas } = useDados()
   const [passo, setPasso] = useState(0)
-  const [saldos, setSaldos] = useState(() => Object.fromEntries(contas.map((c) => [c.id, c.saldoInicial || 0])))
+  const [saldos, setSaldos] = useState({}) // id da conta → saldo informado
   const [cartoes, setCartoes] = useState(() =>
     CARTOES_SUGERIDOS.map((nome) => ({ nome, ativo: false, limite: 0, diaFechamento: '', diaVencimento: '' })),
   )
@@ -53,11 +54,12 @@ export default function BoasVindas() {
           <Mascote rosto="🤑" tamanho={120} />
           <h1>Prazer, eu sou o Muquirana.</h1>
           <p>Vou cuidar de cada tostão seu. Prometo zoar só um pouquinho quando você gastar demais.</p>
-          <p className="discreto">Seus dados ficam guardados só neste aparelho.</p>
-          <button className="botao primario cheio" onClick={() => setPasso(1)}>Bora começar</button>
+          <p className="discreto">Seus dados ficam no aparelho. Se quiser, entre com sua conta para sincronizar entre celular e computador.</p>
+          <button className="botao primario cheio" disabled={ocupado} onClick={async () => { setOcupado(true); await criarDadosIniciais(); setOcupado(false); setPasso(1) }}>Bora começar</button>
           <div className="restaurar-bv">
-            <span className="discreto">Já usa o Muquirana em outro aparelho?</span>
-            <RestaurarBackup rotulo="Restaurar backup" classe="link" />
+            <span className="discreto">Já usa o Muquirana?</span>
+            <BotaoEntrar rotulo="Entrar na minha conta" classe="link" />
+            <RestaurarBackup rotulo="Restaurar um backup" classe="link" />
           </div>
         </div>
       )}
@@ -67,7 +69,7 @@ export default function BoasVindas() {
           <h2>Quanto tem em cada conta hoje?</h2>
           <p className="discreto">Abra o app do banco e confira. Se não souber agora, deixe zerado e ajuste depois.</p>
           {contas.map((c) => (
-            <CampoValor key={c.id} rotulo={`${c.emoji} ${c.nome}`} valor={saldos[c.id]} aoMudar={(v) => setSaldos({ ...saldos, [c.id]: v })} />
+            <CampoValor key={c.id} rotulo={`${c.emoji} ${c.nome}`} valor={saldos[c.id] ?? 0} aoMudar={(v) => setSaldos({ ...saldos, [c.id]: v })} />
           ))}
           <div className="linha-botoes">
             <button className="botao secundario" onClick={() => setPasso(0)}>Voltar</button>

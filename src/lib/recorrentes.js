@@ -5,6 +5,7 @@ import { valorValido } from './dinheiro.js'
 import { dataNoMes, hoje as hojeTexto, mesDe } from './datas.js'
 import { diaValido, faturaDaCompra, faturasPendentes, vencimentoDaFatura } from './fatura.js'
 import { saldoConta } from './calculos.js'
+import { compararIds } from './ids.js'
 
 const MES_VALIDO = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -78,7 +79,7 @@ export function contasDoMes(mes, recorrentes, lancamentos, dia = hojeTexto()) {
       else if (vencimento < dia) situacao = 'atrasada'
       return { recorrente: r, mes, vencimento, lancamento, situacao }
     })
-    .sort((a, b) => a.vencimento.localeCompare(b.vencimento) || a.recorrente.id - b.recorrente.id)
+    .sort((a, b) => a.vencimento.localeCompare(b.vencimento) || compararIds(a.recorrente.id, b.recorrente.id))
 }
 
 // Dados para abrir o formulário de lançamento já preenchido

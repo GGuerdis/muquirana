@@ -4,7 +4,7 @@ import { salvarLancamento, apagarLancamento, formDoLancamento, pagarFatura, vali
 import { salvarCartao } from '../src/lib/cadastros.js'
 import { saldoConta, resumoMes } from '../src/lib/calculos.js'
 import { resumoFatura, limiteUsado } from '../src/lib/fatura.js'
-import { bancoNovo } from './ajuda.js'
+import { bancoNovo, fotografia } from './ajuda.js'
 
 let b, cartaoId
 beforeEach(async () => {
@@ -115,6 +115,44 @@ describe('validação (nada inválido é gravado)', () => {
 })
 
 describe('editar e apagar', () => {
+  it('editar lançamento simples mantém o mesmo registro (edição em dois aparelhos não duplica)', async () => {
+    await salvarLancamento(despesaConta())
+    const [original] = await todos()
+    await salvarLancamento({ ...formDoLancamento(original), valor: 5000, descricao: 'Jantar' }, original)
+    await salvarLancamento({ ...formDoLancamento(original), contaId: b.conta('Carteira') }, original)
+    const ls = await todos()
+    expect(ls.length).toBe(1)
+    expect(ls[0].id).toBe(original.id)
+    expect(ls[0]).toMatchObject({ contaId: b.conta('Carteira'), criadoEm: original.criadoEm })
+  })
+
+  it('editar mantém o lançamento no mesmo espaço (pessoal ou compartilhado)', async () => {
+    const id = await db.lancamentos.add({ tipo: 'despesa', valor: 100, descricao: 'x', categoriaId: b.cat('despesa', 'Outros'), contaId: b.conta('Inter'), cartaoId: null, data: '2026-11-20', criadoEm: 1, realmId: 'rlm-casa' })
+    const original = await db.lancamentos.get(id)
+    await salvarLancamento({ ...formDoLancamento(original), valor: 200 }, original)
+    expect((await db.lancamentos.get(id)).realmId).toBe('rlm-casa')
+    // e também quando vira parcelado
+    await salvarCartao({ nome: 'Outro', limite: 0, diaFechamento: 3, diaVencimento: 10 })
+    const cartao2 = (await db.cartoes.toArray()).find((c) => c.nome === 'Outro')
+    const editado = await db.lancamentos.get(id)
+    await salvarLancamento({ ...formDoLancamento(editado), contaId: null, cartaoId: cartao2.id, parcelas: 2 }, editado)
+    expect((await todos()).filter((l) => l.cartaoId === cartao2.id).every((l) => l.realmId === 'rlm-casa')).toBe(true)
+  })
+
+  it('lançamento simples virando parcelado (e vice-versa) troca os registros sem sobrar nada', async () => {
+    await salvarLancamento(compraCartao({ parcelas: 1, valor: 9000 }))
+    const [simples] = await todos()
+    await salvarLancamento({ ...formDoLancamento(simples), parcelas: 3 }, simples)
+    let ls = await todos()
+    expect(ls.length).toBe(3)
+    expect(ls.some((l) => l.id === simples.id)).toBe(false)
+    await salvarLancamento({ ...formDoLancamento(ls[0]), parcelas: 1 }, ls[0])
+    ls = await todos()
+    expect(ls.length).toBe(1)
+    expect(ls[0].grupoParcelaId).toBeUndefined()
+    expect(ls[0].valor).toBe(9000)
+  })
+
   it('editar compra parcelada substitui todas as parcelas (4x → 2x, outro valor)', async () => {
     await salvarLancamento(compraCartao())
     const original = (await todos())[2]
@@ -196,12 +234,13 @@ describe('backup', () => {
     await salvarLancamento(compraCartao())
     await salvarLancamento(despesaConta())
     await pagarFatura({ cartaoId, fatura: '2026-12', contaId: b.conta('Inter'), valor: 30000, data: '2026-12-05' })
-    const antes = await exportarBackup()
-    const json = JSON.parse(JSON.stringify(antes)) // como se fosse salvo em arquivo
+    const antes = await fotografia()
+    const json = JSON.parse(JSON.stringify(await exportarBackup())) // como se fosse salvo em arquivo
     await bancoNovo()
     await restaurarBackup(json)
-    const depois = await exportarBackup()
-    expect(depois.dados).toEqual(antes.dados)
+    const depois = await fotografia()
+    expect(depois).toEqual(antes)
+    expect(JSON.stringify(depois)).not.toContain('QUEBRADO') // nenhuma ligação perdida
   })
 
   it('recusa arquivo que não é backup, sem apagar nada', async () => {

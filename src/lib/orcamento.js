@@ -2,6 +2,7 @@
 import { db } from './db.js'
 import { valorValido, formatar } from './dinheiro.js'
 import { resumoMes } from './calculos.js'
+import { compararIds } from './ids.js'
 
 // Define o limite; limite 0/null remove o orçamento da categoria
 export async function definirOrcamento(categoriaId, limite) {
@@ -9,9 +10,15 @@ export async function definirOrcamento(categoriaId, limite) {
     const cat = await db.categorias.get(categoriaId ?? -1)
     if (!cat) throw new Error('Categoria não encontrada.')
     if (cat.tipo !== 'despesa') throw new Error('Orçamento só vale para categorias de despesa.')
-    if (!limite) return db.orcamentos.delete(categoriaId)
+    const atuais = await db.orcamentos.where('categoriaId').equals(categoriaId).toArray()
+    if (!limite) return db.orcamentos.bulkDelete(atuais.map((o) => o.id))
     if (!valorValido(limite)) throw new Error('Limite inválido.')
-    await db.orcamentos.put({ categoriaId, limite })
+    if (atuais.length) {
+      await db.orcamentos.update(atuais[0].id, { limite })
+      if (atuais.length > 1) await db.orcamentos.bulkDelete(atuais.slice(1).map((o) => o.id)) // duplicado vindo de outro aparelho
+    } else {
+      await db.orcamentos.add({ categoriaId, limite })
+    }
   })
 }
 
@@ -25,7 +32,9 @@ export function situacao(gasto, limite) {
 
 export function orcamentoDoMes(mes, orcamentos, lancamentos) {
   const gastos = new Map(resumoMes(mes, lancamentos).categorias.map((c) => [c.categoriaId, c.valor]))
-  const itens = orcamentos.map((o) => {
+  // um orçamento por categoria (se dois aparelhos criaram ao mesmo tempo, vale o primeiro)
+  const unicos = [...new Map([...orcamentos].reverse().map((o) => [o.categoriaId, o])).values()]
+  const itens = unicos.map((o) => {
     const gasto = gastos.get(o.categoriaId) || 0
     return {
       categoriaId: o.categoriaId,
@@ -35,7 +44,7 @@ export function orcamentoDoMes(mes, orcamentos, lancamentos) {
       porcentagem: Math.floor((gasto * 100) / o.limite),
       situacao: situacao(gasto, o.limite),
     }
-  }).sort((a, b) => b.gasto * a.limite - a.gasto * b.limite || a.categoriaId - b.categoriaId) // maior % primeiro, sem arredondar
+  }).sort((a, b) => b.gasto * a.limite - a.gasto * b.limite || compararIds(a.categoriaId, b.categoriaId)) // maior % primeiro, sem arredondar
   const limiteTotal = itens.reduce((s, i) => s + i.limite, 0)
   const gastoTotal = itens.reduce((s, i) => s + i.gasto, 0)
   return { itens, limiteTotal, gastoTotal }

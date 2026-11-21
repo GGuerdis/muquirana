@@ -6,9 +6,11 @@ import { mesAtual, dataCurta, nomeMes } from '../lib/datas.js'
 import { saldoConta, resumoMes } from '../lib/calculos.js'
 import { faturasPendentes } from '../lib/fatura.js'
 import { humorDoMes } from '../lib/zoeira.js'
+import { compararIds } from '../lib/ids.js'
 import { saldoPrevisto } from '../lib/recorrentes.js'
 import ContasDoMes from '../components/ContasDoMes.jsx'
 import { OrcamentoDoMes } from '../components/Orcamento.jsx'
+import { SeloSincronizacao } from '../components/Nuvem.jsx'
 
 const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ atrasada', paga: 'paga' }
 
@@ -29,7 +31,7 @@ export default function Inicio({ mes, setMes, irPara }) {
   const recentes = useMemo(() => {
     const vistos = new Set()
     const lista = []
-    for (const l of [...lancamentos].sort((a, b) => b.criadoEm - a.criadoEm || a.id - b.id)) {
+    for (const l of [...lancamentos].sort((a, b) => b.criadoEm - a.criadoEm || compararIds(a.id, b.id))) {
       if (l.grupoParcelaId) {
         if (vistos.has(l.grupoParcelaId)) continue
         vistos.add(l.grupoParcelaId)
@@ -43,6 +45,7 @@ export default function Inicio({ mes, setMes, irPara }) {
   return (
     <div className="pagina">
       <section className="cartao-topo">
+        <SeloSincronizacao />
         <div className="saudacao">
           <Mascote rosto={humor.rosto} />
           <p className="balao">{humor.mensagem}</p>

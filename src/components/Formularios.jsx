@@ -147,7 +147,7 @@ export function FormRecorrente({ recorrente, aoFechar }) {
     const [t, id] = (f.origem || ':').split(':')
     await salvarRecorrente({
       id: recorrente?.id, descricao: f.descricao, tipo: f.tipo, valor: f.valor, dia: Number(f.dia), categoriaId: f.categoriaId,
-      contaId: t === 'conta' ? Number(id) : null, cartaoId: t === 'cartao' ? Number(id) : null,
+      contaId: t === 'conta' ? id : null, cartaoId: t === 'cartao' ? id : null,
       inicio: f.inicio, fim: f.fim || null, pulados: recorrente?.pulados,
     })
     avisar(recorrente ? 'Conta fixa atualizada.' : 'Conta fixa cadastrada. Ela vai aparecer no Início todo mês.')
@@ -166,7 +166,7 @@ export function FormRecorrente({ recorrente, aoFechar }) {
       <Campo rotulo="Dia do vencimento"><input type="number" inputMode="numeric" min="1" max="31" value={f.dia} onChange={(e) => mudar('dia', e.target.value)} /></Campo>
       <label className="campo">
         <span className="rotulo">Categoria</span>
-        <select className="seletor" value={f.categoriaId ?? ''} onChange={(e) => mudar('categoriaId', e.target.value ? Number(e.target.value) : null)}>
+        <select className="seletor" value={f.categoriaId ?? ''} onChange={(e) => mudar('categoriaId', e.target.value || null)}>
           <option value="">Escolha…</option>
           {cats.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
         </select>

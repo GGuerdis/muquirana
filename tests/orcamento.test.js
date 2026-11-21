@@ -18,7 +18,7 @@ describe('definir orçamento', () => {
     const alim = b.cat('despesa', 'Alimentação')
     await definirOrcamento(alim, 80000)
     await definirOrcamento(alim, 90000)
-    expect(await orc()).toEqual([{ categoriaId: alim, limite: 90000 }])
+    expect((await orc()).map((o) => [o.categoriaId, o.limite])).toEqual([[alim, 90000]])
     await definirOrcamento(alim, 0)
     expect(await orc()).toEqual([])
   })

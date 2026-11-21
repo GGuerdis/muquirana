@@ -1,2 +1,5 @@
 node_modules
 dist
+dexie-cloud.key
+dexie-cloud.json
+*.key

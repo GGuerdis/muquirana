@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ProvedorDados, useDados } from './dados.jsx'
 import NovoLancamento from './components/NovoLancamento.jsx'
 import Inicio from './pages/Inicio.jsx'
@@ -7,6 +7,8 @@ import Cartoes from './pages/Cartoes.jsx'
 import Ajustes from './pages/Ajustes.jsx'
 import BoasVindas from './pages/BoasVindas.jsx'
 import { mesAtual } from './lib/datas.js'
+import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
+import { salvarConfig } from './lib/db.js'
 
 const ABAS = [
   { id: 'inicio', rotulo: 'Início', icone: '🏠' },
@@ -16,7 +18,7 @@ const ABAS = [
   { id: 'ajustes', rotulo: 'Ajustes', icone: '⚙️' },
 ]
 
-export default function App() {
+export default function App({ migrou = null }) {
   const [lancAberto, setLancAberto] = useState(null) // null | 'novo' | lançamento | { modelo }
   const [aviso, setAviso] = useState(null)
   const timer = useRef(null)
@@ -29,6 +31,9 @@ export default function App() {
   const abrirLancamento = useCallback((l) => setLancAberto(l || 'novo'), [])
   const abrirModelo = useCallback((modelo) => setLancAberto({ modelo }), [])
   const acoes = useMemo(() => ({ avisar, abrirLancamento, abrirModelo }), [avisar, abrirLancamento, abrirModelo])
+  useEffect(() => {
+    if (migrou?.lancamentos) avisar(`Atualização concluída: seus ${migrou.lancamentos} lançamento(s) foram trazidos para a versão nova.`)
+  }, [migrou, avisar])
 
   return (
     <ProvedorDados acoes={acoes}>
@@ -41,13 +46,19 @@ export default function App() {
           aoFechar={() => setLancAberto(null)}
         />
       )}
+      <DialogoNuvem />
       {aviso && <div className="aviso" key={aviso.chave} role="status" onClick={() => setAviso(null)}>{aviso.texto}</div>}
     </ProvedorDados>
   )
 }
 
 function Telas() {
-  const { config, abrirLancamento } = useDados()
+  const { config, contas, abrirLancamento } = useDados()
+  const { logado } = useNuvem()
+  // Entrou numa conta que já tem dados (ex.: celular novo): pula as boas-vindas
+  useEffect(() => {
+    if (!config.boasVindas && logado && contas.length > 0) salvarConfig('boasVindas', true)
+  }, [config.boasVindas, logado, contas.length])
   const [aba, setAba] = useState('inicio')
   const [mes, setMes] = useState(mesAtual())
 

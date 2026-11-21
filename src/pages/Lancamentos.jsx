@@ -5,6 +5,7 @@ import { Chips } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesDe, rotuloDia } from '../lib/datas.js'
+import { compararIds } from '../lib/ids.js'
 
 const FILTROS = [
   { valor: 'todos', rotulo: 'Tudo' },
@@ -27,7 +28,7 @@ export default function Lancamentos({ mes, setMes }) {
       .filter((l) => mesDe(l.data) === mes)
       .filter((l) => filtro === 'todos' || (filtro === 'outros' ? ['transferencia', 'pagamentoFatura'].includes(l.tipo) : l.tipo === filtro))
       .filter((l) => !termo || normalizar(`${l.descricao || ""} ${categoriaPorId.get(l.categoriaId)?.nome || ""}`).includes(termo))
-      .sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id)
+      .sort((a, b) => b.data.localeCompare(a.data) || (b.criadoEm || 0) - (a.criadoEm || 0) || compararIds(b.id, a.id))
     const grupos = new Map()
     for (const l of lista) {
       if (!grupos.has(l.data)) grupos.set(l.data, [])

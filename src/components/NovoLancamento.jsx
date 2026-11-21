@@ -33,7 +33,7 @@ function estadoInicial(original, dados, modelo) {
     }
   }
   const ultima = dados.config.ultimaOrigem
-  const existe = ultima && (ultima.startsWith('conta:') ? dados.contaPorId.has(Number(ultima.slice(6))) : dados.cartaoPorId.has(Number(ultima.slice(7))))
+  const existe = ultima && (ultima.startsWith('conta:') ? dados.contaPorId.has(ultima.slice(6)) : dados.cartaoPorId.has(ultima.slice(7)))
   return {
     tipo: 'despesa',
     valor: 0,
@@ -71,7 +71,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   }
 
   const [tipoOrigem, idOrigemTexto] = (f.origem || ':').split(':')
-  const idOrigem = Number(idOrigemTexto)
+  const idOrigem = idOrigemTexto || null
   const ehCartao = f.tipo === 'despesa' && tipoOrigem === 'cartao'
   const cartao = ehCartao ? cartaoPorId.get(idOrigem) : null
 

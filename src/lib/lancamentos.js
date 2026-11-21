@@ -67,8 +67,9 @@ async function carregarRefs() {
 
 // `form`: { tipo, valor, descricao, categoriaId, contaId, contaDestinoId, cartaoId, data, parcelas,
 //           idExterno?, faturaFixa?, recorrenteId?, competencia? }
-// Ao editar, o lançamento original (e todas as parcelas dele) é substituído, tudo numa transação só:
-// se algo falhar, nada é alterado.
+// Ao editar um lançamento simples, o mesmo registro é atualizado (assim, edições feitas em dois aparelhos
+// não viram duas cópias: vale a última). Compra parcelada é recriada inteira (o nº de parcelas pode mudar).
+// Tudo numa transação só: se algo falhar, nada é alterado.
 export async function salvarLancamento(form, original = null) {
   return db.transaction('rw', db.lancamentos, db.cartoes, db.contas, db.categorias, async () => {
     const refs = await carregarRefs()
@@ -93,7 +94,6 @@ export async function salvarLancamento(form, original = null) {
     // Compra importada mantém a fatura que veio do banco, se o cartão e a data não mudaram
     if (!faturaFixa && original?.faturaFixa && form.cartaoId === original.cartaoId && form.data === original.data && n === 1) faturaFixa = original.fatura
 
-    if (original) await apagarLancamento(original)
     const base = {
       tipo: form.tipo,
       descricao: (form.descricao || '').trim().slice(0, 80),
@@ -101,36 +101,47 @@ export async function salvarLancamento(form, original = null) {
       data: form.data,
       criadoEm: original?.criadoEm || Date.now(),
       ...(recorrenteId != null ? { recorrenteId, competencia } : {}),
+      ...(original?.realmId ? { realmId: original.realmId } : {}), // continua no mesmo espaço (pessoal ou compartilhado)
     }
     const comId = (r) => (idExterno ? { ...r, idExterno } : r)
+    const registros = montarRegistros(form, base, refs, n, faturaFixa, comId)
 
-    if (form.tipo === 'transferencia') {
-      return db.lancamentos.add(comId({ ...base, valor: form.valor, contaId: form.contaId, contaDestinoId: form.contaDestinoId, cartaoId: null }))
+    if (original && !original.grupoParcelaId && registros.length === 1) {
+      await db.lancamentos.put({ ...registros[0], id: original.id })
+      return original.id
     }
-    if (form.tipo === 'despesa' && form.cartaoId != null) {
-      const cartao = refs.cartoes.find((c) => c.id === form.cartaoId)
-      if (faturaFixa) {
-        return db.lancamentos.add(comId({ ...base, valor: form.valor, cartaoId: cartao.id, contaId: null, fatura: faturaFixa, faturaFixa: true }))
-      }
-      const valores = dividirParcelas(form.valor, n)
-      const fatura1 = faturaDaCompra(cartao, form.data)
-      const grupo = n > 1 ? novoId() : null
-      const registros = valores.map((valor, i) => {
-        const r = {
-          ...base,
-          valor,
-          cartaoId: cartao.id,
-          contaId: null,
-          data: somarMesesData(form.data, i),
-          fatura: somarMeses(fatura1, i),
-          ...(grupo ? { grupoParcelaId: grupo, parcela: i + 1, totalParcelas: n, valorTotal: form.valor, dataCompra: form.data } : {}),
-        }
-        return i === 0 ? comId(r) : r // o identificador de importação fica só na 1ª parcela
-      })
-      return db.lancamentos.bulkAdd(registros)
-    }
-    return db.lancamentos.add(comId({ ...base, valor: form.valor, contaId: form.contaId, cartaoId: null }))
+    if (original) await apagarLancamento(original)
+    return registros.length === 1 ? db.lancamentos.add(registros[0]) : db.lancamentos.bulkAdd(registros)
   })
+}
+
+function montarRegistros(form, base, refs, n, faturaFixa, comId) {
+  if (form.tipo === 'transferencia') {
+    return [comId({ ...base, valor: form.valor, contaId: form.contaId, contaDestinoId: form.contaDestinoId, cartaoId: null })]
+  }
+  if (form.tipo === 'despesa' && form.cartaoId != null) {
+    const cartao = refs.cartoes.find((c) => c.id === form.cartaoId)
+    if (faturaFixa) {
+      return [comId({ ...base, valor: form.valor, cartaoId: cartao.id, contaId: null, fatura: faturaFixa, faturaFixa: true })]
+    }
+    const valores = dividirParcelas(form.valor, n)
+    const fatura1 = faturaDaCompra(cartao, form.data)
+    const grupo = n > 1 ? novoId() : null
+    const registros = valores.map((valor, i) => {
+      const r = {
+        ...base,
+        valor,
+        cartaoId: cartao.id,
+        contaId: null,
+        data: somarMesesData(form.data, i),
+        fatura: somarMeses(fatura1, i),
+        ...(grupo ? { grupoParcelaId: grupo, parcela: i + 1, totalParcelas: n, valorTotal: form.valor, dataCompra: form.data } : {}),
+      }
+      return i === 0 ? comId(r) : r // o identificador de importação fica só na 1ª parcela
+    })
+    return registros
+  }
+  return [comId({ ...base, valor: form.valor, contaId: form.contaId, cartaoId: null })]
 }
 
 const mesmoLancamento = (l, original) => (original.grupoParcelaId ? l.grupoParcelaId === original.grupoParcelaId : l.id === original.id)

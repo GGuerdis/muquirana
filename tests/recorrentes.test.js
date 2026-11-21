@@ -133,7 +133,8 @@ describe('contas do mês', () => {
     const bk = JSON.parse(JSON.stringify(await exportarBackup()))
     await bancoNovo()
     await restaurarBackup(bk)
-    expect(await db.recorrentes.get(id)).toMatchObject({ descricao: 'Aluguel', pulados: ['2026-12'] })
+    expect(await db.recorrentes.toArray()).toEqual([expect.objectContaining({ descricao: 'Aluguel', pulados: ['2026-12'] })])
+    expect(id).toBeTruthy()
   })
 })
 

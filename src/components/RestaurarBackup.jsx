@@ -46,7 +46,7 @@ export default function RestaurarBackup({ rotulo = 'Restaurar', classe = 'botao 
         <div className="alerta">
           <p>
             Restaurar o backup de <strong>{new Date(backup.exportadoEm).toLocaleDateString('pt-BR')}</strong> ({backup.dados.lancamentos?.length ?? 0} lançamentos)?
-            Tudo que está no app agora será <strong>substituído</strong>.
+            Tudo que está no app agora será <strong>substituído</strong> (se você estiver conectado, em todos os seus aparelhos).
           </p>
           <div className="linha-botoes">
             <button className="botao secundario" onClick={() => setBackup(null)}>Cancelar</button>

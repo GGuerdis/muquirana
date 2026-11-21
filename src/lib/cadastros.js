@@ -98,7 +98,7 @@ export async function excluirCategoria(id) {
     if ((await db.lancamentos.where('categoriaId').equals(id).count()) > 0) throw new Error('Esta categoria já foi usada em lançamentos. Renomeie em vez de excluir.')
     if ((await db.recorrentes.filter((r) => r.categoriaId === id).count()) > 0) throw new Error('Esta categoria é usada numa conta fixa. Troque a categoria da conta fixa antes.')
     await db.regras.filter((r) => r.categoriaId === id).delete()
-    await db.orcamentos.delete(id)
+    await db.orcamentos.where('categoriaId').equals(id).delete()
     await db.categorias.delete(id)
   })
 }

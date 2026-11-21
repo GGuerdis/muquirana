@@ -49,7 +49,7 @@ export default function ImportarExtrato({ aoFechar }) {
   const [ocupado, setOcupado] = useState(false)
 
   const [tipoDestino, idTexto] = (destino || ':').split(':')
-  const dest = destino ? { tipo: tipoDestino, id: Number(idTexto) } : null
+  const dest = destino ? { tipo: tipoDestino, id: idTexto } : null
 
   async function lerArquivo(e) {
     const f = e.target.files?.[0]
@@ -81,7 +81,7 @@ export default function ImportarExtrato({ aoFechar }) {
   function mudarDestino(v) {
     setDestino(v)
     setAjustes({})
-    if (v.startsWith('cartao:')) setFaturaCartao(faturaProvavel(extrato, cartaoPorId.get(Number(v.slice(7)))))
+    if (v.startsWith('cartao:')) setFaturaCartao(faturaProvavel(extrato, cartaoPorId.get(v.slice(7))))
   }
 
   const sugerir = useMemo(() => (desc, tipo) => sugerirCategoria(desc, tipo, regras, categorias), [regras, categorias])
@@ -233,18 +233,18 @@ export default function ImportarExtrato({ aoFechar }) {
                         .map((a) => <option key={a.valor} value={a.valor}>{a.rotulo}</option>)}
                     </select>
                     {i.acao === 'lancar' && (
-                      <select className="seletor" aria-label="Categoria" value={i.categoriaId ?? ''} onChange={(e) => mudarItem(i, { categoriaId: Number(e.target.value), categoriaEscolhida: true })}>
+                      <select className="seletor" aria-label="Categoria" value={i.categoriaId ?? ''} onChange={(e) => mudarItem(i, { categoriaId: e.target.value || null, categoriaEscolhida: true })}>
                         {categoriasDo(i.tipo).map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
                       </select>
                     )}
                     {i.acao === 'transferencia' && (
-                      <select className="seletor" aria-label={i.entrada ? 'Veio da conta' : 'Foi para a conta'} value={i.contaOutraId ?? ''} onChange={(e) => mudarItem(i, { contaOutraId: Number(e.target.value) })}>
+                      <select className="seletor" aria-label={i.entrada ? 'Veio da conta' : 'Foi para a conta'} value={i.contaOutraId ?? ''} onChange={(e) => mudarItem(i, { contaOutraId: e.target.value || null })}>
                         <option value="">{i.entrada ? 'Veio de qual conta?' : 'Foi para qual conta?'}</option>
                         {contas.filter((c) => c.id !== dest?.id).map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
                       </select>
                     )}
                     {i.acao === 'fatura' && (
-                      <select className="seletor" aria-label="Cartão" value={i.cartaoPagoId ?? ''} onChange={(e) => mudarItem(i, { cartaoPagoId: Number(e.target.value) })}>
+                      <select className="seletor" aria-label="Cartão" value={i.cartaoPagoId ?? ''} onChange={(e) => mudarItem(i, { cartaoPagoId: e.target.value || null })}>
                         {cartoes.map((c) => <option key={c.id} value={c.id}>💳 {c.nome}</option>)}
                       </select>
                     )}
