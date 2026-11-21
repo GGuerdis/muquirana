@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { FormConta, FormCartao, FormCategoria } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
+import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
 import { exportarBackup, restaurarBackup, salvarConfig } from '../lib/db.js'
@@ -12,6 +13,7 @@ export default function Ajustes() {
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
   const [tipoCat, setTipoCat] = useState('despesa')
   const [restaurando, setRestaurando] = useState(null)
+  const [importando, setImportando] = useState(false)
   const arquivo = useRef(null)
 
   async function exportar() {
@@ -125,6 +127,12 @@ export default function Ajustes() {
       </section>
 
       <section className="painel">
+        <h3>Importar extrato do banco</h3>
+        <p className="dica">Traga as movimentações do Santander, Inter ou outro banco a partir de um arquivo OFX, sem digitar.</p>
+        <button className="botao secundario cheio" onClick={() => setImportando(true)}>⬇ Importar extrato (OFX)</button>
+      </section>
+
+      <section className="painel">
         <h3>Backup</h3>
         <p className="dica">
           Seus dados ficam só neste celular. Faça backup de vez em quando e guarde o arquivo no Drive ou no OneDrive.
@@ -151,6 +159,7 @@ export default function Ajustes() {
 
       <p className="rodape-app">Muquirana v0.1 · cada tostão conta 🪙</p>
 
+      {importando && <ImportarExtrato aoFechar={() => setImportando(false)} />}
       {editando?.tipo === 'conta' && <FormConta conta={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'cartao' && <FormCartao cartao={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'categoria' && <FormCategoria categoria={editando.item} tipo={tipoCat} aoFechar={fechar} />}

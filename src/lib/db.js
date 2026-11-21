@@ -11,6 +11,15 @@ db.version(1).stores({
   config: 'chave',
 })
 
+// Versão 2 (Fase 2): importação, regras de categoria, contas fixas e orçamento.
+// O Dexie migra sozinho quem já tinha a versão 1, sem perder dados.
+db.version(2).stores({
+  lancamentos: '++id, data, tipo, contaId, cartaoId, fatura, categoriaId, grupoParcelaId, idExterno, recorrenteId',
+  regras: '++id, &chave',
+  recorrentes: '++id',
+  orcamentos: 'categoriaId',
+})
+
 const CATEGORIAS_PADRAO = [
   ['despesa', '🍔', 'Alimentação'],
   ['despesa', '🛒', 'Mercado'],
@@ -51,12 +60,12 @@ db.on('populate', async (tx) => {
 export const salvarConfig = (chave, valor) => db.config.put({ chave, valor })
 
 // ---------- Backup ----------
-const TABELAS = ['contas', 'cartoes', 'categorias', 'lancamentos', 'config']
+const TABELAS = ['contas', 'cartoes', 'categorias', 'lancamentos', 'config', 'regras', 'recorrentes', 'orcamentos']
 
 export async function exportarBackup() {
   const dados = {}
   for (const t of TABELAS) dados[t] = await db.table(t).toArray()
-  return { app: 'muquirana', versao: 1, exportadoEm: new Date().toISOString(), dados }
+  return { app: 'muquirana', versao: 2, exportadoEm: new Date().toISOString(), dados }
 }
 
 export async function restaurarBackup(backup) {

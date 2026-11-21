@@ -295,3 +295,25 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 
 .botao:disabled { opacity: 0.6; }
 .link.perigo { color: var(--perigo); }
+
+/* ---------- Importação de extrato ---------- */
+.seletor {
+  width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--borda);
+  background: var(--superficie-2); color: var(--texto); font: inherit; font-size: 0.9rem; min-width: 0;
+}
+.quebra { overflow-wrap: anywhere; }
+.centro { text-align: center; }
+.erro.pequeno { font-size: 0.8rem; margin: 0; }
+.resumo-importacao { display: flex; flex-wrap: wrap; gap: 6px; }
+.resumo-importacao span { background: var(--superficie); border: 1px solid var(--borda); border-radius: 999px; padding: 4px 10px; font-size: 0.8rem; }
+.conferencia { border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; border: 1px solid var(--borda); background: var(--superficie); }
+.conferencia.ok strong { color: var(--entrada); }
+.conferencia.diferente strong { color: var(--saida); }
+.lista-importacao { display: flex; flex-direction: column; gap: 10px; }
+.item-importacao { background: var(--superficie); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--sombra); }
+.item-importacao.ignorado { opacity: 0.6; }
+.item-imp-topo { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.item-imp-desc { font-weight: 550; overflow-wrap: anywhere; font-size: 0.92rem; }
+.item-imp-topo strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.item-imp-controles { display: grid; grid-template-columns: 1fr; gap: 6px; }
+@media (min-width: 420px) { .item-imp-controles { grid-template-columns: 1fr 1fr; } }

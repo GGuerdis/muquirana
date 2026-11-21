@@ -37,7 +37,7 @@ export async function salvarCartao(dados, hoje) {
     const gruposTravados = new Set(despesas.filter((l) => l.grupoParcelaId && l.fatura < aberta).map((l) => l.grupoParcelaId))
     let mudou = 0
     for (const l of despesas) {
-      if (l.fatura < aberta || gruposTravados.has(l.grupoParcelaId)) continue
+      if (l.fatura < aberta || gruposTravados.has(l.grupoParcelaId) || l.faturaFixa) continue // importadas mantêm a fatura do banco
       const nova = l.grupoParcelaId ? somarMeses(faturaDaCompra(cartao, l.dataCompra), l.parcela - 1) : faturaDaCompra(cartao, l.data)
       if (nova !== l.fatura) {
         await db.lancamentos.update(l.id, { fatura: nova })

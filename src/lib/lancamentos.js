@@ -46,19 +46,47 @@ export function validarLancamento(form, { contas, cartoes, categorias }) {
   return null
 }
 
+const MES_VALIDO = /^\d{4}-(0[1-9]|1[0-2])$/
+
+// Campos extras usados pela importação e pelas contas fixas
+function validarExtras(form) {
+  if (form.idExterno != null && (typeof form.idExterno !== 'string' || !form.idExterno || form.idExterno.length > 300)) return 'Identificador de importação inválido.'
+  if (form.faturaFixa != null) {
+    if (form.tipo !== 'despesa' || form.cartaoId == null) return 'Fatura fixa só vale para compra no cartão.'
+    if ((form.parcelas ?? 1) !== 1) return 'Fatura fixa não vale para compra parcelada.'
+    if (!MES_VALIDO.test(form.faturaFixa)) return 'Mês da fatura inválido.'
+  }
+  if (form.recorrenteId != null && !MES_VALIDO.test(form.competencia || '')) return 'Mês da conta fixa inválido.'
+  return null
+}
+
 async function carregarRefs() {
   const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
   return { contas, cartoes, categorias }
 }
 
-// `form`: { tipo, valor, descricao, categoriaId, contaId, contaDestinoId, cartaoId, data, parcelas }
+// `form`: { tipo, valor, descricao, categoriaId, contaId, contaDestinoId, cartaoId, data, parcelas,
+//           idExterno?, faturaFixa?, recorrenteId?, competencia? }
 // Ao editar, o lançamento original (e todas as parcelas dele) é substituído, tudo numa transação só:
 // se algo falhar, nada é alterado.
 export async function salvarLancamento(form, original = null) {
   return db.transaction('rw', db.lancamentos, db.cartoes, db.contas, db.categorias, async () => {
     const refs = await carregarRefs()
-    const erro = validarLancamento(form, refs)
+    const erro = validarLancamento(form, refs) || validarExtras(form)
     if (erro) throw new Error(erro)
+
+    // Ao editar, mantém a "identidade" do original: de onde foi importado e de qual conta fixa veio
+    const idExterno = form.idExterno ?? original?.idExterno ?? null
+    const recorrenteId = form.recorrenteId ?? original?.recorrenteId ?? null
+    const competencia = form.competencia ?? original?.competencia ?? null
+    if (idExterno) {
+      const repetido = await db.lancamentos.where('idExterno').equals(idExterno).filter((l) => !original || !mesmoLancamento(l, original)).count()
+      if (repetido) throw new Error('Este lançamento já foi importado antes.')
+    }
+    const n = form.parcelas ?? 1
+    let faturaFixa = form.faturaFixa ?? null
+    // Compra importada mantém a fatura que veio do banco, se o cartão e a data não mudaram
+    if (!faturaFixa && original?.faturaFixa && form.cartaoId === original.cartaoId && form.data === original.data && n === 1) faturaFixa = original.fatura
 
     if (original) await apagarLancamento(original)
     const base = {
@@ -67,31 +95,40 @@ export async function salvarLancamento(form, original = null) {
       categoriaId: form.tipo === 'transferencia' ? null : form.categoriaId,
       data: form.data,
       criadoEm: original?.criadoEm || Date.now(),
+      ...(recorrenteId != null ? { recorrenteId, competencia } : {}),
     }
+    const comId = (r) => (idExterno ? { ...r, idExterno } : r)
 
     if (form.tipo === 'transferencia') {
-      return db.lancamentos.add({ ...base, valor: form.valor, contaId: form.contaId, contaDestinoId: form.contaDestinoId, cartaoId: null })
+      return db.lancamentos.add(comId({ ...base, valor: form.valor, contaId: form.contaId, contaDestinoId: form.contaDestinoId, cartaoId: null }))
     }
     if (form.tipo === 'despesa' && form.cartaoId != null) {
       const cartao = refs.cartoes.find((c) => c.id === form.cartaoId)
-      const n = form.parcelas ?? 1
+      if (faturaFixa) {
+        return db.lancamentos.add(comId({ ...base, valor: form.valor, cartaoId: cartao.id, contaId: null, fatura: faturaFixa, faturaFixa: true }))
+      }
       const valores = dividirParcelas(form.valor, n)
       const fatura1 = faturaDaCompra(cartao, form.data)
       const grupo = n > 1 ? novoId() : null
-      const registros = valores.map((valor, i) => ({
-        ...base,
-        valor,
-        cartaoId: cartao.id,
-        contaId: null,
-        data: somarMesesData(form.data, i),
-        fatura: somarMeses(fatura1, i),
-        ...(grupo ? { grupoParcelaId: grupo, parcela: i + 1, totalParcelas: n, valorTotal: form.valor, dataCompra: form.data } : {}),
-      }))
+      const registros = valores.map((valor, i) => {
+        const r = {
+          ...base,
+          valor,
+          cartaoId: cartao.id,
+          contaId: null,
+          data: somarMesesData(form.data, i),
+          fatura: somarMeses(fatura1, i),
+          ...(grupo ? { grupoParcelaId: grupo, parcela: i + 1, totalParcelas: n, valorTotal: form.valor, dataCompra: form.data } : {}),
+        }
+        return i === 0 ? comId(r) : r // o identificador de importação fica só na 1ª parcela
+      })
       return db.lancamentos.bulkAdd(registros)
     }
-    return db.lancamentos.add({ ...base, valor: form.valor, contaId: form.contaId, cartaoId: null })
+    return db.lancamentos.add(comId({ ...base, valor: form.valor, contaId: form.contaId, cartaoId: null }))
   })
 }
+
+const mesmoLancamento = (l, original) => (original.grupoParcelaId ? l.grupoParcelaId === original.grupoParcelaId : l.id === original.id)
 
 export async function apagarLancamento(lanc) {
   if (lanc.grupoParcelaId) {
@@ -102,25 +139,40 @@ export async function apagarLancamento(lanc) {
 }
 
 // Para editar uma compra parcelada, o formulário mostra a compra inteira (valor total, data da compra)
+// Só os campos do formulário: o resto (id, fatura, identificador de importação) é cuidado pelo salvarLancamento.
 export function formDoLancamento(l) {
-  if (l.grupoParcelaId) return { ...l, valor: l.valorTotal, data: l.dataCompra, parcelas: l.totalParcelas }
-  return { ...l, parcelas: 1 }
+  const form = {
+    tipo: l.tipo,
+    valor: l.valor,
+    descricao: l.descricao || '',
+    categoriaId: l.categoriaId ?? null,
+    contaId: l.contaId ?? null,
+    contaDestinoId: l.contaDestinoId ?? null,
+    cartaoId: l.cartaoId ?? null,
+    data: l.data,
+    parcelas: 1,
+  }
+  if (l.grupoParcelaId) return { ...form, valor: l.valorTotal, data: l.dataCompra, parcelas: l.totalParcelas }
+  return form
 }
 
 // Paga (total ou parcialmente) uma fatura. Não aceita pagar mais do que falta.
-export async function pagarFatura({ cartaoId, fatura, contaId, valor, data }) {
+export async function pagarFatura({ cartaoId, fatura, contaId, valor, data, idExterno = null }) {
   return db.transaction('rw', db.lancamentos, db.cartoes, db.contas, async () => {
-    const cartao = await db.cartoes.get(cartaoId)
+    const cartao = await db.cartoes.get(cartaoId ?? -1)
     if (!cartao) throw new Error('Cartão não encontrado.')
     if (!(await db.contas.get(contaId ?? -1))) throw new Error('Escolha a conta que pagou.')
     if (!valorValido(valor)) throw new Error('Informe o valor pago.')
     if (!dataValida(data)) throw new Error('Data inválida.')
+    if (!MES_VALIDO.test(fatura || '')) throw new Error('Fatura inválida.')
+    if (idExterno && (await db.lancamentos.where('idExterno').equals(idExterno).count())) throw new Error('Este pagamento já foi importado antes.')
     const doCartao = await db.lancamentos.where('cartaoId').equals(cartaoId).toArray()
     const { restante } = resumoFatura(cartao, fatura, doCartao)
     if (valor > restante) throw new Error(`O valor passa do que falta pagar (${formatar(restante)}).`)
     return db.lancamentos.add({
       tipo: 'pagamentoFatura', cartaoId, fatura, contaId, valor, data,
       descricao: 'Pagamento de fatura', categoriaId: null, criadoEm: Date.now(),
+      ...(idExterno ? { idExterno } : {}),
     })
   })
 }

@@ -11,19 +11,22 @@ export function ProvedorDados({ children, acoes }) {
   const categorias = useLiveQuery(() => db.categorias.toArray(), [])
   const lancamentos = useLiveQuery(() => db.lancamentos.toArray(), [])
   const config = useLiveQuery(async () => Object.fromEntries((await db.config.toArray()).map((c) => [c.chave, c.valor])), [])
+  const regras = useLiveQuery(() => db.regras.toArray(), [])
+  const recorrentes = useLiveQuery(() => db.recorrentes.toArray(), [])
+  const orcamentos = useLiveQuery(() => db.orcamentos.toArray(), [])
 
   const valor = useMemo(() => {
-    if (!contas || !cartoes || !categorias || !lancamentos || !config) return null
+    if (!contas || !cartoes || !categorias || !lancamentos || !config || !regras || !recorrentes || !orcamentos) return null
     const indice = (lista) => new Map(lista.map((x) => [x.id, x]))
     return {
-      contas, cartoes, categorias, lancamentos, config,
+      contas, cartoes, categorias, lancamentos, config, regras, recorrentes, orcamentos,
       zoeira: config.zoeira !== false,
       categoriaPorId: indice(categorias),
       contaPorId: indice(contas),
       cartaoPorId: indice(cartoes),
       ...acoes,
     }
-  }, [contas, cartoes, categorias, lancamentos, config, acoes])
+  }, [contas, cartoes, categorias, lancamentos, config, regras, recorrentes, orcamentos, acoes])
 
   if (!valor) return <div className="carregando">🪙</div>
   return <Dados.Provider value={valor}>{children}</Dados.Provider>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { SeletorMes, ItemLancamento } from '../components/Pecas.jsx'
 import { Chips } from '../components/Campos.jsx'
+import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesDe, rotuloDia } from '../lib/datas.js'
 
@@ -18,6 +19,7 @@ export default function Lancamentos({ mes, setMes }) {
   const { lancamentos, categoriaPorId } = useDados()
   const [filtro, setFiltro] = useState('todos')
   const [busca, setBusca] = useState('')
+  const [importando, setImportando] = useState(false)
 
   const dias = useMemo(() => {
     const termo = normalizar(busca)
@@ -38,7 +40,10 @@ export default function Lancamentos({ mes, setMes }) {
 
   return (
     <div className="pagina">
-      <h1 className="titulo-pagina">Lançamentos</h1>
+      <div className="painel-titulo">
+        <h1 className="titulo-pagina">Lançamentos</h1>
+        <button className="link" onClick={() => setImportando(true)}>⬇ Importar extrato</button>
+      </div>
       <SeletorMes mes={mes} aoMudar={setMes} />
       <input className="busca" type="search" placeholder="🔍 Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
       <Chips rolavel opcoes={FILTROS} valor={filtro} aoMudar={setFiltro} />
@@ -56,6 +61,7 @@ export default function Lancamentos({ mes, setMes }) {
           </section>
         )
       })}
+      {importando && <ImportarExtrato aoFechar={() => setImportando(false)} />}
     </div>
   )
 }
