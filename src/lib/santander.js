@@ -5,6 +5,7 @@
 // Trabalha sobre as LINHAS de texto do PDF (veja pdfTexto.js), então pode ser testado sem PDF.
 // Toda leitura é conferida com os saldos impressos pelo próprio banco: se não fechar, o extrato é recusado.
 import { dataValida } from './datas.js'
+import { semControle } from './texto.js'
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 const pad = (n) => String(n).padStart(2, '0')
@@ -31,13 +32,19 @@ export function somarDias(data, n) {
   return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`
 }
 
-// Limpa a descrição: "COMPRA CARTAO DEB MC 18/03 AUTOPASS S.A." → "AUTOPASS S.A." (o que importa é a loja)
+// Limpa a descrição: "COMPRA CARTAO DEB MC 18/03 AUTOPASS S.A." → "AUTOPASS S.A." (o que importa é a loja).
+// Tira caracteres de controle (o PDF às vezes traz um caractere nulo no nome da loja).
+// Se depois de tirar o começo não sobra nenhuma letra (ex.: "00 10"), fica "Compra no débito 00 10".
 export function limparDescricao(d) {
-  return d
+  d = semControle(d)
+  const compraNoDebito = /^compra cartao deb mc(\s|$)/i.test(d)
+  const limpa = d
     .replace(/^compra cartao deb mc\s+(\d{2}\/\d{2}\s+)?/i, '')
     .replace(/(?<=\.)Descr(i(p(t(i(o(n)?)?)?)?)?)?$/i, '') // resto de texto que o banco deixa no fim do nome da loja
     .replace(/\s+/g, ' ')
     .trim()
+  if (compraNoDebito && !/[A-Za-zÀ-ÿ]/.test(limpa)) return `Compra no débito ${limpa}`.trim()
+  return limpa
 }
 
 export function reconhecerSantander(linhas) {

@@ -1,5 +1,6 @@
 // Extrai as linhas de texto de um PDF (com a posição de cada pedaço), usando o pdf.js.
 // O pdf.js só é carregado quando você importa um PDF, para não pesar o app.
+import { semControle } from './texto.js'
 
 // Agrupa os pedaços de texto em linhas: mesma página e altura (com 3 pontos de tolerância,
 // porque o banco às vezes desalinha valor e descrição em 1 ponto)
@@ -7,7 +8,7 @@ export function agruparEmLinhas(pedacos) {
   const linhas = []
   const porPagina = new Map()
   for (const p of pedacos) {
-    if (!p.s || !p.s.trim()) continue
+    if (!p.s || !semControle(p.s)) continue
     if (!porPagina.has(p.pagina)) porPagina.set(p.pagina, [])
     porPagina.get(p.pagina).push(p)
   }
@@ -19,7 +20,7 @@ export function agruparEmLinhas(pedacos) {
         atual = { pagina, y: it.y, itens: [] }
         linhas.push(atual)
       }
-      atual.itens.push({ x: it.x, s: it.s.trim() })
+      atual.itens.push({ x: it.x, s: semControle(it.s) })
     }
   }
   for (const l of linhas) l.itens.sort((a, b) => a.x - b.x)

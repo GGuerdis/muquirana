@@ -1,6 +1,7 @@
 // Criar, editar e apagar lançamentos (inclusive compras parceladas) e pagar faturas.
 // Toda gravação é validada aqui, mesmo que a tela já tenha validado antes.
 import { db } from './db.js'
+import { semControle } from './texto.js'
 import { dividirParcelas, valorValido, formatar } from './dinheiro.js'
 import { somarMeses, somarMesesData, dataValida } from './datas.js'
 import { faturaDaCompra, resumoFatura } from './fatura.js'
@@ -96,7 +97,7 @@ export async function salvarLancamento(form, original = null) {
 
     const base = {
       tipo: form.tipo,
-      descricao: (form.descricao || '').trim().slice(0, 80),
+      descricao: semControle(form.descricao).slice(0, 80),
       categoriaId: form.tipo === 'transferencia' ? null : form.categoriaId,
       data: form.data,
       criadoEm: original?.criadoEm || Date.now(),
@@ -151,7 +152,7 @@ export function registrosParaImportar(form, refs) {
   if (erro) throw new Error(erro)
   const base = {
     tipo: form.tipo,
-    descricao: (form.descricao || '').trim().slice(0, 80),
+    descricao: semControle(form.descricao).slice(0, 80),
     categoriaId: form.tipo === 'transferencia' ? null : form.categoriaId,
     data: form.data,
     criadoEm: Date.now(),

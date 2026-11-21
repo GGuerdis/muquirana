@@ -1,3 +1,4 @@
+import { semControle } from './texto.js'
 // Contas, cartões e categorias: salvar e excluir com segurança.
 import { db } from './db.js'
 import { somarMeses } from './datas.js'
@@ -11,7 +12,7 @@ import { saldoConta } from './calculos.js'
 export async function salvarCartao(dados, hoje) {
   const cartao = {
     ...dados,
-    nome: (dados.nome || '').trim(),
+    nome: semControle(dados.nome),
     limite: Math.max(0, Math.round(dados.limite || 0)),
     diaFechamento: Number(dados.diaFechamento),
     diaVencimento: Number(dados.diaVencimento),
@@ -59,7 +60,7 @@ export async function excluirCartao(id) {
 // ---------- Contas ----------
 // O usuário informa o saldo ATUAL; o saldo inicial é ajustado para bater com ele.
 export async function salvarConta({ id, nome, emoji, saldoAtual }, hoje) {
-  nome = (nome || '').trim()
+  nome = semControle(nome)
   if (!nome) throw new Error('Dê um nome para a conta.')
   if (!Number.isSafeInteger(saldoAtual)) throw new Error('Saldo inválido.')
   return db.transaction('rw', db.contas, db.lancamentos, async () => {
@@ -85,7 +86,7 @@ export async function excluirConta(id) {
 
 // ---------- Categorias ----------
 export async function salvarCategoria({ id, nome, emoji, tipo }) {
-  nome = (nome || '').trim()
+  nome = semControle(nome)
   if (!nome) throw new Error('Dê um nome para a categoria.')
   if (!['despesa', 'receita'].includes(tipo)) throw new Error('Tipo de categoria inválido.')
   const dados = { nome, emoji: emoji || '📦', tipo }

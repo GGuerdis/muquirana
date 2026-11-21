@@ -23,6 +23,11 @@ describe('navegador de dentro de outro app', () => {
     expect(navegadorEmbutido(FACEBOOK_ANDROID).app).toBe('Facebook')
   })
 
+  it('navegador do app do Google (busca) é reconhecido', () => {
+    expect(navegadorEmbutido(CHROME_ANDROID + ' GSA/15.40.30.29.arm64').app).toBe('app do Google')
+    expect(navegadorEmbutido(EMBUTIDO_IOS + ' GSA/340.0.0 Mobile/15E148 Safari/604.1').app).toBe('app do Google')
+  })
+
   it('qualquer WebView do Android (mesmo sem o nome do app) é reconhecida', () => {
     expect(navegadorEmbutido(WEBVIEW_ANDROID)).toEqual({ app: null, android: true, ios: false })
   })

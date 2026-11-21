@@ -10,6 +10,7 @@ const APPS = [
   ['TikTok', /musical_ly|BytedanceWebview|TikTok/i],
   ['LinkedIn', /LinkedInApp/i],
   ['Telegram', /Telegram/i],
+  ['app do Google', /\bGSA\//],
 ]
 
 /**

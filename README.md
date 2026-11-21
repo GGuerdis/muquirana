@@ -43,7 +43,7 @@ Abra http://localhost:5173
 npm test
 ```
 
-São 386 testes automáticos (`tests/`), entre eles:
+São 393 testes automáticos (`tests/`), entre eles:
 
 - datas, centavos e parcelas (soma sempre exata); fatura em 30 mil datas aleatórias
 - saldos, resumo do mês, pagamento de fatura, transferências, validação (nada inválido é gravado)

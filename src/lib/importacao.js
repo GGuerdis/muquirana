@@ -5,6 +5,7 @@ import { faturaDaCompra, faturasPendentes } from './fatura.js'
 import { somarMesesData, mesDe } from './datas.js'
 import { saldoConta } from './calculos.js'
 import { nomeDoBanco } from './ofx.js'
+import { semControle } from './texto.js'
 
 export const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
 
@@ -150,7 +151,7 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       dataLancamento: t.data,
       valor,
       entrada,
-      descricao: t.descricao,
+      descricao: semControle(t.descricao), // nada de caractere de controle (a nuvem recusa)
       idExterno,
       situacao: 'novo',
       motivo: '',
