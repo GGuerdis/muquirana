@@ -10,11 +10,13 @@ import { salvarCartao, excluirCartao, salvarConta, excluirConta, salvarCategoria
 
 // Lógica comum: salvar/excluir com proteção contra toque duplo e exibição de erro
 function useAcoes(aoFechar) {
+  const { podeEditar } = useDados()
   const [erro, setErro] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   async function executar(fn) {
     if (ocupado) return
+    if (!podeEditar) return setErro('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
     setOcupado(true)
     setErro('')
     try {

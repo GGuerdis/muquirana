@@ -1,6 +1,6 @@
 // Categorização automática: sugere a categoria pela descrição.
 // 1º as regras que o app aprendeu com você; 2º regras prontas (UBER → Transporte etc.).
-import { db } from './db.js'
+import { db, espacoAtualParaNovos } from './db.js'
 
 export const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
 const limpar = (t) => ` ${normalizar(t).replace(/[^A-Z0-9]+/g, ' ').trim()} `
@@ -73,10 +73,14 @@ export async function aprender(descricao, tipo, categoriaId) {
   const padrao = chaveDescricao(descricao)
   if (padrao.length < 3 || !categoriaId || (tipo !== 'despesa' && tipo !== 'receita')) return false
   const chave = `${tipo}:${padrao}`
-  await db.transaction('rw', db.regras, db.categorias, async () => {
+  await db.transaction('rw', db.regras, db.categorias, db.realms, async () => {
     const cat = await db.categorias.get(categoriaId)
     if (!cat || cat.tipo !== tipo) return
-    const atual = await db.regras.where('chave').equals(chave).first()
+    // só olha as regras do espaço aberto (cada espaço aprende separado)
+    const espaco = espacoAtualParaNovos()
+    const compartilhados = new Set((await db.realms.toArray()).map((r) => r.realmId))
+    const doEspaco = (r) => (espaco ? r.realmId === espaco : !compartilhados.has(r.realmId))
+    const atual = await db.regras.where('chave').equals(chave).filter(doEspaco).first()
     if (atual) await db.regras.update(atual.id, { categoriaId, usos: (atual.usos || 0) + 1, atualizadoEm: Date.now() })
     else await db.regras.add({ chave, padrao, tipo, categoriaId, usos: 1, atualizadoEm: Date.now() })
   })

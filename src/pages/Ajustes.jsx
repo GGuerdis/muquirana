@@ -9,6 +9,7 @@ import { saldoConta } from '../lib/calculos.js'
 import { exportarBackup, salvarConfig } from '../lib/db.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
 import { PainelConta } from '../components/Nuvem.jsx'
+import { PainelEspaco } from '../components/Espacos.jsx'
 import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
@@ -71,6 +72,7 @@ export default function Ajustes() {
       <h1 className="titulo-pagina">Ajustes</h1>
 
       <PainelConta />
+      <PainelEspaco />
 
       <section className="painel">
         <label className="alternar grande">

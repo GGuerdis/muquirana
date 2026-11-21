@@ -5,6 +5,7 @@ import { Mascote } from '../components/Pecas.jsx'
 import { CampoValor, Campo } from '../components/Campos.jsx'
 import { db, salvarConfig, criarDadosIniciais } from '../lib/db.js'
 import { BotaoEntrar } from '../components/Nuvem.jsx'
+import { ConvitesRecebidos } from '../components/Espacos.jsx'
 import { salvarConta, salvarCartao } from '../lib/cadastros.js'
 import { diaValido } from '../lib/fatura.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
@@ -56,6 +57,7 @@ export default function BoasVindas() {
           <p>Vou cuidar de cada tostão seu. Prometo zoar só um pouquinho quando você gastar demais.</p>
           <p className="discreto">Seus dados ficam no aparelho. Se quiser, entre com sua conta para sincronizar entre celular e computador.</p>
           <button className="botao primario cheio" disabled={ocupado} onClick={async () => { setOcupado(true); await criarDadosIniciais(); setOcupado(false); setPasso(1) }}>Bora começar</button>
+          <ConvitesRecebidos />
           <div className="restaurar-bv">
             <span className="discreto">Já usa o Muquirana?</span>
             <BotaoEntrar rotulo="Entrar na minha conta" classe="link" />

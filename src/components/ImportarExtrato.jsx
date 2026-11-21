@@ -46,7 +46,7 @@ const ehPdf = (f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf'
 
 export default function ImportarExtrato({ aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, config, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira } = dados
+  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, config, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira, podeEditar } = dados
   const arquivo = useRef(null)
   const [extrato, setExtrato] = useState(null)
   const [nomeArquivo, setNomeArquivo] = useState('')
@@ -190,6 +190,7 @@ export default function ImportarExtrato({ aoFechar }) {
 
   async function importar() {
     if (ocupado || !dest || bloqueado) return
+    if (!podeEditar) return setErro('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
     if (!aGravar.length) return setErro('Nada selecionado para importar.')
     setOcupado(true)
     try {

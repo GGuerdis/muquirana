@@ -13,7 +13,7 @@ const SITUACAO = {
 }
 
 export default function ContasDoMes({ mes, irPara }) {
-  const { recorrentes, lancamentos, categoriaPorId, contaPorId, cartaoPorId, abrirModelo, avisar } = useDados()
+  const { recorrentes, lancamentos, categoriaPorId, contaPorId, cartaoPorId, abrirModelo, avisar, podeEditar } = useDados()
   const lista = useMemo(() => contasDoMes(mes, recorrentes, lancamentos), [mes, recorrentes, lancamentos])
   const [ocupado, setOcupado] = useState(false)
 
@@ -33,6 +33,7 @@ export default function ContasDoMes({ mes, irPara }) {
 
   async function pular(x, pular) {
     if (ocupado) return
+    if (!podeEditar) return avisar('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
     setOcupado(true)
     try {
       await pularMes(x.recorrente.id, mes, pular)

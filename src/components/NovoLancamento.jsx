@@ -48,7 +48,7 @@ function estadoInicial(original, dados, modelo) {
 
 export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, regras, orcamentos, lancamentos, categoriaPorId, cartaoPorId, avisar, zoeira } = dados
+  const { contas, cartoes, categorias, regras, orcamentos, lancamentos, categoriaPorId, cartaoPorId, avisar, zoeira, podeEditar } = dados
   const [f, setF] = useState(() => estadoInicial(original, dados, modelo))
   const [erro, setErro] = useState('')
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
@@ -95,6 +95,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
 
   async function salvar() {
     if (salvando.current) return // evita salvar duas vezes com toque duplo
+    if (!podeEditar) return setErro('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
     const form = {
       tipo: f.tipo,
       valor: f.valor,
@@ -133,6 +134,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   }
 
   async function apagar() {
+    if (!podeEditar) return setErro('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
     if (!confirmandoApagar) return setConfirmandoApagar(true)
     if (salvando.current) return
     salvando.current = true

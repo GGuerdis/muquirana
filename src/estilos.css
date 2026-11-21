@@ -390,3 +390,10 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 .botao-engrenagem { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgb(255 255 255 / 0.12); color: #fff; font-size: 1.1rem; display: grid; place-items: center; }
 .cartao-topo { position: relative; }
 .comparacao h3 { order: -2; }
+
+/* ---------- Espaços ---------- */
+.topo-linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-right: 44px; }
+.seletor-espaco { font-size: 0.78rem; font-weight: 650; padding: 3px 10px; border-radius: 999px; background: rgb(255 255 255 / 0.18); color: #fff; }
+.lista-espacos .linha-ajuste.ativa { font-weight: 650; }
+.convite { border: 2px solid var(--marca-2); }
+.seletor.mini { width: auto; padding: 4px 6px; font-size: 0.8rem; }

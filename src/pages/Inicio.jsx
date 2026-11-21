@@ -11,6 +11,7 @@ import { saldoPrevisto } from '../lib/recorrentes.js'
 import ContasDoMes from '../components/ContasDoMes.jsx'
 import { OrcamentoDoMes } from '../components/Orcamento.jsx'
 import { SeloSincronizacao } from '../components/Nuvem.jsx'
+import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
 
 const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ atrasada', paga: 'paga' }
 
@@ -45,7 +46,7 @@ export default function Inicio({ mes, setMes, irPara }) {
   return (
     <div className="pagina">
       <section className="cartao-topo">
-        <SeloSincronizacao />
+        <div className="topo-linha"><SeloSincronizacao /><SeletorEspaco /></div>
         <button className="botao-engrenagem" onClick={() => irPara('ajustes')} aria-label="Ajustes">⚙️</button>
         <div className="saudacao">
           <Mascote rosto={humor.rosto} />
@@ -75,6 +76,8 @@ export default function Inicio({ mes, setMes, irPara }) {
           ))}
         </div>
       </section>
+
+      <ConvitesRecebidos />
 
       <SeletorMes mes={mes} aoMudar={setMes} />
 

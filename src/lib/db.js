@@ -21,6 +21,30 @@ db.version(1).stores({
   config: 'chave', // preferências deste aparelho (não sincroniza)
 })
 
+// Versão 2: espaços compartilhados (tabelas de controle de acesso do Dexie Cloud, com estes nomes exatos)
+db.version(2).stores({
+  realms: '@realmId',
+  members: '@id, realmId, email',
+  roles: '[realmId+name]',
+})
+
+// ---------- Espaço atual ----------
+// Tudo que for criado vai para o espaço que está aberto na tela (Pessoal = null).
+let espacoParaNovos = null
+export const definirEspacoParaNovos = (realmId) => { espacoParaNovos = realmId || null }
+export const espacoAtualParaNovos = () => espacoParaNovos
+// Executa algo sem colocar os registros num espaço compartilhado (ex.: restaurar backup, migração)
+export async function noEspacoPessoal(fn) {
+  const antes = espacoParaNovos
+  espacoParaNovos = null
+  try { return await fn() } finally { espacoParaNovos = antes }
+}
+for (const t of ['contas', 'cartoes', 'categorias', 'lancamentos', 'regras', 'recorrentes', 'orcamentos']) {
+  db.table(t).hook('creating', (chave, obj) => {
+    if (espacoParaNovos && obj.realmId == null) obj.realmId = espacoParaNovos
+  })
+}
+
 // Chamado uma vez ao abrir o app (no navegador). Nos testes não é chamado: o banco fica só local.
 export function conectarNuvem() {
   db.cloud.configure({
@@ -63,11 +87,19 @@ const CONTAS_PADRAO = [
 
 // Contas e categorias iniciais de quem está começando. Não é automático (como era antes):
 // quem entra numa conta que já existe recebe os dados da nuvem e não pode ganhar cópias.
-export async function criarDadosIniciais() {
-  return db.transaction('rw', db.contas, db.categorias, async () => {
-    if ((await db.contas.count()) > 0 || (await db.categorias.count()) > 0) return false
-    await db.contas.bulkAdd(CONTAS_PADRAO.map((c) => ({ ...c })))
-    await db.categorias.bulkAdd(CATEGORIAS_PADRAO.map(([tipo, emoji, nome]) => ({ tipo, emoji, nome })))
+// `espaco`: em qual espaço criar (null = Pessoal). Só cria se aquele espaço ainda está vazio.
+export async function criarDadosIniciais({ contas = CONTAS_PADRAO, espaco = null } = {}) {
+  if (!espaco) return noEspacoPessoal(() => criarDadosIniciaisNo(contas, null))
+  return criarDadosIniciaisNo(contas, espaco)
+}
+function criarDadosIniciaisNo(contas, espaco) {
+  return db.transaction('rw', db.contas, db.categorias, db.realms, async () => {
+    const compartilhados = new Set((await db.realms.toArray()).map((r) => r.realmId))
+    const doEspaco = (x) => (espaco ? x.realmId === espaco : !compartilhados.has(x.realmId))
+    if ((await db.contas.filter(doEspaco).count()) > 0 || (await db.categorias.filter(doEspaco).count()) > 0) return false
+    const noEspaco = (r) => (espaco ? { ...r, realmId: espaco } : r)
+    await db.contas.bulkAdd(contas.map((c) => noEspaco({ ...c })))
+    await db.categorias.bulkAdd(CATEGORIAS_PADRAO.map(([tipo, emoji, nome]) => noEspaco({ tipo, emoji, nome })))
     return true
   })
 }
@@ -141,9 +173,11 @@ function configImportada(config, mapa) {
 }
 
 // ---------- Backup ----------
+// Backup do espaço Pessoal (espaços compartilhados ficam de fora: são de outras pessoas também)
 export async function exportarBackup() {
+  const compartilhados = new Set((await db.realms.toArray()).map((r) => r.realmId))
   const dados = {}
-  for (const t of TABELAS) dados[t] = await db.table(t).toArray()
+  for (const t of TABELAS) dados[t] = (await db.table(t).toArray()).filter((x) => t === 'config' || !compartilhados.has(x.realmId))
   return { app: 'muquirana', versao: 3, exportadoEm: new Date().toISOString(), dados }
 }
 
@@ -155,15 +189,20 @@ export function validarBackup(backup) {
   if (!Array.isArray(backup.dados.lancamentos) || !Array.isArray(backup.dados.contas)) throw new Error('Backup incompleto.')
 }
 
-// Substitui todos os dados pelos do backup (de qualquer versão do app)
+// Substitui os dados do espaço Pessoal pelos do backup (de qualquer versão do app).
+// Espaços compartilhados não são mexidos (são de outras pessoas também).
 export async function restaurarBackup(backup) {
   validarBackup(backup)
-  await db.transaction('rw', TABELAS.map((t) => db.table(t)), async () => {
-    for (const t of TABELAS_DADOS) await db.table(t).clear()
+  await noEspacoPessoal(() => db.transaction('rw', [...TABELAS.map((t) => db.table(t)), db.realms], async () => {
+    const compartilhados = new Set((await db.realms.toArray()).map((r) => r.realmId))
+    for (const t of TABELAS_DADOS) {
+      const pessoais = (await db.table(t).toArray()).filter((x) => !compartilhados.has(x.realmId)).map((x) => x.id)
+      await db.table(t).bulkDelete(pessoais)
+    }
     const mapa = await gravarDados(backup.dados)
     for (const c of configImportada(backup.dados.config, mapa)) await db.config.put(c)
     await db.config.put({ chave: 'boasVindas', valor: true })
-  })
+  }))
 }
 
 // ---------- Migração do banco antigo (versões 1 e 2, só no aparelho) ----------
@@ -206,7 +245,7 @@ export async function migrarBancoAntigo() {
   }
   const usouOApp = dados.config.some((c) => c.chave === 'boasVindas' && c.valor === true) || dados.lancamentos.length > 0
   let resultado = null
-  await db.transaction('rw', TABELAS.map((t) => db.table(t)), async () => {
+  await noEspacoPessoal(() => db.transaction('rw', TABELAS.map((t) => db.table(t)), async () => {
     if (await lerConfig('migracaoLocal')) return // outra aba já migrou
     if (usouOApp && (await db.contas.count()) === 0) {
       const mapa = await gravarDados(dados)
@@ -214,7 +253,7 @@ export async function migrarBancoAntigo() {
       resultado = { lancamentos: dados.lancamentos.length }
     }
     await db.config.put({ chave: 'migracaoLocal', valor: { em: new Date().toISOString(), lancamentos: resultado?.lancamentos ?? 0 } })
-  })
+  }))
   gravarMarca()
   return resultado
 }

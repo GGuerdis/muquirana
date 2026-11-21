@@ -54,7 +54,7 @@ export default function App({ migrou = null }) {
 }
 
 function Telas() {
-  const { config, contas, abrirLancamento } = useDados()
+  const { config, contas, abrirLancamento, podeEditar, avisar } = useDados()
   const { logado } = useNuvem()
   // Entrou numa conta que já tem dados (ex.: celular novo): pula as boas-vindas
   useEffect(() => {
@@ -79,7 +79,7 @@ function Telas() {
       <nav className="barra-nav">
         {ABAS.map((a) =>
           a.id === 'novo' ? (
-            <button key="novo" className="botao-novo" onClick={() => abrirLancamento()} aria-label="Novo lançamento">+</button>
+            <button key="novo" className="botao-novo" onClick={() => (podeEditar ? abrirLancamento() : avisar('Neste espaço você só pode ver: peça a quem criou para liberar a edição.'))} aria-label="Novo lançamento">+</button>
           ) : (
             <button key={a.id} className={`nav-item ${aba === a.id ? 'ativo' : ''}`} onClick={() => irPara(a.id)} aria-current={aba === a.id ? 'page' : undefined}>
               <span className="nav-icone">{a.icone}</span>
