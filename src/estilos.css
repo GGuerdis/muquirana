@@ -408,3 +408,5 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 .seletor.mini { width: auto; padding: 4px 6px; font-size: 0.8rem; }
 .painel.dividir { display: flex; flex-direction: column; gap: 10px; }
 .lembrete-backup { display: flex; flex-direction: column; gap: 8px; }
+.nova-categoria { display: flex; gap: 6px; align-items: center; } .nova-categoria input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); font: inherit; }
+.acoes-titulo { display: flex; gap: 14px; } .lista-categorizar { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; } .item-categorizar { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--borda); } .regras-imp.decididas summary { cursor: pointer; list-style: none; } .regras-imp.decididas summary::-webkit-details-marker { display: none; } .resumo-decidido { margin: 8px 0; font-size: 0.85rem; } .regras-imp.perguntas { border: 2px solid var(--ouro-escuro); }

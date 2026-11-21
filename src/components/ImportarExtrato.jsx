@@ -10,11 +10,12 @@ import { avisoDeOrcamento, textoAviso } from '../lib/orcamento.js'
 import { decodificarArquivo, lerOFX, nomeDoBanco } from '../lib/ofx.js'
 import {
   prepararImportacao, executarImportacao, problemaDoItem, resolverFatura, conferirSaldo, normalizar,
-  podeDefinirSaldoInicial, identidade, NOVA_CONTA_INVESTIMENTOS, nomeDaNovaConta, ehContaNova,
-  novoCartao, nomeDoNovoCartao, faturaDeCartaoNovo, diasEstimados,
+  podeDefinirSaldoInicial, identidade, NOVA_CONTA_INVESTIMENTOS, nomeDaNovaConta,
+  novoCartao, nomeDoNovoCartao, faturaDeCartaoNovo, diasEstimados, novaConta,
 } from '../lib/importacao.js'
+import SeletorCategoria from './SeletorCategoria.jsx'
 import { faturaAtual, faturaDaCompra } from '../lib/fatura.js'
-import { sugerirCategoria, aprenderComImportacao } from '../lib/categorizar.js'
+import { sugerirCategoria, aprenderComImportacao, gruposParaCategorizar } from '../lib/categorizar.js'
 import { extrairLinhasPdf } from '../lib/pdfTexto.js'
 import { lerExtratoSantander, juntarExtratos } from '../lib/santander.js'
 import AvisoNavegador from './AvisoNavegador.jsx'
@@ -53,7 +54,7 @@ function descreverDestino(chave) {
 
 const ehPdf = (f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf'
 
-export default function ImportarExtrato({ aoFechar }) {
+export default function ImportarExtrato({ aoFechar, aoImportar }) {
   const dados = useDados()
   const { contas, cartoes, categorias, lancamentos, regras, orcamentos, config, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira, podeEditar, usuario } = dados
   const arquivo = useRef(null)
@@ -78,14 +79,32 @@ export default function ImportarExtrato({ aoFechar }) {
     const destId = destinoTexto?.split(':')[1]
     const contaInvest = contas.find((c) => /invest/i.test(c.nome))
     const inter = contas.find((c) => normalizar(c.nome).includes('INTER') && c.id !== destId)
+    // O que você respondeu nas importações anteriores (neste aparelho). Conta/cartão "novo" que já foi criado
+    // é achado pelo nome; escolha que aponta para algo que não existe mais é esquecida.
+    const lemb = config.lembrarImportacao || {}
+    const conta = (v) => {
+      if (v === null) return null
+      if (v === NOVA_CONTA_INVESTIMENTOS) return contaInvest ? contaInvest.id : v
+      const nome = nomeDaNovaConta(v)
+      if (nome) return contas.find((c) => normalizar(c.nome) === normalizar(nome))?.id ?? v
+      return contas.some((c) => c.id === v) ? v : undefined
+    }
+    const cartao = (v) => {
+      if (v === null) return null
+      const nome = nomeDoNovoCartao(v)
+      if (nome) return cartoes.find((c) => normalizar(c.nome) === normalizar(nome))?.id ?? v
+      return cartoes.some((c) => c.id === v) ? v : undefined
+    }
+    const limpo = (obj, f) => Object.fromEntries(Object.entries(obj || {}).map(([k, v]) => [k, f(v)]).filter(([, v]) => v !== undefined))
+    const categoriaExiste = (id) => categorias.some((c) => c.id === id)
+    const investLembrado = lemb.contaInvestimentos !== undefined ? conta(lemb.contaInvestimentos) : undefined
     return {
-      contaInvestimentos: contaInvest ? contaInvest.id : NOVA_CONTA_INVESTIMENTOS,
+      contaInvestimentos: investLembrado !== undefined ? investLembrado : contaInvest ? contaInvest.id : NOVA_CONTA_INVESTIMENTOS,
       contaPixProprio: inter ? inter.id : null,
       titular: ex.titular || config.titular || null,
-      cartaoPorPagamento: {},
-      // o que você escolheu nas importações anteriores para cada conta de destino (neste aparelho)
-      contaPorPix: { ...(config.destinosPix?.conta || {}) },
-      gastoPorPix: { ...(config.destinosPix?.gasto || {}) },
+      cartaoPorPagamento: limpo(lemb.cartaoPorPagamento, cartao),
+      contaPorPix: limpo(config.destinosPix?.conta, conta),
+      gastoPorPix: Object.fromEntries(Object.entries(config.destinosPix?.gasto || {}).filter(([, v]) => v === null || categoriaExiste(v))),
       historico: ex.origem === 'pdf-santander',
     }
   }
@@ -180,7 +199,8 @@ export default function ImportarExtrato({ aoFechar }) {
   const parecidas = (item) => itens.filter((i) => i.posicao !== item.posicao && i.situacao !== 'importado' && i.entrada === item.entrada && identidade(i.descricao) === identidade(item.descricao)).length
 
   const naoImportados = itens.filter((i) => i.situacao !== 'importado')
-  const precisaAtencao = (i) => i.situacao === 'duplicado' || i.grupo || (i.acao === 'ignorar' && i.situacao === 'novo') || !!problemaDoItem(i, dest) || ajustes[i.posicao]
+  // só o que tem dúvida de verdade: parece repetido, ficou de fora, tem problema, ou você mexeu
+  const precisaAtencao = (i) => i.situacao === 'duplicado' || (i.acao === 'ignorar' && i.situacao === 'novo') || !!problemaDoItem(i, dest) || !!ajustes[i.posicao]
   const listados = filtro === 'atencao' ? naoImportados.filter(precisaAtencao) : naoImportados
   const aGravar = itens.filter((i) => i.acao !== 'ignorar' && i.situacao !== 'importado')
 
@@ -224,10 +244,17 @@ export default function ImportarExtrato({ aoFechar }) {
         nomeContaInvestimentos: `Investimentos ${contaPorId.get(dest.id)?.nome ?? ''}`.trim(),
       })
       await aprenderComImportacao(aGravar)
-      const conta = Object.fromEntries(Object.entries(regrasImp.contaPorPix || {}).filter(([, v]) => v === null || (v && !ehContaNova(v))))
-      if (Object.keys(conta).length || Object.keys(regrasImp.gastoPorPix || {}).length) {
-        await salvarConfig('destinosPix', { conta: { ...(config.destinosPix?.conta || {}), ...conta }, gasto: { ...(config.destinosPix?.gasto || {}), ...(regrasImp.gastoPorPix || {}) } })
-      }
+      // guarda as respostas para a próxima importação não perguntar de novo (o que está na tela agora)
+      const contaPix = {}
+      for (const [chave, g] of grupos.pixConta.entries()) contaPix[chave] = regrasImp.contaPorPix?.[chave] !== undefined ? regrasImp.contaPorPix[chave] : (g.contaId ?? null)
+      const cartaoPag = {}
+      for (const [ident, g] of grupos.pagamentoCartao.entries()) cartaoPag[ident] = regrasImp.cartaoPorPagamento?.[ident] !== undefined ? regrasImp.cartaoPorPagamento[ident] : (g.cartaoId ?? null)
+      await salvarConfig('destinosPix', { conta: { ...(config.destinosPix?.conta || {}), ...contaPix }, gasto: { ...(config.destinosPix?.gasto || {}), ...(regrasImp.gastoPorPix || {}) } })
+      await salvarConfig('lembrarImportacao', {
+        ...(config.lembrarImportacao || {}),
+        ...(grupos.investimento > 0 ? { contaInvestimentos: regrasImp.contaInvestimentos ?? null } : {}),
+        cartaoPorPagamento: { ...(config.lembrarImportacao?.cartaoPorPagamento || {}), ...cartaoPag },
+      })
       if (extrato.titular && (!config.titular || extrato.titular.length > config.titular.length)) await salvarConfig('titular', extrato.titular)
       let mensagem = zoeira ? `${n} lançamento(s) importado(s). Menos digitação, mais tempo para economizar!` : `${n} lançamento(s) importado(s).`
       if (usuario?.isLoggedIn) mensagem += ' Espere o topo mostrar ☁️ Sincronizado antes de fechar o app.'
@@ -237,6 +264,8 @@ export default function ImportarExtrato({ aoFechar }) {
       }
       avisar(mensagem)
       aoFechar()
+      // depois de importar: abre o "categorizar rápido" se sobrou coisa em Outros
+      if (aoImportar && gruposParaCategorizar(await db.lancamentos.toArray(), categorias, { soOutros: true }).length) aoImportar()
     } catch (e) {
       setErro(e.message)
       setOcupado(false)
@@ -253,6 +282,108 @@ export default function ImportarExtrato({ aoFechar }) {
     ...(nomeDoNovoCartao(atual) ? [nomeDoNovoCartao(atual)] : []),
     ...contas.filter((c) => !/invest|carteira/i.test(c.nome) && !cartoes.some((k) => normalizar(k.nome) === normalizar(c.nome))).map((c) => c.nome),
   ])]
+
+  // ---------- Painel de regras: o que é pergunta (o app não tem como saber) e o que já está decidido ----------
+  // Pergunta = algo que o app vai CRIAR (conta ou cartão novo) e que você ainda não respondeu antes.
+  // Não depende da escolha atual, para a linha não "pular" de lugar enquanto você mexe.
+  const lembrado = config.lembrarImportacao || {}
+  const nomeConta = (id) => (id === NOVA_CONTA_INVESTIMENTOS ? `nova conta "Investimentos ${contaPorId.get(dest?.id)?.nome ?? ''}"` : nomeDaNovaConta(id) ? `nova conta "${nomeDaNovaConta(id)}"` : contaPorId.get(id)?.nome ?? '')
+  const nomeCartao = (id) => (nomeDoNovoCartao(id) ? `novo cartão "${nomeDoNovoCartao(id)}"` : `cartão ${cartaoPorId.get(id)?.nome ?? ''}`)
+  const regrasLinhas = []
+  if (dest?.tipo === 'conta' && previa) {
+    if (grupos.investimento > 0) {
+      const v = regrasImp.contaInvestimentos ?? ''
+      regrasLinhas.push({
+        chave: 'investimento', n: grupos.investimento,
+        pergunta: !contas.some((c) => /invest/i.test(c.nome)) && lembrado.contaInvestimentos === undefined,
+        resumo: `${grupos.investimento} aplicações/resgates de investimento → ${v ? nomeConta(v) : 'gasto/receita'}`,
+        el: (
+          <label key="investimento" className="campo">
+            <span className="rotulo">{grupos.investimento} aplicação(ões)/resgate(s) de investimento: transferir para</span>
+            <select className="seletor" value={v} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaInvestimentos: e.target.value || null })); setAjustes({}) }}>
+              {!contas.some((c) => /invest/i.test(c.nome)) && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta "Investimentos {contaPorId.get(dest.id)?.nome}"</option>}
+              {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+              <option value="">Não: lançar como gasto/receita</option>
+            </select>
+          </label>
+        ),
+      })
+    }
+    if (grupos.pixProprio > 0) {
+      const v = regrasImp.contaPixProprio ?? ''
+      regrasLinhas.push({
+        chave: 'pixProprio', n: grupos.pixProprio, pergunta: false,
+        resumo: `${grupos.pixProprio} PIX com o seu nome (o extrato não diz o banco) → ${v ? nomeConta(v) : 'gasto'}`,
+        el: (
+          <label key="pixProprio" className="campo">
+            <span className="rotulo">{grupos.pixProprio} PIX/transferência(s) com o seu nome, sem o banco no extrato: transferir para</span>
+            <select className="seletor" value={v} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPixProprio: e.target.value || null })); setAjustes({}) }}>
+              {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+              <option value="">Não: lançar como gasto/receita</option>
+            </select>
+          </label>
+        ),
+      })
+    }
+    for (const [chave, g] of grupos.pixConta.entries()) {
+      const escolhida = regrasImp.contaPorPix?.[chave] !== undefined ? (regrasImp.contaPorPix[chave] ?? '') : (g.contaId ?? '')
+      const nomeNova = nomeDaNovaConta(escolhida)
+      const gasto = regrasImp.gastoPorPix?.[chave] ?? ''
+      const banco = nomeDoBanco(chave.split('/')[0])
+      const temContaDoBanco = !!banco && contas.some((c) => c.id !== dest.id && normalizar(c.nome).includes(normalizar(banco)))
+      regrasLinhas.push({
+        chave: `pix:${chave}`, n: g.n,
+        pergunta: g.proprio && !temContaDoBanco && config.destinosPix?.conta?.[chave] === undefined,
+        resumo: `${g.n} PIX ${g.proprio ? 'com o seu nome para' : 'com a conta'} ${descreverDestino(chave)} → ${escolhida ? nomeConta(escolhida) + (gasto ? ` (pagamento: ${categoriaPorId.get(gasto)?.nome})` : '') : 'gasto'}`,
+        el: (
+          <div key={chave} className="regra-destino">
+            <label className="campo">
+              <span className="rotulo">
+                {g.proprio
+                  ? `${g.n} PIX com o seu nome para ${descreverDestino(chave)} (${formatar(g.total)}): transferir para`
+                  : `${g.n} PIX com a conta ${descreverDestino(chave)}: é sua? Transferir para`}
+              </span>
+              <select className="seletor" value={escolhida} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPorPix: { ...r.contaPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
+                {nomeNova && <option value={escolhida}>🏦 Nova conta "{nomeNova}"</option>}
+                {!nomeNova && banco && !temContaDoBanco && g.proprio && <option value={novaConta(banco)}>🏦 Nova conta "{banco}"</option>}
+                {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                <option value="">{g.proprio ? 'Não: lançar como gasto' : 'Não é minha: lançar como gasto/receita'}</option>
+              </select>
+            </label>
+            {escolhida && g.saidas > 0 && (
+              <label className="campo">
+                <span className="rotulo">Lá, esse dinheiro foi usado para pagar alguma coisa?</span>
+                <SeletorCategoria tipo="despesa" valor={gasto || null} opcaoVazia="Não, ficou guardado lá (só transferência)" prefixo="Sim, pagamento: " rotulo="Foi usado para pagar"
+                  aoMudar={(id) => { setRegrasImp((r) => ({ ...r, gastoPorPix: { ...r.gastoPorPix, [chave]: id || null } })); setAjustes({}) }} />
+                {gasto && <span className="dica">Cada PIX entra como transferência e, no mesmo dia, como gasto em {categoriaPorId.get(gasto)?.nome} saindo de {nomeNova || contaPorId.get(escolhida)?.nome}. Assim o gasto aparece nos relatórios e o saldo de lá não fica inflado.</span>}
+              </label>
+            )}
+          </div>
+        ),
+      })
+    }
+    for (const [ident, g] of grupos.pagamentoCartao.entries()) {
+      const valor = regrasImp.cartaoPorPagamento?.[ident] !== undefined ? (regrasImp.cartaoPorPagamento[ident] ?? '') : (g.cartaoId ?? '')
+      const nomeNovo = nomeDoNovoCartao(valor)
+      const dias = nomeNovo ? diasEstimados(g.datas) : null
+      regrasLinhas.push({
+        chave: `cartao:${ident}`, n: g.n,
+        pergunta: !cartoes.length && lembrado.cartaoPorPagamento?.[ident] === undefined,
+        resumo: `${g.n} pagamentos "${ident}" → ${valor ? `fatura do ${nomeCartao(valor)}` : 'gasto'}`,
+        el: (
+          <label key={ident} className="campo">
+            <span className="rotulo">{g.n} pagamento(s) "{ident}": fatura de qual cartão?</span>
+            <select className="seletor" value={valor} onChange={(e) => { setRegrasImp((r) => ({ ...r, cartaoPorPagamento: { ...r.cartaoPorPagamento, [ident]: e.target.value || null } })); setAjustes({}) }}>
+              {cartoes.map((c) => <option key={c.id} value={c.id}>💳 {c.nome}</option>)}
+              {nomesCartaoNovo(valor).map((n) => <option key={n} value={novoCartao(n)}>🆕 Novo cartão "{n}"</option>)}
+              <option value="">Não é fatura de cartão: lançar como gasto</option>
+            </select>
+            {nomeNovo && <span className="dica">O cartão "{nomeNovo}" será criado com vencimento no dia {dias.diaVencimento} e fechamento no dia {dias.diaFechamento} (estimados pelos pagamentos). Confira depois em Cartões.</span>}
+          </label>
+        ),
+      })
+    }
+  }
 
   return (
     <Folha
@@ -347,79 +478,28 @@ export default function ImportarExtrato({ aoFechar }) {
             </label>
           )}
 
-          {dest?.tipo === 'conta' && (grupos.investimento > 0 || grupos.pixProprio > 0 || grupos.pagamentoCartao.size > 0 || grupos.pixConta.size > 0) && (
-            <div className="painel regras-imp">
-              <h3>Linhas que não são gasto nem receita</h3>
-              {grupos.investimento > 0 && (
-                <label className="campo">
-                  <span className="rotulo">{grupos.investimento} aplicação(ões)/resgate(s) de investimento: transferir para</span>
-                  <select className="seletor" value={regrasImp.contaInvestimentos ?? ''} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaInvestimentos: e.target.value || null })); setAjustes({}) }}>
-                    {!contas.some((c) => /invest/i.test(c.nome)) && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta "Investimentos {contaPorId.get(dest.id)?.nome}"</option>}
-                    {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
-                    <option value="">Não: lançar como gasto/receita</option>
-                  </select>
-                </label>
-              )}
-              {grupos.pixProprio > 0 && (
-                <label className="campo">
-                  <span className="rotulo">{grupos.pixProprio} PIX/transferência(s) com o seu nome: transferir para</span>
-                  <select className="seletor" value={regrasImp.contaPixProprio ?? ''} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPixProprio: e.target.value || null })); setAjustes({}) }}>
-                    {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
-                    <option value="">Não: lançar como gasto/receita</option>
-                  </select>
-                </label>
-              )}
-              {[...grupos.pixConta.entries()].map(([chave, g]) => {
-                const escolhida = regrasImp.contaPorPix?.[chave] !== undefined ? (regrasImp.contaPorPix[chave] ?? '') : (g.contaId ?? '')
-                const nomeNova = nomeDaNovaConta(escolhida)
-                const gasto = regrasImp.gastoPorPix?.[chave] ?? ''
-                return (
-                  <div key={chave} className="regra-destino">
-                    <label className="campo">
-                      <span className="rotulo">
-                        {g.proprio
-                          ? `${g.n} PIX com o seu nome para ${descreverDestino(chave)} (${formatar(g.total)}): transferir para`
-                          : `${g.n} PIX com a conta ${descreverDestino(chave)}: é sua? Transferir para`}
-                      </span>
-                      <select className="seletor" value={escolhida} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPorPix: { ...r.contaPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
-                        {nomeNova && <option value={escolhida}>🏦 Nova conta "{nomeNova}"</option>}
-                        {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
-                        <option value="">{g.proprio ? 'Não: lançar como gasto' : 'Não é minha: lançar como gasto/receita'}</option>
-                      </select>
-                    </label>
-                    {escolhida && g.saidas > 0 && (
-                      <label className="campo">
-                        <span className="rotulo">Lá, esse dinheiro foi usado para pagar alguma coisa?</span>
-                        <select className="seletor" value={gasto} onChange={(e) => { setRegrasImp((r) => ({ ...r, gastoPorPix: { ...r.gastoPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
-                          <option value="">Não, ficou guardado lá (só transferência)</option>
-                          {categoriasDo('despesa').map((c) => <option key={c.id} value={c.id}>Sim, pagamento: {c.emoji} {c.nome}</option>)}
-                        </select>
-                        {gasto && <span className="dica">Cada PIX entra como transferência e, no mesmo dia, como gasto em {categoriaPorId.get(gasto)?.nome} saindo de {nomeNova || contaPorId.get(escolhida)?.nome}. Assim o gasto aparece nos relatórios e o saldo de lá não fica inflado.</span>}
-                      </label>
-                    )}
-                  </div>
-                )
-              })}
-              {[...grupos.pagamentoCartao.entries()].map(([ident, g]) => {
-                const valor = regrasImp.cartaoPorPagamento?.[ident] !== undefined ? (regrasImp.cartaoPorPagamento[ident] ?? '') : (g.cartaoId ?? '')
-                const nomeNovo = nomeDoNovoCartao(valor)
-                const dias = nomeNovo ? diasEstimados(g.datas) : null
-                return (
-                  <label key={ident} className="campo">
-                    <span className="rotulo">{g.n} pagamento(s) "{ident}": fatura do cartão</span>
-                    <select className="seletor" value={valor} onChange={(e) => { setRegrasImp((r) => ({ ...r, cartaoPorPagamento: { ...r.cartaoPorPagamento, [ident]: e.target.value || null } })); setAjustes({}) }}>
-                      {cartoes.map((c) => <option key={c.id} value={c.id}>💳 {c.nome}</option>)}
-                      {nomesCartaoNovo(valor).map((n) => <option key={n} value={novoCartao(n)}>🆕 Novo cartão "{n}"</option>)}
-                      <option value="">Não é fatura de cartão: lançar como gasto</option>
-                    </select>
-                    {nomeNovo && <span className="dica">O cartão "{nomeNovo}" será criado com vencimento no dia {dias.diaVencimento} e fechamento no dia {dias.diaFechamento} (estimados pelos pagamentos). Confira depois em Cartões.</span>}
-                  </label>
-                )
-              })}
+          {dest?.tipo === 'conta' && regrasLinhas.some((r) => r.pergunta) && (
+            <div className="painel regras-imp perguntas">
+              <h3>Só preciso saber isto</h3>
+              <p className="dica">O resto o app já identificou pelo extrato. Suas respostas ficam guardadas para as próximas importações.</p>
+              {regrasLinhas.filter((r) => r.pergunta).map((r) => r.el)}
+            </div>
+          )}
+
+          {dest?.tipo === 'conta' && regrasLinhas.some((r) => !r.pergunta) && (
+            <details className="painel regras-imp decididas">
+              <summary>
+                <strong>✅ O app já classificou {regrasLinhas.filter((r) => !r.pergunta).reduce((s, r) => s + r.n, 0)} linha(s) sozinho</strong>
+                <span className="discreto"> · toque para ver ou mudar</span>
+              </summary>
+              <ul className="lista-simples resumo-decidido">
+                {regrasLinhas.filter((r) => !r.pergunta).map((r) => <li key={r.chave}>{r.resumo}</li>)}
+              </ul>
+              {regrasLinhas.filter((r) => !r.pergunta).map((r) => r.el)}
               {grupos.pagamentoCartao.size > 0 && regrasImp.historico && (
                 <p className="dica">Pagamentos de fatura saem do saldo da conta e não contam como gasto. As compras de cada fatura entram quando você importar as faturas do cartão.</p>
               )}
-            </div>
+            </details>
           )}
 
           {previa && (

@@ -25,7 +25,8 @@ Abra http://localhost:5173
   - PIX com o seu nome vai para a conta certa (Inter, Caixa…) pela tabela "PIXs Enviados" do extrato, com opção de lançar como pagamento lá
   - pagamentos de fatura sem cartão cadastrado criam o cartão (nunca são ignorados); importação com saldo diferente do banco pede confirmação
   - contas que só têm o que veio de outro extrato aparecem como "saldo estimado"
-- Categorização automática (regras prontas + aprende com você)
+- Categorização automática (regras prontas + aprende com você) e "Categorizar rápido": escolhe a categoria uma vez por loja/pessoa
+- Importação só pergunta o que o app não tem como saber (contas/cartões novos) e lembra as respostas
 - Contas fixas do mês para confirmar com um toque e saldo previsto para o fim do mês
 - Orçamento mensal por categoria, com aviso aos 80% e ao estourar
 - Histórico com gráficos por ano, mês e dia e comparação de meses e de anos
@@ -42,7 +43,7 @@ Abra http://localhost:5173
 npm test
 ```
 
-São 381 testes automáticos (`tests/`), entre eles:
+São 386 testes automáticos (`tests/`), entre eles:
 
 - datas, centavos e parcelas (soma sempre exata); fatura em 30 mil datas aleatórias
 - saldos, resumo do mês, pagamento de fatura, transferências, validação (nada inválido é gravado)

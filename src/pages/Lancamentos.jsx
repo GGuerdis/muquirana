@@ -3,6 +3,7 @@ import { useDados } from '../dados.jsx'
 import { SeletorMes, ItemLancamento } from '../components/Pecas.jsx'
 import { Chips } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
+import CategorizarRapido from '../components/CategorizarRapido.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesDe, rotuloDia } from '../lib/datas.js'
 import { compararIds } from '../lib/ids.js'
@@ -21,6 +22,7 @@ export default function Lancamentos({ mes, setMes }) {
   const [filtro, setFiltro] = useState('todos')
   const [busca, setBusca] = useState('')
   const [importando, setImportando] = useState(false)
+  const [categorizando, setCategorizando] = useState(false)
 
   const dias = useMemo(() => {
     const termo = normalizar(busca)
@@ -43,7 +45,10 @@ export default function Lancamentos({ mes, setMes }) {
     <div className="pagina">
       <div className="painel-titulo">
         <h1 className="titulo-pagina">Lançamentos</h1>
-        <button className="link" onClick={() => setImportando(true)}>⬇ Importar extrato</button>
+        <span className="acoes-titulo">
+          <button className="link" onClick={() => setCategorizando(true)}>🏷️ Categorizar</button>
+          <button className="link" onClick={() => setImportando(true)}>⬇ Importar</button>
+        </span>
       </div>
       <SeletorMes mes={mes} aoMudar={setMes} />
       <input className="busca" type="search" placeholder="🔍 Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -62,7 +67,8 @@ export default function Lancamentos({ mes, setMes }) {
           </section>
         )
       })}
-      {importando && <ImportarExtrato aoFechar={() => setImportando(false)} />}
+      {importando && <ImportarExtrato aoFechar={() => setImportando(false)} aoImportar={() => setCategorizando(true)} />}
+      {categorizando && <CategorizarRapido aoFechar={() => setCategorizando(false)} />}
     </div>
   )
 }

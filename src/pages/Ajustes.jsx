@@ -3,6 +3,7 @@ import { useDados } from '../dados.jsx'
 import { FormConta, FormCartao, FormCategoria, FormRecorrente } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
+import CategorizarRapido from '../components/CategorizarRapido.jsx'
 import { apagarRegra, apagarTodasRegras } from '../lib/categorizar.js'
 import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
@@ -21,6 +22,7 @@ export default function Ajustes() {
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
   const [tipoCat, setTipoCat] = useState('despesa')
   const [importando, setImportando] = useState(false)
+  const [categorizando, setCategorizando] = useState(false)
 
   async function exportar() {
     if (!(await fazerBackup())) return
@@ -193,7 +195,8 @@ export default function Ajustes() {
 
       <p className="rodape-app">Muquirana v0.2 · cada tostão conta 🪙</p>
 
-      {importando && <ImportarExtrato aoFechar={() => setImportando(false)} />}
+      {importando && <ImportarExtrato aoFechar={() => setImportando(false)} aoImportar={() => setCategorizando(true)} />}
+      {categorizando && <CategorizarRapido aoFechar={() => setCategorizando(false)} />}
       {editando?.tipo === 'orcamento' && <FormOrcamento categoria={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'recorrente' && <FormRecorrente recorrente={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'conta' && <FormConta conta={editando.item} aoFechar={fechar} />}

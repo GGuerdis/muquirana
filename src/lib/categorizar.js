@@ -9,6 +9,7 @@ const limpar = (t) => ` ${normalizar(t).replace(/[^A-Z0-9]+/g, ' ').trim()} `
 const RUIDO = new Set([
   'PIX', 'ENVIADO', 'ENVIADA', 'RECEBIDO', 'RECEBIDA', 'COMPRA', 'COMPRAS', 'CARTAO', 'DEBITO', 'CREDITO', 'DEB', 'CRED',
   'PAG', 'PAGTO', 'PGTO', 'PAGAMENTO', 'TRANSF', 'TRANSFERENCIA', 'TED', 'DOC', 'QR', 'CODE', 'BOLETO', 'APROVADA', 'AUT',
+  'OUTROS', 'BANCOS', 'BANCO', // "PAGAMENTO DE BOLETO OUTROS BANCOS <empresa>": o que importa é a empresa
   'DE', 'DA', 'DO', 'DAS', 'DOS', 'EM', 'NO', 'NA', 'A', 'O', 'E', 'COM', 'PARA', 'POR',
   'ELO', 'VISA', 'MASTERCARD', 'MASTER', 'LTDA', 'ME', 'EIRELI', 'SA', 'BR', 'PARC', 'PARCELA', 'INTERNACIONAL', 'NACIONAL', 'BRA', 'SAO', 'PAULO', 'RIO', 'JANEIRO',
 ])
@@ -96,3 +97,44 @@ export async function aprenderComImportacao(itensGravados) {
 
 export const apagarRegra = (id) => db.regras.delete(id)
 export const apagarTodasRegras = () => db.regras.clear()
+
+/**
+ * Categorizar rápido: junta os lançamentos pela "identidade" da descrição (a loja ou a pessoa)
+ * para escolher a categoria uma vez só. Com soOutros, só os grupos que estão em "Outros".
+ * Retorna [{ chave, tipo, exemplo, ids, n, total, categoriaId }] do mais frequente para o menos.
+ */
+export function gruposParaCategorizar(lancamentos, categorias, { soOutros = true, busca = '' } = {}) {
+  const ehOutros = new Set(categorias.filter((c) => normalizar(c.nome) === 'OUTROS').map((c) => c.id))
+  const termo = normalizar(busca).trim()
+  const grupos = new Map()
+  for (const l of lancamentos) {
+    if (l.tipo !== 'despesa' && l.tipo !== 'receita') continue
+    const chave = chaveDescricao(l.descricao)
+    if (chave.length < 3) continue
+    const k = `${l.tipo}:${chave}`
+    if (!grupos.has(k)) grupos.set(k, { chave, tipo: l.tipo, ids: [], n: 0, total: 0, exemplos: new Map(), categorias: new Map() })
+    const g = grupos.get(k)
+    g.ids.push(l.id)
+    g.n++
+    g.total += l.valor
+    g.exemplos.set(l.descricao, (g.exemplos.get(l.descricao) || 0) + 1)
+    g.categorias.set(l.categoriaId, (g.categorias.get(l.categoriaId) || 0) + 1)
+  }
+  const mais = (m) => [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]
+  return [...grupos.values()]
+    .map((g) => ({ chave: g.chave, tipo: g.tipo, ids: g.ids, n: g.n, total: g.total, exemplo: mais(g.exemplos), categoriaId: mais(g.categorias) }))
+    .filter((g) => !soOutros || ehOutros.has(g.categoriaId) || g.categoriaId == null)
+    .filter((g) => !termo || normalizar(g.exemplo).includes(termo) || g.chave.includes(termo))
+    .sort((a, b) => b.n - a.n || b.total - a.total || a.chave.localeCompare(b.chave))
+}
+
+// Põe todos os lançamentos do grupo na categoria e aprende (vale para as próximas importações)
+export async function categorizarGrupo(grupo, categoriaId) {
+  const cat = await db.categorias.get(categoriaId)
+  if (!cat || cat.tipo !== grupo.tipo) throw new Error('Categoria inválida para este tipo de lançamento.')
+  await db.transaction('rw', db.lancamentos, async () => {
+    await db.lancamentos.where('id').anyOf(grupo.ids).filter((l) => l.tipo === grupo.tipo).modify({ categoriaId })
+  })
+  await aprender(grupo.exemplo, grupo.tipo, categoriaId)
+  return grupo.ids.length
+}
