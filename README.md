@@ -18,10 +18,14 @@ Abra http://localhost:5173
 
 - Lançamento rápido de despesas, receitas e transferências
 - Cartões com fatura (fechamento/vencimento), compras parceladas e pagamento de fatura (com data)
-- Importação de extrato OFX (conta e cartão), sem duplicar, com conferência do saldo do banco
+- Importação de extrato OFX (conta e cartão) e de PDF do Santander (vários meses de uma vez), sem duplicar, conferindo cada saldo impresso pelo banco
 - Categorização automática (regras prontas + aprende com você)
 - Contas fixas do mês para confirmar com um toque e saldo previsto para o fim do mês
 - Orçamento mensal por categoria, com aviso aos 80% e ao estourar
+- Histórico com gráficos por ano, mês e dia e comparação de meses e de anos
+- Login por código no e-mail e sincronização entre aparelhos (Dexie Cloud), funcionando offline
+- Espaços compartilhados (ex.: Casa) com convite por e-mail e permissão de editar ou só ver
+- Lembretes na agenda do celular (.ics) para contas fixas e vencimento de faturas
 - Backup e restauração (inclusive direto na tela de boas-vindas), modo zoeira
 
 ## Testes
@@ -30,13 +34,14 @@ Abra http://localhost:5173
 npm test
 ```
 
-São 225 testes automáticos (`tests/`), entre eles:
+São 335 testes automáticos (`tests/`), entre eles:
 
 - datas, centavos e parcelas (soma sempre exata); fatura em 30 mil datas aleatórias
 - saldos, resumo do mês, pagamento de fatura, transferências, validação (nada inválido é gravado)
 - leitura de OFX (SGML/XML, Windows-1252/UTF-8), importação sem duplicar, tudo-ou-nada
 - migração do banco da versão 1 para a 2 sem perder dados
-- categorização, contas fixas, saldo previsto e orçamento
+- categorização, contas fixas, saldo previsto, orçamento, histórico, agenda e espaços
+- leitor de PDF do Santander com extratos fictícios (conferência de saldos, meses faltando, períodos repetidos)
 - simulação com 900 operações aleatórias conferindo que os saldos fecham ao centavo
 
 A publicação no GitHub Pages só acontece se todos os testes passarem.
