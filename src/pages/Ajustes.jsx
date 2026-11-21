@@ -9,6 +9,7 @@ import { saldoConta } from '../lib/calculos.js'
 import { exportarBackup, salvarConfig } from '../lib/db.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
 import { PainelConta } from '../components/Nuvem.jsx'
+import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
 
@@ -46,6 +47,21 @@ export default function Ajustes() {
     a.download = nome
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  async function exportarAgenda() {
+    const { conteudo, eventos } = gerarAgenda({
+      recorrentes, cartoes, hoje: hoje(),
+      nomeConta: (id) => contaPorId.get(id)?.nome ?? '', nomeCartao: (id) => cartaoPorId.get(id)?.nome ?? '',
+    })
+    if (!eventos) return avisar('Cadastre contas fixas ou cartões para gerar os lembretes.')
+    const nome = 'muquirana-lembretes.ics'
+    const blob = new Blob([conteudo], { type: 'text/calendar' })
+    const file = new File([blob], nome, { type: 'text/calendar' })
+    if (navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Lembretes do Muquirana' }) } catch (e) { if (e.name !== 'AbortError') baixar(blob, nome) }
+    } else baixar(blob, nome)
+    avisar(`${eventos} lembrete(s) gerado(s). Abra o arquivo com a sua agenda.`)
   }
 
   const fechar = () => setEditando(null)
@@ -157,6 +173,16 @@ export default function Ajustes() {
             </div>
           )
         })}
+      </section>
+
+      <section className="painel">
+        <h3>Lembretes na agenda</h3>
+        <p className="dica">
+          Gera um arquivo para a agenda do celular com as suas contas fixas e o vencimento das faturas, todo mês, com aviso na véspera
+          (e dois dias antes das faturas). Nada vai para a internet. No iPhone, abra o arquivo e toque em "Adicionar tudo". No Android,
+          abra com o Google Agenda (ou importe em calendar.google.com → Configurações → Importar). Se mudar as contas fixas, gere de novo.
+        </p>
+        <button className="botao secundario cheio" onClick={exportarAgenda}>📅 Gerar lembretes para a agenda</button>
       </section>
 
       <section className="painel">
