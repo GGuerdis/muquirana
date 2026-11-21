@@ -3,13 +3,15 @@ import { useDados } from '../dados.jsx'
 import { FormConta, FormCartao, FormCategoria } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
+import { apagarRegra, apagarTodasRegras } from '../lib/categorizar.js'
 import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
 import { exportarBackup, restaurarBackup, salvarConfig } from '../lib/db.js'
 import { hoje, dataCurta } from '../lib/datas.js'
 
 export default function Ajustes() {
-  const { contas, cartoes, categorias, lancamentos, zoeira, config, avisar } = useDados()
+  const { contas, cartoes, categorias, lancamentos, regras, categoriaPorId, zoeira, config, avisar } = useDados()
+  const [apagandoRegras, setApagandoRegras] = useState(false)
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
   const [tipoCat, setTipoCat] = useState('despesa')
   const [restaurando, setRestaurando] = useState(null)
@@ -124,6 +126,29 @@ export default function Ajustes() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="painel">
+        <div className="painel-titulo">
+          <h3>Categorias aprendidas</h3>
+          {regras.length > 0 && (
+            <button className={apagandoRegras ? 'link perigo' : 'link'} onClick={async () => {
+              if (!apagandoRegras) return setApagandoRegras(true)
+              await apagarTodasRegras(); setApagandoRegras(false); avisar('Regras apagadas.')
+            }}>{apagandoRegras ? 'Confirmar?' : 'Apagar todas'}</button>
+          )}
+        </div>
+        <p className="dica">Quando você escolhe a categoria de uma descrição, o app aprende e sugere sozinho da próxima vez. Lojas conhecidas (Uber, iFood, Netflix…) já vêm reconhecidas.</p>
+        {regras.length === 0 && <p className="vazio">Nada aprendido ainda.</p>}
+        {[...regras].sort((a, b) => a.padrao.localeCompare(b.padrao)).map((r) => {
+          const cat = categoriaPorId.get(r.categoriaId)
+          return (
+            <div key={r.id} className="linha-pagamento">
+              <span className="quebra"><strong>{r.padrao}</strong> → {cat ? `${cat.emoji} ${cat.nome}` : 'categoria apagada'}</span>
+              <button className="link" aria-label={`Apagar regra ${r.padrao}`} onClick={() => apagarRegra(r.id)}>Apagar</button>
+            </div>
+          )
+        })}
       </section>
 
       <section className="painel">

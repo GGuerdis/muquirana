@@ -7,6 +7,7 @@ import { hoje, ontem, dataCurta, dataValida, nomeMes } from '../lib/datas.js'
 import { formatar, dividirParcelas } from '../lib/dinheiro.js'
 import { salvarLancamento, apagarLancamento, formDoLancamento, validarLancamento, MAX_PARCELAS } from '../lib/lancamentos.js'
 import { faturaDaCompra } from '../lib/fatura.js'
+import { sugerirCategoria, aprender } from '../lib/categorizar.js'
 import { salvarConfig } from '../lib/db.js'
 import { comentarioAoSalvar } from '../lib/zoeira.js'
 
@@ -46,13 +47,27 @@ function estadoInicial(original, dados) {
 
 export default function NovoLancamento({ original, aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, categoriaPorId, cartaoPorId, avisar, zoeira } = dados
+  const { contas, cartoes, categorias, regras, categoriaPorId, cartaoPorId, avisar, zoeira } = dados
   const [f, setF] = useState(() => estadoInicial(original, dados))
   const [erro, setErro] = useState('')
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const salvando = useRef(false)
   const mudar = (campo) => (v) => { setErro(''); setF((x) => ({ ...x, [campo]: v })) }
+  // Categoria escolhida por você não é trocada pela sugestão automática
+  const [categoriaManual, setCategoriaManual] = useState(!!original)
+  const escolherCategoria = (id) => { setCategoriaManual(true); mudar('categoriaId')(id) }
+  const mudarDescricao = (texto) => {
+    setErro('')
+    setF((x) => {
+      const nova = { ...x, descricao: texto }
+      if (!categoriaManual && x.tipo !== 'transferencia') {
+        const sugestao = sugerirCategoria(texto, x.tipo, regras, categorias)
+        if (sugestao) nova.categoriaId = sugestao
+      }
+      return nova
+    })
+  }
 
   const [tipoOrigem, idOrigemTexto] = (f.origem || ':').split(':')
   const idOrigem = Number(idOrigemTexto)
@@ -61,8 +76,10 @@ export default function NovoLancamento({ original, aoFechar }) {
 
   const trocarTipo = (tipo) => {
     setErro('')
+    if (tipo !== f.tipo) setCategoriaManual(false)
     setF((x) => {
       const nova = { ...x, tipo, categoriaId: tipo === x.tipo ? x.categoriaId : null }
+      if (tipo !== x.tipo && tipo !== 'transferencia' && x.descricao) nova.categoriaId = sugerirCategoria(x.descricao, tipo, regras, categorias)
       // cartão de crédito só vale para despesa
       if (tipo !== 'despesa' && x.origem?.startsWith('cartao:')) nova.origem = contas[0] ? `conta:${contas[0].id}` : null
       return nova
@@ -95,6 +112,7 @@ export default function NovoLancamento({ original, aoFechar }) {
     try {
       await salvarLancamento(form, original)
       if (!original) salvarConfig('ultimaOrigem', f.origem)
+      if (form.tipo !== 'transferencia' && form.descricao) aprender(form.descricao, form.tipo, form.categoriaId).catch(() => {})
       avisar(original ? 'Lançamento atualizado.' : comentarioAoSalvar(form, categoriaPorId.get(f.categoriaId), zoeira))
       aoFechar()
     } catch (e) {
@@ -163,7 +181,7 @@ export default function NovoLancamento({ original, aoFechar }) {
                 type="button"
                 key={c.id}
                 className={`categoria ${f.categoriaId === c.id ? 'ativa' : ''}`}
-                onClick={() => mudar('categoriaId')(c.id)}
+                onClick={() => escolherCategoria(c.id)}
                 aria-pressed={f.categoriaId === c.id}
               >
                 <span className="categoria-emoji">{c.emoji}</span>
@@ -212,7 +230,7 @@ export default function NovoLancamento({ original, aoFechar }) {
       </div>
 
       <Campo rotulo="Descrição (opcional)">
-        <input type="text" value={f.descricao} placeholder={f.tipo === 'despesa' ? 'Ex.: almoço, Uber, farmácia' : ''} onChange={(e) => mudar('descricao')(e.target.value)} maxLength={80} />
+        <input type="text" value={f.descricao} placeholder={f.tipo === 'despesa' ? 'Ex.: almoço, Uber, farmácia' : ''} onChange={(e) => mudarDescricao(e.target.value)} maxLength={80} />
       </Campo>
     </Folha>
   )

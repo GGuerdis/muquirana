@@ -92,8 +92,11 @@ export async function salvarCategoria({ id, nome, emoji, tipo }) {
 }
 
 export async function excluirCategoria(id) {
-  return db.transaction('rw', db.categorias, db.lancamentos, async () => {
+  return db.transaction('rw', db.categorias, db.lancamentos, db.regras, db.recorrentes, db.orcamentos, async () => {
     if ((await db.lancamentos.where('categoriaId').equals(id).count()) > 0) throw new Error('Esta categoria já foi usada em lançamentos. Renomeie em vez de excluir.')
+    if ((await db.recorrentes.filter((r) => r.categoriaId === id).count()) > 0) throw new Error('Esta categoria é usada numa conta fixa. Troque a categoria da conta fixa antes.')
+    await db.regras.filter((r) => r.categoriaId === id).delete()
+    await db.orcamentos.delete(id)
     await db.categorias.delete(id)
   })
 }
