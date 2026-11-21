@@ -7,6 +7,7 @@ import Cartoes from './pages/Cartoes.jsx'
 import Ajustes from './pages/Ajustes.jsx'
 import Historico from './pages/Historico.jsx'
 import BoasVindas from './pages/BoasVindas.jsx'
+import AvisoNavegador from './components/AvisoNavegador.jsx'
 import { mesAtual } from './lib/datas.js'
 import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
@@ -70,6 +71,7 @@ function Telas() {
   return (
     <>
       <main>
+        <AvisoNavegador />
         {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
         {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} />}
         {aba === 'historico' && <Historico />}

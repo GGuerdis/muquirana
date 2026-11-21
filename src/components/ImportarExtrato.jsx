@@ -16,6 +16,7 @@ import { faturaAtual, faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprenderComImportacao } from '../lib/categorizar.js'
 import { extrairLinhasPdf } from '../lib/pdfTexto.js'
 import { lerExtratoSantander, juntarExtratos } from '../lib/santander.js'
+import AvisoNavegador from './AvisoNavegador.jsx'
 
 const ACOES_CONTA = [
   { valor: 'lancar', rotulo: 'Lançar' },
@@ -253,6 +254,7 @@ export default function ImportarExtrato({ aoFechar }) {
     >
       <input ref={arquivo} type="file" multiple accept=".ofx,.OFX,.pdf,.PDF,application/pdf,application/x-ofx,application/ofx,text/plain" hidden onChange={lerArquivos} />
 
+      <AvisoNavegador forte />
       {lendo && <p className="conferencia">⏳ Lendo PDF {lendo.atual} de {lendo.total}…</p>}
 
       {!extrato && !lendo && (

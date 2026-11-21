@@ -9,6 +9,7 @@ import { ConvitesRecebidos } from '../components/Espacos.jsx'
 import { salvarConta, salvarCartao } from '../lib/cadastros.js'
 import { diaValido } from '../lib/fatura.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
+import AvisoNavegador from '../components/AvisoNavegador.jsx'
 
 const CARTOES_SUGERIDOS = ['Santander', 'Inter']
 
@@ -52,6 +53,7 @@ export default function BoasVindas() {
     <div className="boas-vindas">
       {passo === 0 && (
         <div className="bv-passo centro">
+          <AvisoNavegador forte />
           <Mascote rosto="🤑" tamanho={120} />
           <h1>Prazer, eu sou o Muquirana.</h1>
           <p>Vou cuidar de cada tostão seu. Prometo zoar só um pouquinho quando você gastar demais.</p>
