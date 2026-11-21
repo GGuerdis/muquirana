@@ -4,7 +4,9 @@ import Folha from './Folha.jsx'
 import { Chips } from './Campos.jsx'
 import { useDados } from '../dados.jsx'
 import { formatar } from '../lib/dinheiro.js'
-import { dataCurta, nomeMes, somarMeses } from '../lib/datas.js'
+import { dataCurta, nomeMes, somarMeses, mesDe } from '../lib/datas.js'
+import { db } from '../lib/db.js'
+import { avisoDeOrcamento, textoAviso } from '../lib/orcamento.js'
 import { decodificarArquivo, lerOFX, nomeDoBanco } from '../lib/ofx.js'
 import { prepararImportacao, executarImportacao, problemaDoItem, faturaParaPagamento, conferirSaldo, normalizar } from '../lib/importacao.js'
 import { faturaAtual, faturaDaCompra } from '../lib/fatura.js'
@@ -36,7 +38,7 @@ function faturaProvavel(extrato, cartao) {
 
 export default function ImportarExtrato({ aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, lancamentos, regras, contaPorId, cartaoPorId, avisar, zoeira } = dados
+  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira } = dados
   const arquivo = useRef(null)
   const [extrato, setExtrato] = useState(null)
   const [nomeArquivo, setNomeArquivo] = useState('')
@@ -113,7 +115,12 @@ export default function ImportarExtrato({ aoFechar }) {
     try {
       const n = await executarImportacao({ itens, destino: dest, faturaCartao: dest.tipo === 'cartao' ? faturaCartao : null })
       await aprenderComImportacao(aGravar, previa.itens)
-      avisar(zoeira ? `${n} lançamento(s) importado(s). Menos digitação, mais tempo para economizar!` : `${n} lançamento(s) importado(s).`)
+      let mensagem = zoeira ? `${n} lançamento(s) importado(s). Menos digitação, mais tempo para economizar!` : `${n} lançamento(s) importado(s).`
+      if (orcamentos.length) {
+        const aviso = avisoDeOrcamento({ meses: aGravar.map((i) => mesDe(i.dataLancamento)), orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
+        if (aviso) mensagem += ' ' + textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '', zoeira)
+      }
+      avisar(mensagem)
       aoFechar()
     } catch (e) {
       setErro(e.message)

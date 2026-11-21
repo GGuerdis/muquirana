@@ -3,12 +3,13 @@ import { useRef, useState } from 'react'
 import Folha from './Folha.jsx'
 import { Abas, CampoValor, Chips, Campo } from './Campos.jsx'
 import { useDados } from '../dados.jsx'
-import { hoje, ontem, dataCurta, dataValida, nomeMes } from '../lib/datas.js'
+import { hoje, ontem, dataCurta, dataValida, nomeMes, mesDe, somarMesesData } from '../lib/datas.js'
+import { avisoDeOrcamento, textoAviso } from '../lib/orcamento.js'
 import { formatar, dividirParcelas } from '../lib/dinheiro.js'
 import { salvarLancamento, apagarLancamento, formDoLancamento, validarLancamento, MAX_PARCELAS } from '../lib/lancamentos.js'
 import { faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprender } from '../lib/categorizar.js'
-import { salvarConfig } from '../lib/db.js'
+import { db, salvarConfig } from '../lib/db.js'
 import { comentarioAoSalvar } from '../lib/zoeira.js'
 
 const TIPOS = [
@@ -47,7 +48,7 @@ function estadoInicial(original, dados, modelo) {
 
 export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, regras, categoriaPorId, cartaoPorId, avisar, zoeira } = dados
+  const { contas, cartoes, categorias, regras, orcamentos, lancamentos, categoriaPorId, cartaoPorId, avisar, zoeira } = dados
   const [f, setF] = useState(() => estadoInicial(original, dados, modelo))
   const [erro, setErro] = useState('')
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
@@ -115,7 +116,14 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       await salvarLancamento(form, original)
       if (!original) salvarConfig('ultimaOrigem', f.origem)
       if (form.tipo !== 'transferencia' && form.descricao) aprender(form.descricao, form.tipo, form.categoriaId).catch(() => {})
-      avisar(original ? 'Lançamento atualizado.' : comentarioAoSalvar(form, categoriaPorId.get(f.categoriaId), zoeira))
+      let mensagem = original ? 'Lançamento atualizado.' : comentarioAoSalvar(form, categoriaPorId.get(f.categoriaId), zoeira)
+      // Passou de 80% ou estourou o orçamento da categoria? O aviso do orçamento tem prioridade
+      if (form.tipo === 'despesa' && orcamentos.length) {
+        const meses = Array.from({ length: form.parcelas || 1 }, (_, i) => mesDe(somarMesesData(form.data, i)))
+        const aviso = avisoDeOrcamento({ meses, orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
+        if (aviso) mensagem = textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '', zoeira)
+      }
+      avisar(mensagem)
       aoFechar()
     } catch (e) {
       setErro(e.message || 'Não foi possível salvar.')

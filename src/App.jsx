@@ -24,7 +24,7 @@ export default function App() {
   const avisar = useCallback((texto) => {
     clearTimeout(timer.current)
     setAviso({ texto, chave: Date.now() })
-    timer.current = setTimeout(() => setAviso(null), 3500)
+    timer.current = setTimeout(() => setAviso(null), Math.max(3500, texto.length * 70)) // texto longo fica mais tempo
   }, [])
   const abrirLancamento = useCallback((l) => setLancAberto(l || 'novo'), [])
   const abrirModelo = useCallback((modelo) => setLancAberto({ modelo }), [])

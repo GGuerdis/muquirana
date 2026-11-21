@@ -6,6 +6,7 @@ import { CampoValor, Campo } from '../components/Campos.jsx'
 import { db, salvarConfig } from '../lib/db.js'
 import { salvarConta, salvarCartao } from '../lib/cadastros.js'
 import { diaValido } from '../lib/fatura.js'
+import RestaurarBackup from '../components/RestaurarBackup.jsx'
 
 const CARTOES_SUGERIDOS = ['Santander', 'Inter']
 
@@ -54,6 +55,10 @@ export default function BoasVindas() {
           <p>Vou cuidar de cada tostão seu. Prometo zoar só um pouquinho quando você gastar demais.</p>
           <p className="discreto">Seus dados ficam guardados só neste aparelho.</p>
           <button className="botao primario cheio" onClick={() => setPasso(1)}>Bora começar</button>
+          <div className="restaurar-bv">
+            <span className="discreto">Já usa o Muquirana em outro aparelho?</span>
+            <RestaurarBackup rotulo="Restaurar backup" classe="link" />
+          </div>
         </div>
       )}
 

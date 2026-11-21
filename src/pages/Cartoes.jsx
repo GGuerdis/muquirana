@@ -5,7 +5,7 @@ import { FormCartao } from '../components/Formularios.jsx'
 import { CampoValor, Chips } from '../components/Campos.jsx'
 import Folha from '../components/Folha.jsx'
 import { formatar } from '../lib/dinheiro.js'
-import { nomeMes, somarMeses, dataCurta, hoje } from '../lib/datas.js'
+import { nomeMes, somarMeses, dataCurta, hoje, ontem, dataValida } from '../lib/datas.js'
 import { resumoFatura, faturasPendentes, limiteUsado } from '../lib/fatura.js'
 import { pagarFatura, apagarLancamento } from '../lib/lancamentos.js'
 
@@ -130,6 +130,7 @@ function PagarFatura({ cartao, resumo, aoFechar }) {
   const [contaId, setContaId] = useState(contaPorId.has(cartao.contaPagamentoId) ? cartao.contaPagamentoId : contas[0]?.id ?? null)
   const [erro, setErro] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  const [data, setData] = useState(hoje())
   const travado = useRef(false)
 
   async function salvar() {
@@ -137,10 +138,11 @@ function PagarFatura({ cartao, resumo, aoFechar }) {
     if (!valor) return setErro('Informe o valor pago.')
     if (valor > resumo.restante) return setErro(`O valor passa do que falta pagar (${formatar(resumo.restante)}).`)
     if (!contaPorId.has(contaId)) return setErro('Escolha a conta que pagou.')
+    if (!dataValida(data)) return setErro('Escolha a data do pagamento.')
     travado.current = true
     setOcupado(true)
     try {
-      await pagarFatura({ cartaoId: cartao.id, fatura: resumo.fatura, contaId, valor, data: hoje() })
+      await pagarFatura({ cartaoId: cartao.id, fatura: resumo.fatura, contaId, valor, data })
       avisar(zoeira ? (valor >= resumo.restante ? 'Fatura paga! Livre... até a próxima.' : 'Pagou uma parte. O resto continua te olhando.') : 'Pagamento registrado.')
       aoFechar()
     } catch (e) {
@@ -162,7 +164,19 @@ function PagarFatura({ cartao, resumo, aoFechar }) {
         <span className="rotulo">Pago com a conta</span>
         <Chips rolavel opcoes={contas.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: c.emoji }))} valor={contaId} aoMudar={setContaId} />
       </div>
-      <p className="dica">O valor sai do saldo da conta escolhida, com a data de hoje. Ele não conta de novo como gasto, porque as compras já foram lançadas.</p>
+      <div className="bloco">
+        <span className="rotulo">Data do pagamento</span>
+        <div className="chips">
+          <button type="button" className={`chip ${data === hoje() ? 'ativo' : ''}`} onClick={() => setData(hoje())}>Hoje</button>
+          <button type="button" className={`chip ${data === ontem() ? 'ativo' : ''}`} onClick={() => setData(ontem())}>Ontem</button>
+          <label className={`chip chip-data ${data !== hoje() && data !== ontem() ? 'ativo' : ''}`}>
+            📅 {data !== hoje() && data !== ontem() ? dataCurta(data) : 'Outra'}
+            <input type="date" value={data} onChange={(e) => e.target.value && setData(e.target.value)} aria-label="Escolher data do pagamento" />
+          </label>
+        </div>
+        {data > hoje() && <span className="dica">Pagamento agendado: só sai do saldo nesse dia.</span>}
+      </div>
+      <p className="dica">O valor sai do saldo da conta escolhida. Ele não conta de novo como gasto, porque as compras já foram lançadas.</p>
     </Folha>
   )
 }

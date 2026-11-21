@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { FormConta, FormCartao, FormCategoria, FormRecorrente } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
@@ -6,17 +6,17 @@ import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import { apagarRegra, apagarTodasRegras } from '../lib/categorizar.js'
 import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
-import { exportarBackup, restaurarBackup, salvarConfig } from '../lib/db.js'
+import { exportarBackup, salvarConfig } from '../lib/db.js'
+import RestaurarBackup from '../components/RestaurarBackup.jsx'
+import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
 
 export default function Ajustes() {
-  const { contas, cartoes, categorias, lancamentos, regras, recorrentes, categoriaPorId, contaPorId, cartaoPorId, zoeira, config, avisar } = useDados()
+  const { contas, cartoes, categorias, lancamentos, regras, recorrentes, orcamentos, categoriaPorId, contaPorId, cartaoPorId, zoeira, config, avisar } = useDados()
   const [apagandoRegras, setApagandoRegras] = useState(false)
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
   const [tipoCat, setTipoCat] = useState('despesa')
-  const [restaurando, setRestaurando] = useState(null)
   const [importando, setImportando] = useState(false)
-  const arquivo = useRef(null)
 
   async function exportar() {
     const backup = await exportarBackup()
@@ -45,29 +45,6 @@ export default function Ajustes() {
     a.download = nome
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
-
-  async function lerArquivo(e) {
-    const f = e.target.files?.[0]
-    e.target.value = ''
-    if (!f) return
-    try {
-      const backup = JSON.parse(await f.text())
-      if (backup?.app !== 'muquirana') throw new Error()
-      setRestaurando(backup)
-    } catch {
-      avisar('Esse arquivo não parece ser um backup do Muquirana.')
-    }
-  }
-
-  async function confirmarRestauracao() {
-    try {
-      await restaurarBackup(restaurando)
-      avisar('Backup restaurado.')
-    } catch (err) {
-      avisar(err.message)
-    }
-    setRestaurando(null)
   }
 
   const fechar = () => setEditando(null)
@@ -128,6 +105,20 @@ export default function Ajustes() {
       </section>
 
       <section className="painel">
+        <h3>Orçamento mensal</h3>
+        <p className="dica">Quanto você quer gastar por mês em cada categoria. Toque para definir.</p>
+        {categorias.filter((c) => c.tipo === 'despesa').map((c) => {
+          const o = orcamentos.find((x) => x.categoriaId === c.id)
+          return (
+            <button key={c.id} className="linha-ajuste" onClick={() => setEditando({ tipo: 'orcamento', item: c })}>
+              <span>{c.emoji} {c.nome}</span>
+              <span className={o ? '' : 'discreto'}>{o ? formatar(o.limite) : 'sem limite'} ›</span>
+            </button>
+          )
+        })}
+      </section>
+
+      <section className="painel">
         <div className="painel-titulo">
           <h3>Categorias</h3>
           <button className="link" onClick={() => setEditando({ tipo: 'categoria' })}>+ Nova</button>
@@ -179,26 +170,14 @@ export default function Ajustes() {
         </p>
         <div className="linha-botoes">
           <button className="botao primario cheio" onClick={exportar}>Fazer backup</button>
-          <button className="botao secundario cheio" onClick={() => arquivo.current?.click()}>Restaurar</button>
+          <RestaurarBackup avisar={avisar} />
         </div>
-        <input ref={arquivo} type="file" accept="application/json,.json" hidden onChange={lerArquivo} />
-        {restaurando && (
-          <div className="alerta">
-            <p>
-              Restaurar o backup de <strong>{new Date(restaurando.exportadoEm).toLocaleDateString('pt-BR')}</strong> ({restaurando.dados.lancamentos?.length ?? 0} lançamentos)?
-              Tudo que está no app agora será <strong>substituído</strong>.
-            </p>
-            <div className="linha-botoes">
-              <button className="botao secundario" onClick={() => setRestaurando(null)}>Cancelar</button>
-              <button className="botao perigo cheio" onClick={confirmarRestauracao}>Substituir tudo</button>
-            </div>
-          </div>
-        )}
       </section>
 
-      <p className="rodape-app">Muquirana v0.1 · cada tostão conta 🪙</p>
+      <p className="rodape-app">Muquirana v0.2 · cada tostão conta 🪙</p>
 
       {importando && <ImportarExtrato aoFechar={() => setImportando(false)} />}
+      {editando?.tipo === 'orcamento' && <FormOrcamento categoria={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'recorrente' && <FormRecorrente recorrente={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'conta' && <FormConta conta={editando.item} aoFechar={fechar} />}
       {editando?.tipo === 'cartao' && <FormCartao cartao={editando.item} aoFechar={fechar} />}

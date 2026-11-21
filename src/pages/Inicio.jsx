@@ -8,6 +8,7 @@ import { faturasPendentes } from '../lib/fatura.js'
 import { humorDoMes } from '../lib/zoeira.js'
 import { saldoPrevisto } from '../lib/recorrentes.js'
 import ContasDoMes from '../components/ContasDoMes.jsx'
+import { OrcamentoDoMes } from '../components/Orcamento.jsx'
 
 const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ atrasada', paga: 'paga' }
 
@@ -81,6 +82,8 @@ export default function Inicio({ mes, setMes, irPara }) {
           <strong className={resumo.resultado >= 0 ? 'entrada' : 'saida'}>{formatar(Math.abs(resumo.resultado))}</strong>
         </div>
       </section>
+
+      <OrcamentoDoMes mes={mes} irPara={irPara} />
 
       <section className="painel">
         <h3>Para onde foi o dinheiro em {nomeMes(mes)}</h3>
