@@ -44,7 +44,7 @@ describe('leitura de arquivos', () => {
     ])
     expect(ex.transacoes[0].descricao).toBe('SALÁRIO EMPRESA X')
     expect(ex.transacoes[1].descricao).toBe('COMPRA CARTÃO DÉBITO PADARIA SÃO JOÃO')
-    expect(ex.transacoes[3].descricao).toBe('PIX ENVIADO GUSTAVO & CIA')
+    expect(ex.transacoes[3].descricao).toBe('PIX ENVIADO FULANO & CIA')
     expect(ex.problemas).toEqual([{ posicao: 5, descricao: 'DATA QUEBRADA', motivo: 'data ilegível' }])
   })
 

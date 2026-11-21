@@ -1,16 +1,21 @@
-// Tela de importação de extrato OFX: escolher arquivo → conferir prévia → importar
+// Tela de importação de extrato: escolher arquivo(s) OFX ou PDF → conferir prévia → importar
 import { useMemo, useRef, useState } from 'react'
 import Folha from './Folha.jsx'
 import { Chips } from './Campos.jsx'
 import { useDados } from '../dados.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { dataCurta, nomeMes, somarMeses, mesDe } from '../lib/datas.js'
-import { db } from '../lib/db.js'
+import { db, salvarConfig } from '../lib/db.js'
 import { avisoDeOrcamento, textoAviso } from '../lib/orcamento.js'
 import { decodificarArquivo, lerOFX, nomeDoBanco } from '../lib/ofx.js'
-import { prepararImportacao, executarImportacao, problemaDoItem, faturaParaPagamento, conferirSaldo, normalizar } from '../lib/importacao.js'
+import {
+  prepararImportacao, executarImportacao, problemaDoItem, resolverFatura, conferirSaldo, normalizar,
+  podeDefinirSaldoInicial, identidade, NOVA_CONTA_INVESTIMENTOS,
+} from '../lib/importacao.js'
 import { faturaAtual, faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprenderComImportacao } from '../lib/categorizar.js'
+import { extrairLinhasPdf } from '../lib/pdfTexto.js'
+import { lerExtratoSantander, juntarExtratos } from '../lib/santander.js'
 
 const ACOES_CONTA = [
   { valor: 'lancar', rotulo: 'Lançar' },
@@ -22,6 +27,7 @@ const ACOES_CARTAO = [
   { valor: 'lancar', rotulo: 'Lançar' },
   { valor: 'ignorar', rotulo: 'Ignorar' },
 ]
+const POR_PAGINA = 60
 
 // Fatura mais provável de um extrato de cartão: a mais comum entre as compras à vista
 function faturaProvavel(extrato, cartao) {
@@ -36,88 +42,167 @@ function faturaProvavel(extrato, cartao) {
   return melhor ? melhor[0] : faturaAtual(cartao)
 }
 
+const ehPdf = (f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf'
+
 export default function ImportarExtrato({ aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira } = dados
+  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, config, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira } = dados
   const arquivo = useRef(null)
   const [extrato, setExtrato] = useState(null)
   const [nomeArquivo, setNomeArquivo] = useState('')
-  const [destino, setDestino] = useState(null) // 'conta:1' | 'cartao:2'
+  const [lendo, setLendo] = useState(null) // { atual, total }
+  const [destino, setDestino] = useState(null) // 'conta:id' | 'cartao:id'
   const [faturaCartao, setFaturaCartao] = useState(null)
   const [ajustes, setAjustes] = useState({}) // posicao → mudanças feitas na prévia
+  const [regrasImp, setRegrasImp] = useState({}) // regras desta importação
+  const [usarSaldoInicial, setUsarSaldoInicial] = useState(true)
+  const [filtro, setFiltro] = useState('atencao')
+  const [limite, setLimite] = useState(POR_PAGINA)
   const [erro, setErro] = useState('')
   const [ocupado, setOcupado] = useState(false)
 
   const [tipoDestino, idTexto] = (destino || ':').split(':')
   const dest = destino ? { tipo: tipoDestino, id: idTexto } : null
 
-  async function lerArquivo(e) {
-    const f = e.target.files?.[0]
+  function regrasPadrao(ex, destinoTexto) {
+    const destId = destinoTexto?.split(':')[1]
+    const contaInvest = contas.find((c) => /invest/i.test(c.nome))
+    const inter = contas.find((c) => normalizar(c.nome).includes('INTER') && c.id !== destId)
+    return {
+      contaInvestimentos: contaInvest ? contaInvest.id : NOVA_CONTA_INVESTIMENTOS,
+      contaPixProprio: inter ? inter.id : null,
+      titular: ex.titular || config.titular || null,
+      cartaoPorPagamento: {},
+      contaPorPix: {},
+      historico: ex.origem === 'pdf-santander',
+    }
+  }
+
+  async function lerArquivos(e) {
+    const lista = [...(e.target.files || [])]
     e.target.value = ''
-    if (!f) return
+    if (!lista.length) return
     setErro('')
     try {
-      if (f.size > 10 * 1024 * 1024) throw new Error('Arquivo grande demais (máximo 10 MB).')
-      const ex = lerOFX(decodificarArquivo(await f.arrayBuffer()))
+      if (lista.some((f) => f.size > 15 * 1024 * 1024)) throw new Error('Arquivo grande demais (máximo 15 MB cada).')
+      let ex
+      if (lista.every(ehPdf)) {
+        const lidos = []
+        for (let i = 0; i < lista.length; i++) {
+          setLendo({ atual: i + 1, total: lista.length })
+          const linhas = await extrairLinhasPdf(new Uint8Array(await lista[i].arrayBuffer()))
+          try {
+            lidos.push(lerExtratoSantander(linhas))
+          } catch (err) {
+            throw new Error(`${lista[i].name}: ${err.message}`)
+          }
+        }
+        ex = juntarExtratos(lidos)
+      } else if (lista.length === 1 && !ehPdf(lista[0])) {
+        ex = lerOFX(decodificarArquivo(await lista[0].arrayBuffer()))
+      } else {
+        throw new Error('Escolha um arquivo OFX, ou um ou mais PDFs do mesmo banco (não misture os dois).')
+      }
       if (!ex.transacoes.length) throw new Error('O arquivo não tem nenhuma movimentação que dê para importar.')
       setExtrato(ex)
-      setNomeArquivo(f.name)
+      setNomeArquivo(lista.length === 1 ? lista[0].name : `${lista.length} arquivos`)
       setAjustes({})
+      setFiltro('atencao')
+      setLimite(POR_PAGINA)
       // Sugere o destino: cartão se for fatura; senão a conta do mesmo banco
       const banco = normalizar(nomeDoBanco(ex.banco) || '')
+      let d
       if (ex.tipo === 'cartao' && cartoes.length) {
         const c = cartoes.find((x) => banco && normalizar(x.nome).includes(banco)) || cartoes[0]
-        setDestino(`cartao:${c.id}`)
+        d = `cartao:${c.id}`
         setFaturaCartao(faturaProvavel(ex, c))
       } else {
         const c = contas.find((x) => banco && normalizar(x.nome).includes(banco)) || contas[0]
-        setDestino(c ? `conta:${c.id}` : null)
+        d = c ? `conta:${c.id}` : null
       }
+      setDestino(d)
+      setRegrasImp(regrasPadrao(ex, d))
     } catch (err) {
       setErro(err.message || 'Não foi possível ler o arquivo.')
+    } finally {
+      setLendo(null)
     }
   }
 
   function mudarDestino(v) {
     setDestino(v)
     setAjustes({})
+    setRegrasImp(regrasPadrao(extrato, v))
     if (v.startsWith('cartao:')) setFaturaCartao(faturaProvavel(extrato, cartaoPorId.get(v.slice(7))))
   }
 
   const sugerir = useMemo(() => (desc, tipo) => sugerirCategoria(desc, tipo, regras, categorias), [regras, categorias])
   const previa = useMemo(() => {
     if (!extrato || !dest) return null
-    return prepararImportacao({ extrato, destino: dest, faturaCartao, dados: { lancamentos, contas, cartoes, categorias }, sugerir })
+    return prepararImportacao({ extrato, destino: dest, faturaCartao, dados: { lancamentos, contas, cartoes, categorias }, sugerir, regras: regrasImp })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extrato, destino, faturaCartao, lancamentos, contas, cartoes, categorias, sugerir])
+  }, [extrato, destino, faturaCartao, lancamentos, contas, cartoes, categorias, sugerir, regrasImp])
 
   const itens = useMemo(() => (previa ? previa.itens.map((i) => ({ ...i, ...ajustes[i.posicao] })) : []), [previa, ajustes])
-  const mudarItem = (item, mudancas) => {
+
+  function mudarItem(item, mudancas, aplicarParecidas = false) {
     setErro('')
-    const novo = { ...item, ...mudancas }
-    // Pagamento de fatura: recalcula qual fatura está sendo paga
-    if (novo.acao === 'fatura') {
-      const cartao = cartaoPorId.get(novo.cartaoPagoId) || cartoes[0]
-      novo.cartaoPagoId = cartao?.id ?? null
-      novo.faturaPaga = cartao ? faturaParaPagamento(cartao, novo.data, novo.valor, lancamentos) : null
-    }
-    setAjustes((a) => ({ ...a, [item.posicao]: { ...a[item.posicao], ...mudancas, cartaoPagoId: novo.cartaoPagoId, faturaPaga: novo.faturaPaga } }))
+    const alvos = aplicarParecidas ? itens.filter((i) => i.situacao !== 'importado' && identidade(i.descricao) === identidade(item.descricao) && i.entrada === item.entrada) : [item]
+    setAjustes((a) => {
+      const novo = { ...a }
+      for (const alvo of alvos) {
+        let m = { ...mudancas }
+        // Pagamento de fatura: recalcula qual fatura está sendo paga
+        if ((m.acao ?? alvo.acao) === 'fatura') {
+          const cartao = cartaoPorId.get(m.cartaoPagoId ?? alvo.cartaoPagoId) || cartoes[0]
+          m = cartao ? { ...m, ...resolverFatura({ ...alvo, ...m }, cartao, lancamentos, regrasImp.historico), acao: 'fatura' } : { ...m, cartaoPagoId: null, faturaPaga: null }
+        }
+        novo[alvo.posicao] = { ...novo[alvo.posicao], ...m }
+      }
+      return novo
+    })
   }
 
-  const visiveis = itens.filter((i) => i.situacao !== 'importado')
+  const parecidas = (item) => itens.filter((i) => i.posicao !== item.posicao && i.situacao !== 'importado' && i.entrada === item.entrada && identidade(i.descricao) === identidade(item.descricao)).length
+
+  const naoImportados = itens.filter((i) => i.situacao !== 'importado')
+  const precisaAtencao = (i) => i.situacao === 'duplicado' || i.grupo || (i.acao === 'ignorar' && i.situacao === 'novo') || !!problemaDoItem(i, dest) || ajustes[i.posicao]
+  const listados = filtro === 'atencao' ? naoImportados.filter(precisaAtencao) : naoImportados
   const aGravar = itens.filter((i) => i.acao !== 'ignorar' && i.situacao !== 'importado')
-  const conferencia = previa && dest ? conferirSaldo({ extrato, destino: dest, itens, lancamentos, conta: contaPorId.get(dest.id) }) : null
+
+  const saldoInicialPossivel = extrato && dest && extrato.saldoInicial && podeDefinirSaldoInicial({ extrato, destino: dest, lancamentos })
+  const saldoInicialNovo = saldoInicialPossivel && usarSaldoInicial ? extrato.saldoInicial.valor : null
+  const conferencia = previa && dest ? conferirSaldo({ extrato, destino: dest, itens, lancamentos, conta: contaPorId.get(dest.id), saldoInicial: saldoInicialNovo }) : null
+  const bloqueado = extrato?.conferencia && !extrato.conferencia.ok
+
+  // grupos especiais (para o painel de regras)
+  const grupos = useMemo(() => {
+    const g = { investimento: 0, pixProprio: 0, pagamentoCartao: new Map(), pixConta: new Map() }
+    for (const i of previa?.itens || []) {
+      if (i.situacao !== 'novo') continue
+      if (i.grupo === 'investimento') g.investimento++
+      if (i.grupo === 'pixProprio') g.pixProprio++
+      if (i.grupo === 'pixConta') g.pixConta.set(i.contaBancaria, { n: (g.pixConta.get(i.contaBancaria)?.n || 0) + 1, contaId: i.contaOutraId })
+      if (i.grupo === 'pagamentoCartao') g.pagamentoCartao.set(i.identidade, { n: (g.pagamentoCartao.get(i.identidade)?.n || 0) + 1, cartaoId: i.cartaoPagoId })
+    }
+    return g
+  }, [previa])
 
   async function importar() {
-    if (ocupado || !dest) return
+    if (ocupado || !dest || bloqueado) return
     if (!aGravar.length) return setErro('Nada selecionado para importar.')
     setOcupado(true)
     try {
-      const n = await executarImportacao({ itens, destino: dest, faturaCartao: dest.tipo === 'cartao' ? faturaCartao : null })
-      await aprenderComImportacao(aGravar, previa.itens)
+      const n = await executarImportacao({
+        itens, destino: dest, faturaCartao: dest.tipo === 'cartao' ? faturaCartao : null,
+        saldoInicial: saldoInicialNovo,
+        nomeContaInvestimentos: `Investimentos ${contaPorId.get(dest.id)?.nome ?? ''}`.trim(),
+      })
+      await aprenderComImportacao(aGravar)
+      if (extrato.titular && (!config.titular || extrato.titular.length > config.titular.length)) await salvarConfig('titular', extrato.titular)
       let mensagem = zoeira ? `${n} lançamento(s) importado(s). Menos digitação, mais tempo para economizar!` : `${n} lançamento(s) importado(s).`
       if (orcamentos.length) {
-        const aviso = avisoDeOrcamento({ meses: aGravar.map((i) => mesDe(i.dataLancamento)), orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
+        const aviso = avisoDeOrcamento({ meses: [...new Set(aGravar.map((i) => mesDe(i.dataLancamento)))].slice(-3), orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
         if (aviso) mensagem += ' ' + textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '', zoeira)
       }
       avisar(mensagem)
@@ -132,6 +217,7 @@ export default function ImportarExtrato({ aoFechar }) {
   const opcoesFatura = dest?.tipo === 'cartao' && cartaoPorId.get(dest.id)
     ? Array.from({ length: 15 }, (_, i) => somarMeses(faturaAtual(cartaoPorId.get(dest.id)), i - 12)).reverse()
     : []
+  const outrasContas = contas.filter((c) => c.id !== dest?.id)
 
   return (
     <Folha
@@ -141,24 +227,30 @@ export default function ImportarExtrato({ aoFechar }) {
         <>
           {erro && <p className="erro" role="alert">{erro}</p>}
           {extrato && (
-            <button className="botao primario cheio" disabled={ocupado || !aGravar.length} onClick={importar}>
-              {aGravar.length ? `Importar ${aGravar.length} lançamento(s)` : 'Nada para importar'}
+            <button className="botao primario cheio" disabled={ocupado || !aGravar.length || bloqueado} onClick={importar}>
+              {ocupado ? 'Importando…' : bloqueado ? 'Conferência falhou: nada será importado' : aGravar.length ? `Importar ${aGravar.length} lançamento(s)` : 'Nada para importar'}
             </button>
           )}
         </>
       }
     >
-      <input ref={arquivo} type="file" accept=".ofx,.OFX,application/x-ofx,application/ofx,text/plain" hidden onChange={lerArquivo} />
+      <input ref={arquivo} type="file" multiple accept=".ofx,.OFX,.pdf,.PDF,application/pdf,application/x-ofx,application/ofx,text/plain" hidden onChange={lerArquivos} />
 
-      {!extrato && (
+      {lendo && <p className="conferencia">⏳ Lendo PDF {lendo.atual} de {lendo.total}…</p>}
+
+      {!extrato && !lendo && (
         <div className="bloco">
-          <p>Exporte o extrato no app ou site do banco no formato <strong>OFX</strong> e escolha o arquivo aqui.</p>
-          <p className="dica">O arquivo é lido só neste aparelho. Antes de gravar, você confere tudo numa prévia.</p>
-          <button className="botao primario cheio" onClick={() => arquivo.current?.click()}>Escolher arquivo OFX</button>
+          <p>Escolha o extrato exportado do banco:</p>
+          <ul className="dica lista-simples">
+            <li><strong>PDF do Santander</strong> (extrato mensal ou de período): pode escolher vários de uma vez, por exemplo todos os meses desde 2024.</li>
+            <li><strong>OFX</strong> de qualquer banco.</li>
+          </ul>
+          <p className="dica">O arquivo é lido só neste aparelho. Antes de gravar, o app confere tudo com os saldos do banco e mostra uma prévia.</p>
+          <button className="botao primario cheio" onClick={() => arquivo.current?.click()}>Escolher arquivo(s)</button>
         </div>
       )}
 
-      {extrato && (
+      {extrato && !lendo && (
         <>
           <div className="painel">
             <div className="painel-titulo">
@@ -167,19 +259,36 @@ export default function ImportarExtrato({ aoFechar }) {
             </div>
             <span className="discreto">
               {extrato.transacoes.length} movimentações
-              {extrato.inicio && extrato.fim ? ` · ${dataCurta(extrato.inicio)} a ${dataCurta(extrato.fim)}` : ''}
+              {extrato.inicio && extrato.fim ? ` · ${dataCurta(extrato.inicio)}/${extrato.inicio.slice(2, 4)} a ${dataCurta(extrato.fim)}/${extrato.fim.slice(2, 4)}` : ''}
               {nomeDoBanco(extrato.banco) ? ` · ${nomeDoBanco(extrato.banco)}` : ''}
             </span>
-            {extrato.problemas.length > 0 && (
+            {extrato.problemas?.length > 0 && (
               <span className="dica">⚠️ {extrato.problemas.length} linha(s) não puderam ser lidas e ficaram de fora: {extrato.problemas.map((p) => `${p.descricao} (${p.motivo})`).join('; ')}</span>
             )}
           </div>
+
+          {extrato.conferencia && (
+            <div className={`conferencia ${extrato.conferencia.ok ? 'ok' : 'diferente'}`}>
+              {extrato.conferencia.ok ? (
+                <>
+                  <strong>✅ {extrato.arquivos.length} extrato(s) conferido(s) com o banco</strong>
+                  <span>{extrato.arquivos.reduce((s, a) => s + a.saldosConferidos, 0)} saldos impressos pelo banco batem com a leitura, e os meses emendam sem faltar nada.</span>
+                </>
+              ) : (
+                <>
+                  <strong>⚠️ A leitura não bateu com o banco. Nada será importado.</strong>
+                  {extrato.conferencia.erros.slice(0, 8).map((e, i) => <span key={i} className="dica">• {e}</span>)}
+                  {extrato.conferencia.erros.length > 8 && <span className="dica">… e mais {extrato.conferencia.erros.length - 8}.</span>}
+                </>
+              )}
+            </div>
+          )}
 
           <div className="bloco">
             <span className="rotulo">Importar para</span>
             <Chips rolavel valor={destino} aoMudar={mudarDestino} opcoes={[
               ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, emoji: c.emoji })),
-              ...cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' })),
+              ...(extrato.origem === 'pdf-santander' ? [] : cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' }))),
             ]} />
             {extrato.tipo === 'cartao' && dest?.tipo === 'conta' && <span className="dica">⚠️ Este arquivo parece ser de cartão de crédito.</span>}
             {extrato.tipo === 'conta' && dest?.tipo === 'cartao' && <span className="dica">⚠️ Este arquivo parece ser de conta, não de cartão.</span>}
@@ -195,6 +304,59 @@ export default function ImportarExtrato({ aoFechar }) {
             </label>
           )}
 
+          {saldoInicialPossivel && (
+            <label className="alternar painel">
+              <input type="checkbox" checked={usarSaldoInicial} onChange={(e) => setUsarSaldoInicial(e.target.checked)} />
+              <span>Usar {formatar(extrato.saldoInicial.valor)} (saldo em {extrato.saldoInicial.data.split('-').reverse().join('/')}) como saldo inicial de {contaPorId.get(dest.id)?.nome}. Assim o saldo do app fica igual ao do banco.</span>
+            </label>
+          )}
+
+          {dest?.tipo === 'conta' && (grupos.investimento > 0 || grupos.pixProprio > 0 || grupos.pagamentoCartao.size > 0 || grupos.pixConta.size > 0) && (
+            <div className="painel regras-imp">
+              <h3>Linhas que não são gasto nem receita</h3>
+              {grupos.investimento > 0 && (
+                <label className="campo">
+                  <span className="rotulo">{grupos.investimento} aplicação(ões)/resgate(s) de investimento: transferir para</span>
+                  <select className="seletor" value={regrasImp.contaInvestimentos ?? ''} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaInvestimentos: e.target.value || null })); setAjustes({}) }}>
+                    {!contas.some((c) => /invest/i.test(c.nome)) && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta "Investimentos {contaPorId.get(dest.id)?.nome}"</option>}
+                    {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                    <option value="">Não: lançar como gasto/receita</option>
+                  </select>
+                </label>
+              )}
+              {grupos.pixProprio > 0 && (
+                <label className="campo">
+                  <span className="rotulo">{grupos.pixProprio} PIX/transferência(s) com o seu nome: transferir para</span>
+                  <select className="seletor" value={regrasImp.contaPixProprio ?? ''} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPixProprio: e.target.value || null })); setAjustes({}) }}>
+                    {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                    <option value="">Não: lançar como gasto/receita</option>
+                  </select>
+                </label>
+              )}
+              {[...grupos.pixConta.entries()].map(([chave, g]) => (
+                <label key={chave} className="campo">
+                  <span className="rotulo">{g.n} PIX com a conta {chave}{nomeDoBanco(chave.slice(0, 3)) ? ` (${nomeDoBanco(chave.slice(0, 3))})` : ''}: é sua? Transferir para</span>
+                  <select className="seletor" value={regrasImp.contaPorPix?.[chave] !== undefined ? (regrasImp.contaPorPix[chave] ?? '') : (g.contaId ?? '')} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPorPix: { ...r.contaPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
+                    {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                    <option value="">Não é minha: lançar como gasto/receita</option>
+                  </select>
+                </label>
+              ))}
+              {[...grupos.pagamentoCartao.entries()].map(([ident, g]) => (
+                <label key={ident} className="campo">
+                  <span className="rotulo">{g.n} pagamento(s) "{ident}": fatura do cartão</span>
+                  <select className="seletor" value={regrasImp.cartaoPorPagamento?.[ident] ?? g.cartaoId ?? ''} onChange={(e) => { setRegrasImp((r) => ({ ...r, cartaoPorPagamento: { ...r.cartaoPorPagamento, [ident]: e.target.value } })); setAjustes({}) }}>
+                    {!cartoes.length && <option value="">Cadastre o cartão em Ajustes</option>}
+                    {cartoes.map((c) => <option key={c.id} value={c.id}>💳 {c.nome}</option>)}
+                  </select>
+                </label>
+              ))}
+              {grupos.pagamentoCartao.size > 0 && regrasImp.historico && (
+                <p className="dica">Pagamentos de fatura saem do saldo da conta e não contam como gasto. As compras de cada fatura entram quando você importar as faturas do cartão.</p>
+              )}
+            </div>
+          )}
+
           {previa && (
             <div className="resumo-importacao">
               <span>🆕 {previa.resumo.novos} novas</span>
@@ -204,17 +366,28 @@ export default function ImportarExtrato({ aoFechar }) {
             </div>
           )}
 
-          {conferencia && (
+          {conferencia && !bloqueado && (
             <div className={`conferencia ${conferencia.diferenca === 0 ? 'ok' : 'diferente'}`}>
               <strong>{conferencia.diferenca === 0 ? '✅ O saldo vai bater com o banco' : '⚠️ O saldo não vai bater com o banco'}</strong>
-              <span>Banco em {dataCurta(conferencia.data)}: {formatar(conferencia.noExtrato)} · App: {formatar(conferencia.noApp)}</span>
-              {conferencia.diferenca !== 0 && <span className="dica">Diferença de {formatar(Math.abs(conferencia.diferenca))}. Confira as linhas ignoradas, lançamentos manuais ou o saldo inicial da conta (em Ajustes).</span>}
+              <span>Banco em {conferencia.data.split('-').reverse().join('/')}: {formatar(conferencia.noExtrato)} · App: {formatar(conferencia.noApp)}</span>
+              {conferencia.diferenca !== 0 && <span className="dica">Diferença de {formatar(Math.abs(conferencia.diferenca))}. Confira as linhas ignoradas, lançamentos manuais ou o saldo inicial da conta.</span>}
             </div>
           )}
 
+          <div className="abas" role="tablist">
+            <button role="tab" aria-selected={filtro === 'atencao'} className={`aba ${filtro === 'atencao' ? 'ativa' : ''}`} onClick={() => { setFiltro('atencao'); setLimite(POR_PAGINA) }}>
+              Para conferir ({naoImportados.filter(precisaAtencao).length})
+            </button>
+            <button role="tab" aria-selected={filtro === 'todas'} className={`aba ${filtro === 'todas' ? 'ativa' : ''}`} onClick={() => { setFiltro('todas'); setLimite(POR_PAGINA) }}>
+              Todas ({naoImportados.length})
+            </button>
+          </div>
+          {filtro === 'atencao' && listados.length === 0 && <p className="vazio">Nada precisa de atenção. Veja "Todas" para revisar as categorias.</p>}
+
           <div className="lista-importacao">
-            {visiveis.map((i) => {
+            {listados.slice(0, limite).map((i) => {
               const problema = problemaDoItem(i, dest)
+              const nParecidas = ajustes[i.posicao] ? parecidas(i) : 0
               return (
                 <div key={i.posicao} className={`item-importacao ${i.acao === 'ignorar' ? 'ignorado' : ''}`}>
                   <div className="item-imp-topo">
@@ -222,7 +395,7 @@ export default function ImportarExtrato({ aoFechar }) {
                     <strong className={i.entrada ? 'entrada' : 'saida'}>{i.entrada ? '+' : '−'} {formatar(i.valor)}</strong>
                   </div>
                   <span className="discreto">
-                    {dataCurta(i.data)}
+                    {i.data.split('-').reverse().join('/')}
                     {i.parcela ? ` · parcela ${i.parcela.parcela}/${i.parcela.total}` : ''}
                     {i.motivo ? ` · ${i.motivo}` : ''}
                   </span>
@@ -240,7 +413,8 @@ export default function ImportarExtrato({ aoFechar }) {
                     {i.acao === 'transferencia' && (
                       <select className="seletor" aria-label={i.entrada ? 'Veio da conta' : 'Foi para a conta'} value={i.contaOutraId ?? ''} onChange={(e) => mudarItem(i, { contaOutraId: e.target.value || null })}>
                         <option value="">{i.entrada ? 'Veio de qual conta?' : 'Foi para qual conta?'}</option>
-                        {contas.filter((c) => c.id !== dest?.id).map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                        {i.contaOutraId === NOVA_CONTA_INVESTIMENTOS && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta de investimentos</option>}
+                        {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
                       </select>
                     )}
                     {i.acao === 'fatura' && (
@@ -249,11 +423,19 @@ export default function ImportarExtrato({ aoFechar }) {
                       </select>
                     )}
                   </div>
-                  {i.acao === 'fatura' && i.faturaPaga && <span className="dica">Quita a fatura de {nomeMes(i.faturaPaga)}</span>}
+                  {i.acao === 'fatura' && i.faturaPaga && <span className="dica">Quita a fatura de {nomeMes(i.faturaPaga)}{i.faturaSemCompras ? ' (compras ainda não importadas)' : ''}</span>}
+                  {nParecidas > 0 && (
+                    <button className="link" onClick={() => mudarItem(i, Object.fromEntries(Object.entries(ajustes[i.posicao]).filter(([k]) => ['acao', 'categoriaId', 'categoriaEscolhida', 'contaOutraId', 'cartaoPagoId'].includes(k))), true)}>
+                      Aplicar o mesmo às outras {nParecidas} parecida(s)
+                    </button>
+                  )}
                   {problema && <span className="erro pequeno">{problema}</span>}
                 </div>
               )
             })}
+            {listados.length > limite && (
+              <button className="botao secundario cheio" onClick={() => setLimite((l) => l + POR_PAGINA * 2)}>Mostrar mais ({listados.length - limite} restantes)</button>
+            )}
             {previa && previa.resumo.importados > 0 && <p className="discreto centro">{previa.resumo.importados} linha(s) já importadas antes não aparecem aqui.</p>}
           </div>
         </>

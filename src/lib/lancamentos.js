@@ -144,6 +144,22 @@ function montarRegistros(form, base, refs, n, faturaFixa, comId) {
   return [comId({ ...base, valor: form.valor, contaId: form.contaId, cartaoId: null })]
 }
 
+// Para importação em lote: valida e monta os registros de um lançamento novo, sem gravar.
+// (refs = { contas, cartoes, categorias } carregados uma vez só; grava-se tudo junto depois)
+export function registrosParaImportar(form, refs) {
+  const erro = validarLancamento(form, refs) || validarExtras(form)
+  if (erro) throw new Error(erro)
+  const base = {
+    tipo: form.tipo,
+    descricao: (form.descricao || '').trim().slice(0, 80),
+    categoriaId: form.tipo === 'transferencia' ? null : form.categoriaId,
+    data: form.data,
+    criadoEm: Date.now(),
+  }
+  const comId = (r) => (form.idExterno ? { ...r, idExterno: form.idExterno } : r)
+  return montarRegistros(form, base, refs, form.parcelas ?? 1, form.faturaFixa ?? null, comId)
+}
+
 const mesmoLancamento = (l, original) => (original.grupoParcelaId ? l.grupoParcelaId === original.grupoParcelaId : l.id === original.id)
 
 export async function apagarLancamento(lanc) {
@@ -173,7 +189,9 @@ export function formDoLancamento(l) {
 }
 
 // Paga (total ou parcialmente) uma fatura. Não aceita pagar mais do que falta.
-export async function pagarFatura({ cartaoId, fatura, contaId, valor, data, idExterno = null }) {
+// permitirSemCompras: na importação de histórico, o pagamento entra mesmo que as compras daquela fatura
+// ainda não estejam no app (elas chegam quando a fatura do cartão for importada).
+export async function pagarFatura({ cartaoId, fatura, contaId, valor, data, idExterno = null, permitirSemCompras = false }) {
   return db.transaction('rw', db.lancamentos, db.cartoes, db.contas, async () => {
     const cartao = await db.cartoes.get(cartaoId ?? -1)
     if (!cartao) throw new Error('Cartão não encontrado.')
@@ -184,7 +202,7 @@ export async function pagarFatura({ cartaoId, fatura, contaId, valor, data, idEx
     if (idExterno && (await db.lancamentos.where('idExterno').equals(idExterno).count())) throw new Error('Este pagamento já foi importado antes.')
     const doCartao = await db.lancamentos.where('cartaoId').equals(cartaoId).toArray()
     const { restante } = resumoFatura(cartao, fatura, doCartao)
-    if (valor > restante) throw new Error(`O valor passa do que falta pagar (${formatar(restante)}).`)
+    if (!permitirSemCompras && valor > restante) throw new Error(`O valor passa do que falta pagar (${formatar(restante)}).`)
     return db.lancamentos.add({
       tipo: 'pagamentoFatura', cartaoId, fatura, contaId, valor, data,
       descricao: 'Pagamento de fatura', categoriaId: null, criadoEm: Date.now(),

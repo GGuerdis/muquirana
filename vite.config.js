@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest}'], // inclui o leitor de PDF (funciona offline)
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      },
       includeAssets: ['icone.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Muquirana',

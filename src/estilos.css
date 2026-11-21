@@ -351,3 +351,5 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 .cartao-topo .selo-sync { background: rgb(255 255 255 / 0.12); color: rgb(255 255 255 / 0.9); }
 .selo-erro { color: var(--perigo); }
 .cartao-topo .selo-erro { color: #fecaca; }
+.lista-simples { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.regras-imp h3 { margin-bottom: 4px; }

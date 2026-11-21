@@ -11,8 +11,11 @@ export async function dadosLocais() {
 
 export const estaLogado = () => !!db.cloud.currentUser.value?.isLoggedIn
 
+// Cancelar o login (fechar a janela) não é erro
 export function entrar() {
-  return db.cloud.login()
+  return db.cloud.login().catch((e) => {
+    if (e?.name !== 'AbortError') console.error('Falha no login', e)
+  })
 }
 
 // Apaga tudo deste aparelho e, depois de recarregar, abre o login (para usar só os dados da conta)

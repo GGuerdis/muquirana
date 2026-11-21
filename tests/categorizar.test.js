@@ -17,7 +17,7 @@ describe('identidade da descrição', () => {
   it.each([
     ['PAG*PADARIADOZE 12/11', 'PADARIADOZE'],
     ['UBER *TRIP', 'UBER TRIP'],
-    ['PIX ENVIADO GUSTAVO & CIA', 'GUSTAVO CIA'],
+    ['PIX ENVIADO FULANO & CIA', 'FULANO CIA'],
     ['COMPRA CARTÃO DÉBITO PADARIA SÃO JOÃO', 'PADARIA JOAO'],
     ['IFOOD *RESTAURANTE ABC LTDA', 'IFOOD RESTAURANTE ABC'],
     ['Almoço', 'ALMOCO'],
@@ -44,6 +44,17 @@ describe('regras prontas', () => {
     ['DROGASIL 123', 'Saúde'],
     ['ENEL DISTRIBUICAO', 'Contas da casa'],
     ['IOF COMPRA INTERNACIONAL', 'Impostos e taxas'],
+    ['TOP SP TARIF.', 'Transporte'],
+    ['AUTOPASS S.A.', 'Transporte'],
+    ['Emv Cmt.000001', 'Transporte'],
+    ['HIROTA FOOD LOJA', 'Mercado'],
+    ['SUP BAIRRO', 'Mercado'],
+    ['DL .GOOGLE Clash of', 'Lazer'],
+    ['PAGAMENTO DE BOLETO OUTROS BANCOS CONSTRUTORA EXEMPLO EMPR IMOB', 'Moradia'],
+    ['PIX ENVIADO ESCOLA EXEMPLO EDUCACIONAL LTDA', 'Educação'],
+    ['PIX ENVIADO Loja Exemplo Supplements', 'Saúde'],
+    ['CASA DO CHURRASCO', 'Alimentação'],
+    ['LOJA DO ACAI', 'Alimentação'],
   ])('%s → %s', async (desc, nome) => {
     expect(await sugerir(desc)).toBe(b.cat('despesa', nome))
   })
@@ -52,6 +63,8 @@ describe('regras prontas', () => {
     expect(await sugerir('SALÁRIO EMPRESA X', 'receita')).toBe(b.cat('receita', 'Salário'))
     expect(await sugerir('ESTORNO COMPRA', 'receita')).toBe(b.cat('receita', 'Reembolso'))
     expect(await sugerir('RENDIMENTO POUPANCA', 'receita')).toBe(b.cat('receita', 'Rendimentos'))
+    expect(await sugerir('REMUNERACAO APLICACAO AUTOMATICA', 'receita')).toBe(b.cat('receita', 'Rendimentos'))
+    expect(await sugerir('RESGATE CDB/RDB', 'receita')).toBeNull() // resgate não é rendimento (é o seu dinheiro voltando)
   })
 
   it('não sugere nada quando não reconhece, nem para o tipo errado', async () => {
@@ -99,13 +112,13 @@ describe('aprendendo com você', () => {
   })
 
   it('reensinar troca a categoria, sem criar regra duplicada; despesa e receita não se misturam', async () => {
-    await aprender('GUSTAVO', 'despesa', b.cat('despesa', 'Presentes'))
-    await aprender('GUSTAVO', 'despesa', b.cat('despesa', 'Lazer'))
-    await aprender('GUSTAVO', 'receita', b.cat('receita', 'Reembolso'))
+    await aprender('FULANO', 'despesa', b.cat('despesa', 'Presentes'))
+    await aprender('FULANO', 'despesa', b.cat('despesa', 'Lazer'))
+    await aprender('FULANO', 'receita', b.cat('receita', 'Reembolso'))
     const rs = await regras()
     expect(rs.length).toBe(2)
-    expect(await sugerir('PIX ENVIADO GUSTAVO')).toBe(b.cat('despesa', 'Lazer'))
-    expect(await sugerir('PIX RECEBIDO GUSTAVO', 'receita')).toBe(b.cat('receita', 'Reembolso'))
+    expect(await sugerir('PIX ENVIADO FULANO')).toBe(b.cat('despesa', 'Lazer'))
+    expect(await sugerir('PIX RECEBIDO FULANO', 'receita')).toBe(b.cat('receita', 'Reembolso'))
     expect(rs.find((r) => r.tipo === 'despesa').usos).toBe(2)
   })
 

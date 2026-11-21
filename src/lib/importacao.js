@@ -1,11 +1,14 @@
-// Importação de extrato: monta a prévia (com detecção de duplicados) e grava tudo de uma vez.
+// Importação de extrato (OFX ou PDF): monta a prévia (com detecção de duplicados) e grava tudo de uma vez.
 import { db } from './db.js'
-import { salvarLancamento, pagarFatura } from './lancamentos.js'
+import { registrosParaImportar, pagarFatura } from './lancamentos.js'
 import { faturaDaCompra, faturasPendentes } from './fatura.js'
-import { somarMesesData } from './datas.js'
+import { somarMesesData, mesDe } from './datas.js'
 import { saldoConta } from './calculos.js'
+import { nomeDoBanco } from './ofx.js'
 
 export const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
+
+export const NOVA_CONTA_INVESTIMENTOS = '__nova_investimentos__'
 
 const diasEntre = (a, b) => {
   const [y1, m1, d1] = a.split('-').map(Number)
@@ -22,7 +25,22 @@ export function detectarParcela(descricao) {
   return parcela >= 1 && total >= 2 && parcela <= total && total <= 48 ? { parcela, total } : null
 }
 
-const PARECE_PAGAMENTO_FATURA = /(PAGTO|PGTO|PAGAMENTO|PAG)\.?\s*(DE\s*)?(FATURA|CART)|FATURA\s*(DO\s*|DE\s*)?CART|CARTAO\s*(DE\s*)?CREDITO/
+// "Identidade" de uma linha, sem números (para agrupar linhas parecidas: "PAGAMENTO CARTAO CREDITO BCE")
+export const identidade = (descricao) => normalizar(descricao).replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+const PARECE_PAGAMENTO_FATURA = /(PAGTO|PGTO|PAGAMENTO|PAG)\.?\s*(DE\s*)?(FATURA|CART)|FATURA\s*(DO\s*|DE\s*)?CART|CARTAO\s*(DE\s*)?CREDITO|FAT\.?\s*CARTAO|DEBITO AUT\.?\s*FAT/
+const PARECE_INVESTIMENTO = /\b(APLICACAO|APLIC|RESGATE|RESG)\.?\s+(EM\s+)?(CDB|RDB|LCI|LCA|LC|TESOURO|FUNDO|FUNDOS|POUPANCA|COE|DEBENTURE)/
+
+// Nome do titular para reconhecer PIX/TED para ele mesmo: as 3 primeiras palavras do nome, em ordem,
+// aceitando "da/de/do" entre elas (o banco corta o nome no fim: "Fulano De Tal Souza da")
+const LIGACOES_NOME = ['DA', 'DE', 'DO', 'DAS', 'DOS', 'E']
+export function chaveDoTitular(titular) {
+  const palavras = normalizar(titular).replace(/[^A-Z ]/g, ' ').split(/\s+/).filter((p) => p.length >= 2 && !LIGACOES_NOME.includes(p))
+  if (palavras.length < 2) return null
+  const entre = `(?:\\s+(?:${LIGACOES_NOME.join('|')}))*\\s+`
+  return new RegExp(`(?:^|\\s)${palavras.slice(0, 3).join(entre)}(?:\\s|$)`)
+}
+const soLetrasENumeros = (t) => t.replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
 
 // Qual fatura um pagamento de `valor` em `data` está quitando? A pendente com vencimento mais perto da data
 // e que ainda comporta o valor. Retorna null se nenhuma servir.
@@ -49,14 +67,20 @@ function candidatosConta(contaId, lancamentos) {
 
 /**
  * Monta a prévia da importação. Nada é gravado aqui.
- * @param extrato resultado de lerOFX
+ * @param extrato resultado de lerOFX ou juntarExtratos (PDF)
  * @param destino { tipo: 'conta' | 'cartao', id }
  * @param faturaCartao mês da fatura ('AAAA-MM') quando o destino é cartão
  * @param dados { lancamentos, contas, cartoes, categorias }
  * @param sugerir (descricao, tipo) => categoriaId | null
+ * @param regras regras desta importação (para linhas que não são gasto/receita comuns):
+ *   { contaInvestimentos: id | NOVA_CONTA_INVESTIMENTOS | null,
+ *     contaPixProprio: id | null, titular: texto | null,
+ *     cartaoPorPagamento: { [identidade]: cartaoId },
+ *     contaPorPix: { 'banco/agência/conta': contaId | null } (PIX para uma conta pelo número),
+ *     historico: true → pagamento de fatura entra mesmo sem as compras no app }
  */
-export function prepararImportacao({ extrato, destino, faturaCartao = null, dados, sugerir = () => null }) {
-  const { lancamentos, cartoes, categorias } = dados
+export function prepararImportacao({ extrato, destino, faturaCartao = null, dados, sugerir = () => null, regras = {} }) {
+  const { lancamentos, cartoes, categorias, contas = [] } = dados
   const outros = (tipo) => categorias.find((c) => c.tipo === tipo && normalizar(c.nome) === 'OUTROS')?.id ?? categorias.find((c) => c.tipo === tipo)?.id ?? null
   const existentesIds = new Set(lancamentos.filter((l) => l.idExterno).map((l) => l.idExterno))
   const usados = new Set()
@@ -64,13 +88,16 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
   const cartaoDestino = destino.tipo === 'cartao' ? cartoes.find((c) => c.id === destino.id) : null
   const { saidas, entradas } = destino.tipo === 'conta' ? candidatosConta(destino.id, lancamentos) : { saidas: [], entradas: [] }
   const comprasCartao = cartaoDestino ? lancamentos.filter((l) => l.tipo === 'despesa' && l.cartaoId === cartaoDestino.id) : []
+  const nomeTitular = chaveDoTitular(regras.titular)
 
   const itens = extrato.transacoes.map((t) => {
     const entrada = t.valor > 0
     const valor = Math.abs(t.valor)
-    // Identificador estável: o FITID do banco; sem ele, data+valor+descrição (+ordem, para linhas idênticas)
+    // Identificador estável: o FITID do banco (OFX); a chave do leitor de PDF (data+valor+ordem);
+    // ou, sem nenhum dos dois, data+valor+descrição (+ordem, para linhas idênticas)
     let chave
     if (t.fitid) chave = `f:${t.fitid}`
+    else if (t.chave) chave = t.chave
     else {
       const base = `s:${t.data}:${t.valor}:${normalizar(t.descricao)}`
       const n = (ordinal.get(base) || 0) + 1
@@ -89,12 +116,14 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       idExterno,
       situacao: 'novo',
       motivo: '',
+      grupo: null,
       acao: 'lancar',
       tipo,
       categoriaId: sugerir(t.descricao, tipo) ?? outros(tipo),
       contaOutraId: null,
       cartaoPagoId: null,
       faturaPaga: null,
+      faturaSemCompras: false,
       parcela: null,
       duplicadoDe: null,
     }
@@ -130,12 +159,48 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       return { ...item, situacao: 'duplicado', acao: 'ignorar', duplicadoDe: dup.id, motivo: 'Parece que já foi lançado' }
     }
 
-    if (!entrada && cartoes.length && PARECE_PAGAMENTO_FATURA.test(normalizar(t.descricao))) {
-      const desc = normalizar(t.descricao)
-      const cartao = cartoes.find((c) => desc.includes(normalizar(c.nome))) || cartoes.find((c) => c.contaPagamentoId === destino.id) || cartoes[0]
-      const fatura = faturaParaPagamento(cartao, t.data, valor, lancamentos)
-      if (fatura) return { ...item, acao: 'fatura', cartaoPagoId: cartao.id, faturaPaga: fatura, motivo: 'Parece pagamento de fatura' }
-      return { ...item, acao: 'ignorar', cartaoPagoId: cartao.id, motivo: 'Parece pagamento de fatura, mas não há fatura em aberto com esse valor no app' }
+    const desc = normalizar(t.descricao)
+
+    // Aplicação/resgate de investimento: transferência com a conta de investimentos
+    if (PARECE_INVESTIMENTO.test(desc)) {
+      item.grupo = 'investimento'
+      if (regras.contaInvestimentos) return { ...item, acao: 'transferencia', contaOutraId: regras.contaInvestimentos, motivo: entrada ? 'Resgate de investimento' : 'Aplicação em investimento' }
+      return item
+    }
+
+    // PIX/TED para você mesmo (com o seu nome): transferência entre suas contas
+    if (nomeTitular && nomeTitular.test(soLetrasENumeros(desc)) && /\b(PIX|TED|DOC|TRANSF)/.test(desc)) {
+      item.grupo = 'pixProprio'
+      if (regras.contaPixProprio && regras.contaPixProprio !== destino.id) {
+        return { ...item, acao: 'transferencia', contaOutraId: regras.contaPixProprio, motivo: 'Transferência para você mesmo' }
+      }
+      return item
+    }
+
+    // PIX para/de uma conta identificada pelo número (banco/agência/conta), ex.: "PIX ENVIADO 077/0001/0000000123456789"
+    const contaPix = desc.match(/\b(\d{3})\/(\d{4})\/(\d{5,})\b/)
+    if (contaPix && /\bPIX\b/.test(desc)) {
+      const chaveConta = `${contaPix[1]}/${contaPix[2]}/${contaPix[3]}`
+      item.grupo = 'pixConta'
+      item.contaBancaria = chaveConta
+      const escolhida = regras.contaPorPix?.[chaveConta]
+      const banco = nomeDoBanco(contaPix[1])
+      const sugerida = escolhida !== undefined ? escolhida : (banco ? contas.find((c) => c.id !== destino.id && normalizar(c.nome).includes(normalizar(banco)))?.id ?? null : null)
+      if (sugerida && sugerida !== destino.id) return { ...item, acao: 'transferencia', contaOutraId: sugerida, motivo: `Transferência ${entrada ? 'da' : 'para a'} conta ${chaveConta}` }
+      return item
+    }
+
+    // Pagamento de fatura de cartão
+    if (!entrada && PARECE_PAGAMENTO_FATURA.test(desc)) {
+      const ident = identidade(t.descricao)
+      item.grupo = 'pagamentoCartao'
+      item.identidade = ident
+      const cartao = cartoes.find((c) => c.id === regras.cartaoPorPagamento?.[ident])
+        || cartoes.find((c) => desc.includes(normalizar(c.nome)))
+        || cartoes.find((c) => c.contaPagamentoId === destino.id)
+        || cartoes[0]
+      if (!cartao) return { ...item, acao: 'ignorar', motivo: 'Pagamento de fatura: cadastre o cartão para ligar este pagamento' }
+      return { ...item, ...resolverFatura(item, cartao, lancamentos, regras.historico) }
     }
     return item
   })
@@ -151,6 +216,14 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       creditos: conta('credito'),
     },
   }
+}
+
+// Decide qual fatura um pagamento quita (e se é "sem compras", no histórico)
+export function resolverFatura(item, cartao, lancamentos, historico = false) {
+  const fatura = faturaParaPagamento(cartao, item.data, item.valor, lancamentos)
+  if (fatura) return { acao: 'fatura', cartaoPagoId: cartao.id, faturaPaga: fatura, faturaSemCompras: false, motivo: 'Pagamento de fatura' }
+  if (historico) return { acao: 'fatura', cartaoPagoId: cartao.id, faturaPaga: mesDe(item.data), faturaSemCompras: true, motivo: 'Pagamento de fatura (as compras entram quando a fatura do cartão for importada)' }
+  return { acao: 'ignorar', cartaoPagoId: cartao.id, faturaPaga: null, faturaSemCompras: false, motivo: 'Parece pagamento de fatura, mas não há fatura em aberto com esse valor no app' }
 }
 
 // Confere se o item está pronto para gravar. Retorna a mensagem de erro ou null.
@@ -171,45 +244,83 @@ const itensParaGravar = (itens) => itens.filter((i) => i.acao !== 'ignorar' && i
 
 /**
  * Grava a importação: tudo ou nada. Se qualquer linha falhar, nenhuma é gravada.
+ * - saldoInicial (opcional): novo saldo inicial da conta de destino (histórico desde o começo)
+ * - Se alguma linha usa a "nova conta de investimentos", ela é criada junto.
  * Retorna quantos lançamentos foram criados.
  */
-export async function executarImportacao({ itens, destino, faturaCartao = null }) {
+export async function executarImportacao({ itens, destino, faturaCartao = null, saldoInicial = null, nomeContaInvestimentos = 'Investimentos' }) {
   const gravar = itensParaGravar(itens)
   for (const i of gravar) {
     const p = problemaDoItem(i, destino)
     if (p) throw new Error(`Linha ${i.posicao} (${i.descricao}): ${p}`)
   }
+  if (saldoInicial != null && (destino.tipo !== 'conta' || !Number.isSafeInteger(saldoInicial))) throw new Error('Saldo inicial inválido.')
+
   return db.transaction('rw', db.lancamentos, db.contas, db.cartoes, db.categorias, async () => {
-    let criados = 0
+    // nova conta de investimentos, se pedida
+    let idInvest = null
+    if (gravar.some((i) => i.contaOutraId === NOVA_CONTA_INVESTIMENTOS)) {
+      idInvest = await db.contas.add({ nome: nomeContaInvestimentos, emoji: '📈', saldoInicial: 0 })
+    }
+    const outra = (id) => (id === NOVA_CONTA_INVESTIMENTOS ? idInvest : id)
+    if (saldoInicial != null) await db.contas.update(destino.id, { saldoInicial })
+
+    const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
+    const refs = { contas, cartoes, categorias }
+
+    // não importar duas vezes (ex.: toque duplo): confere os identificadores no banco
+    const ids = gravar.map((i) => i.idExterno)
+    const jaExistem = new Set((await db.lancamentos.where('idExterno').anyOf(ids).toArray()).map((l) => l.idExterno))
+    if (jaExistem.size) throw new Error('Parte destes lançamentos já foi importada. Abra a importação de novo para ver o que falta.')
+    if (new Set(ids).size !== ids.length) throw new Error('Há linhas repetidas na importação.')
+
+    const registros = []
+    const pagamentos = []
     for (const i of gravar) {
       try {
+        if (i.acao === 'fatura') { pagamentos.push(i); continue }
+        let form
         if (destino.tipo === 'cartao') {
-          await salvarLancamento({ tipo: 'despesa', valor: i.valor, descricao: i.descricao, categoriaId: i.categoriaId, contaId: null, cartaoId: destino.id, data: i.dataLancamento, parcelas: 1, faturaFixa: faturaCartao, idExterno: i.idExterno })
+          form = { tipo: 'despesa', valor: i.valor, descricao: i.descricao, categoriaId: i.categoriaId, contaId: null, cartaoId: destino.id, data: i.dataLancamento, parcelas: 1, faturaFixa: faturaCartao, idExterno: i.idExterno }
         } else if (i.acao === 'lancar') {
-          await salvarLancamento({ tipo: i.entrada ? 'receita' : 'despesa', valor: i.valor, descricao: i.descricao, categoriaId: i.categoriaId, contaId: destino.id, cartaoId: null, data: i.data, parcelas: 1, idExterno: i.idExterno })
+          form = { tipo: i.entrada ? 'receita' : 'despesa', valor: i.valor, descricao: i.descricao, categoriaId: i.categoriaId, contaId: destino.id, cartaoId: null, data: i.data, parcelas: 1, idExterno: i.idExterno }
         } else if (i.acao === 'transferencia') {
-          const [origem, destinoT] = i.entrada ? [i.contaOutraId, destino.id] : [destino.id, i.contaOutraId]
-          await salvarLancamento({ tipo: 'transferencia', valor: i.valor, descricao: i.descricao, contaId: origem, contaDestinoId: destinoT, cartaoId: null, data: i.data, parcelas: 1, idExterno: i.idExterno })
-        } else if (i.acao === 'fatura') {
-          await pagarFatura({ cartaoId: i.cartaoPagoId, fatura: i.faturaPaga, contaId: destino.id, valor: i.valor, data: i.data, idExterno: i.idExterno })
+          const [origem, destinoT] = i.entrada ? [outra(i.contaOutraId), destino.id] : [destino.id, outra(i.contaOutraId)]
+          form = { tipo: 'transferencia', valor: i.valor, descricao: i.descricao, contaId: origem, contaDestinoId: destinoT, cartaoId: null, data: i.data, parcelas: 1, idExterno: i.idExterno }
         }
-        criados++
+        registros.push(...registrosParaImportar(form, refs))
       } catch (e) {
         throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
       }
     }
-    return criados
+    if (registros.length) await db.lancamentos.bulkAdd(registros)
+    for (const i of pagamentos) {
+      try {
+        await pagarFatura({ cartaoId: i.cartaoPagoId, fatura: i.faturaPaga, contaId: destino.id, valor: i.valor, data: i.data, idExterno: i.idExterno, permitirSemCompras: i.faturaSemCompras })
+      } catch (e) {
+        throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
+      }
+    }
+    return registros.length + pagamentos.length
   })
 }
 
 // Conferência com o saldo informado no extrato: como ficará o saldo da conta no app na data do extrato
-export function conferirSaldo({ extrato, destino, itens, lancamentos, conta }) {
+export function conferirSaldo({ extrato, destino, itens, lancamentos, conta, saldoInicial = null }) {
   if (destino.tipo !== 'conta' || !extrato.saldo || !conta) return null
+  const contaSimulada = saldoInicial != null ? { ...conta, saldoInicial } : conta
   const simulados = itensParaGravar(itens).map((i) => {
-    if (i.acao === 'transferencia') return i.entrada ? { tipo: 'transferencia', contaId: -1, contaDestinoId: conta.id, valor: i.valor, data: i.data } : { tipo: 'transferencia', contaId: conta.id, contaDestinoId: -1, valor: i.valor, data: i.data }
+    if (i.acao === 'transferencia') return i.entrada ? { tipo: 'transferencia', contaId: '__outra__', contaDestinoId: conta.id, valor: i.valor, data: i.data } : { tipo: 'transferencia', contaId: conta.id, contaDestinoId: '__outra__', valor: i.valor, data: i.data }
     if (i.acao === 'fatura') return { tipo: 'pagamentoFatura', contaId: conta.id, valor: i.valor, data: i.data }
     return { tipo: i.entrada ? 'receita' : 'despesa', contaId: conta.id, cartaoId: null, valor: i.valor, data: i.data }
   })
-  const noApp = saldoConta(conta, [...lancamentos, ...simulados], extrato.saldo.data)
+  const noApp = saldoConta(contaSimulada, [...lancamentos, ...simulados], extrato.saldo.data)
   return { data: extrato.saldo.data, noExtrato: extrato.saldo.valor, noApp, diferenca: noApp - extrato.saldo.valor }
+}
+
+// Pode usar o saldo do extrato mais antigo como saldo inicial da conta?
+// Só se a conta não tem nenhum lançamento antes do começo do extrato.
+export function podeDefinirSaldoInicial({ extrato, destino, lancamentos }) {
+  if (destino.tipo !== 'conta' || !extrato.saldoInicial || !extrato.inicio) return false
+  return !lancamentos.some((l) => (l.contaId === destino.id || l.contaDestinoId === destino.id) && l.data < extrato.inicio)
 }
