@@ -104,6 +104,8 @@ main { padding-bottom: calc(var(--nav-altura) + 24px + env(safe-area-inset-botto
 .conta-mini { background: rgb(255 255 255 / 0.08); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; font-size: 0.8rem; min-width: 0; }
 .conta-mini span { opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conta-mini strong { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.conta-mini.estimada { outline: 1px dashed rgb(255 255 255 / 0.45); }
+.nota-estimada { margin: 8px 0 0; font-size: 0.78rem; opacity: 0.85; line-height: 1.35; }
 
 .mascote {
   flex: none;
@@ -404,3 +406,5 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 .lista-espacos .linha-ajuste.ativa { font-weight: 650; }
 .convite { border: 2px solid var(--marca-2); }
 .seletor.mini { width: auto; padding: 4px 6px; font-size: 0.8rem; }
+.painel.dividir { display: flex; flex-direction: column; gap: 10px; }
+.lembrete-backup { display: flex; flex-direction: column; gap: 8px; }

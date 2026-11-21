@@ -15,6 +15,33 @@ export const novaConta = (nome) => `${PREFIXO_NOVA_CONTA}${nome}`
 export const nomeDaNovaConta = (id) => (typeof id === 'string' && id.startsWith(PREFIXO_NOVA_CONTA) ? id.slice(PREFIXO_NOVA_CONTA.length) : null)
 export const ehContaNova = (id) => id === NOVA_CONTA_INVESTIMENTOS || nomeDaNovaConta(id) !== null
 
+// Cartão que ainda não existe e é criado junto com a importação (para ligar os pagamentos de fatura)
+const PREFIXO_NOVO_CARTAO = '__novo_cartao__:'
+export const novoCartao = (nome) => `${PREFIXO_NOVO_CARTAO}${nome}`
+export const nomeDoNovoCartao = (id) => (typeof id === 'string' && id.startsWith(PREFIXO_NOVO_CARTAO) ? id.slice(PREFIXO_NOVO_CARTAO.length) : null)
+
+// Dias de um cartão criado na importação, estimados pelos pagamentos: vence no dia em que mais se pagou,
+// e fecha 7 dias antes (o comum no Brasil). A pessoa confere depois em Cartões.
+export function diasEstimados(datas) {
+  const conta = new Map()
+  for (const d of datas) { const dia = Number(d.slice(8, 10)); conta.set(dia, (conta.get(dia) || 0) + 1) }
+  let venc = 10, max = 0
+  for (const [dia, n] of conta) if (n > max || (n === max && dia < venc)) { venc = dia; max = n }
+
+  let fech = venc - 7
+  if (fech < 1) fech += 30
+  return { diaVencimento: venc, diaFechamento: fech }
+}
+
+// Nome sugerido para o cartão de uma linha de pagamento de fatura, quando ainda não há cartão
+function nomeSugeridoDoCartao(desc, extrato, contas, destinoId) {
+  const bancoDoExtrato = nomeDoBanco(extrato.banco)
+  if (/DEBITO AUT|FAT\.?\s*CARTAO/.test(desc) && bancoDoExtrato) return bancoDoExtrato // débito automático: cartão do próprio banco
+  const bancos = contas.filter((c) => c.id !== destinoId).map((c) => c.nome).filter((n) => BANCOS_CONHECIDOS.has(normalizar(n)) && normalizar(n) !== normalizar(bancoDoExtrato || ''))
+  return bancos[0] || bancoDoExtrato || 'Cartão'
+}
+const BANCOS_CONHECIDOS = new Set(['SANTANDER', 'INTER', 'NUBANK', 'ITAU', 'BRADESCO', 'BANCO DO BRASIL', 'CAIXA', 'C6', 'ORIGINAL', 'PICPAY', 'MERCADO PAGO', 'BTG'])
+
 // Chave de uma conta de destino vinda do extrato: "banco/agência/conta", ou só o banco quando o extrato não mostra a conta
 export const chaveDoDestino = (d) => (d?.banco ? (d.agencia && d.conta ? `${d.banco}/${d.agencia}/${d.conta}` : d.banco) : d?.ispb ? `ISPB ${d.ispb}` : null)
 
@@ -83,7 +110,7 @@ function candidatosConta(contaId, lancamentos) {
  * @param regras regras desta importação (para linhas que não são gasto/receita comuns):
  *   { contaInvestimentos: id | NOVA_CONTA_INVESTIMENTOS | null,
  *     contaPixProprio: id | null, titular: texto | null,
- *     cartaoPorPagamento: { [identidade]: cartaoId },
+ *     cartaoPorPagamento: { [identidade]: cartaoId | novoCartao(nome) | null (null = não é fatura: lançar como gasto) },
  *     contaPorPix: { 'banco/agência/conta' | 'banco': contaId | novaConta(nome) | null } (PIX para uma conta pelo número,
  *       ou PIX com o seu nome cujo destino o extrato mostra),
  *     gastoPorPix: { mesma chave: categoriaId } → depois da transferência, o dinheiro é usado lá para pagar algo:
@@ -231,11 +258,15 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       const ident = identidade(t.descricao)
       item.grupo = 'pagamentoCartao'
       item.identidade = ident
-      const cartao = cartoes.find((c) => c.id === regras.cartaoPorPagamento?.[ident])
+      const escolhido = regras.cartaoPorPagamento?.[ident]
+      if (escolhido === null) return { ...item, motivo: 'Você escolheu lançar como gasto' }
+      if (nomeDoNovoCartao(escolhido)) return { ...item, ...faturaDeCartaoNovo(item, escolhido) }
+      const cartao = cartoes.find((c) => c.id === escolhido)
         || cartoes.find((c) => desc.includes(normalizar(c.nome)))
         || cartoes.find((c) => c.contaPagamentoId === destino.id)
         || cartoes[0]
-      if (!cartao) return { ...item, acao: 'ignorar', motivo: 'Pagamento de fatura: cadastre o cartão para ligar este pagamento' }
+      // Sem nenhum cartão cadastrado: cria o cartão junto (nunca ignorar o pagamento, senão o saldo da conta fica errado)
+      if (!cartao) return { ...item, ...faturaDeCartaoNovo(item, novoCartao(nomeSugeridoDoCartao(desc, extrato, contas, destino.id))) }
       return { ...item, ...resolverFatura(item, cartao, lancamentos, regras.historico) }
     }
     return item
@@ -252,6 +283,11 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       creditos: conta('credito'),
     },
   }
+}
+
+// Pagamento de fatura de um cartão que será criado agora: ainda não tem compras no app
+export function faturaDeCartaoNovo(item, token) {
+  return { acao: 'fatura', cartaoPagoId: token, faturaPaga: mesDe(item.data), faturaSemCompras: true, motivo: `Pagamento de fatura (cartão novo "${nomeDoNovoCartao(token)}")` }
 }
 
 // Decide qual fatura um pagamento quita (e se é "sem compras", no histórico)
@@ -304,6 +340,15 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
       criadas.set(i.contaOutraId, await db.contas.add(nova))
     }
     const outra = (id) => (criadas.has(id) ? criadas.get(id) : id)
+    // cartões novos pedidos na importação (dias estimados pelos pagamentos)
+    const cartoesCriados = new Map()
+    for (const i of gravar) {
+      if (i.acao !== 'fatura' || !nomeDoNovoCartao(i.cartaoPagoId) || cartoesCriados.has(i.cartaoPagoId)) continue
+      const datas = gravar.filter((x) => x.acao === 'fatura' && x.cartaoPagoId === i.cartaoPagoId).map((x) => x.data)
+      const nome = nomeDoNovoCartao(i.cartaoPagoId).trim().slice(0, 40) || 'Cartão'
+      cartoesCriados.set(i.cartaoPagoId, await db.cartoes.add({ nome, limite: 0, ...diasEstimados(datas), contaPagamentoId: destino.id, criadoNaImportacao: true }))
+    }
+    const cartaoReal = (id) => (cartoesCriados.has(id) ? cartoesCriados.get(id) : id)
     if (saldoInicial != null) await db.contas.update(destino.id, { saldoInicial })
 
     const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
@@ -343,7 +388,7 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
     if (registros.length) await db.lancamentos.bulkAdd(registros)
     for (const i of pagamentos) {
       try {
-        await pagarFatura({ cartaoId: i.cartaoPagoId, fatura: i.faturaPaga, contaId: destino.id, valor: i.valor, data: i.data, idExterno: i.idExterno, permitirSemCompras: i.faturaSemCompras })
+        await pagarFatura({ cartaoId: cartaoReal(i.cartaoPagoId), fatura: i.faturaPaga, contaId: destino.id, valor: i.valor, data: i.data, idExterno: i.idExterno, permitirSemCompras: i.faturaSemCompras })
       } catch (e) {
         throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
       }

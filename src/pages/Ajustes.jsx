@@ -6,7 +6,8 @@ import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import { apagarRegra, apagarTodasRegras } from '../lib/categorizar.js'
 import { formatar } from '../lib/dinheiro.js'
 import { saldoConta } from '../lib/calculos.js'
-import { exportarBackup, salvarConfig } from '../lib/db.js'
+import { salvarConfig } from '../lib/db.js'
+import { fazerBackup } from '../lib/backupArquivo.js'
 import RestaurarBackup from '../components/RestaurarBackup.jsx'
 import { PainelConta } from '../components/Nuvem.jsx'
 import { PainelEspaco } from '../components/Espacos.jsx'
@@ -22,22 +23,7 @@ export default function Ajustes() {
   const [importando, setImportando] = useState(false)
 
   async function exportar() {
-    const backup = await exportarBackup()
-    const nome = `muquirana-backup-${hoje()}.json`
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
-    const file = new File([blob], nome, { type: 'application/json' })
-    // No celular, abre o menu de compartilhar (salvar no Drive, mandar no WhatsApp etc.)
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'Backup do Muquirana' })
-      } catch (e) {
-        if (e.name === 'AbortError') return
-        baixar(blob, nome)
-      }
-    } else {
-      baixar(blob, nome)
-    }
-    await salvarConfig('ultimoBackup', hoje())
+    if (!(await fazerBackup())) return
     avisar(zoeira ? 'Backup feito! Seus tostões estão seguros.' : 'Backup exportado.')
   }
 

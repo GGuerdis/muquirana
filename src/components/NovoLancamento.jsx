@@ -6,7 +6,7 @@ import { useDados } from '../dados.jsx'
 import { hoje, ontem, dataCurta, dataValida, nomeMes, mesDe, somarMesesData } from '../lib/datas.js'
 import { avisoDeOrcamento, textoAviso } from '../lib/orcamento.js'
 import { formatar, dividirParcelas } from '../lib/dinheiro.js'
-import { salvarLancamento, apagarLancamento, formDoLancamento, validarLancamento, MAX_PARCELAS } from '../lib/lancamentos.js'
+import { salvarLancamento, apagarLancamento, formDoLancamento, validarLancamento, MAX_PARCELAS, podeDividir, dividirLancamento } from '../lib/lancamentos.js'
 import { faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprender } from '../lib/categorizar.js'
 import { db, salvarConfig } from '../lib/db.js'
@@ -52,6 +52,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   const [f, setF] = useState(() => estadoInicial(original, dados, modelo))
   const [erro, setErro] = useState('')
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
+  const [divisao, setDivisao] = useState(null) // { valor, data } da outra parte
   const [ocupado, setOcupado] = useState(false)
   const salvando = useRef(false)
   const mudar = (campo) => (v) => { setErro(''); setF((x) => ({ ...x, [campo]: v })) }
@@ -145,6 +146,22 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       aoFechar()
     } catch (e) {
       setErro(e.message || 'Não foi possível apagar.')
+      salvando.current = false
+      setOcupado(false)
+    }
+  }
+
+  async function dividir() {
+    if (!podeEditar) return setErro('Neste espaço você só pode ver: peça a quem criou para liberar a edição.')
+    if (salvando.current) return
+    salvando.current = true
+    setOcupado(true)
+    try {
+      await dividirLancamento(original.id, divisao)
+      avisar(`Dividido: ${formatar(original.valor - divisao.valor)} em ${dataCurta(original.data)} e ${formatar(divisao.valor)} em ${dataCurta(divisao.data)}.`)
+      aoFechar()
+    } catch (e) {
+      setErro(e.message || 'Não foi possível dividir.')
       salvando.current = false
       setOcupado(false)
     }
@@ -244,6 +261,28 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       <Campo rotulo="Descrição (opcional)">
         <input type="text" value={f.descricao} placeholder={f.tipo === 'despesa' ? 'Ex.: almoço, Uber, farmácia' : ''} onChange={(e) => mudarDescricao(e.target.value)} maxLength={80} />
       </Campo>
+
+      {original && podeDividir(original) && (
+        divisao ? (
+          <div className="painel dividir">
+            <strong>✂️ Dividir em dois lançamentos</strong>
+            <span className="dica">Ex.: um pagamento que cobriu dois meses. Este fica com o resto; a outra parte vai para a data que você escolher.</span>
+            <CampoValor rotulo="Valor da outra parte" valor={divisao.valor} aoMudar={(v) => setDivisao((d) => ({ ...d, valor: v }))} />
+            <Campo rotulo="Data da outra parte">
+              <input type="date" value={divisao.data} onChange={(e) => setDivisao((d) => ({ ...d, data: e.target.value }))} />
+            </Campo>
+            {divisao.valor > 0 && divisao.valor < original.valor && (
+              <span className="discreto">Fica {formatar(original.valor - divisao.valor)} em {dataCurta(original.data)} e {formatar(divisao.valor)} em {dataValida(divisao.data) ? dataCurta(divisao.data) : '…'}.</span>
+            )}
+            <div className="linha-botoes">
+              <button className="botao secundario" disabled={ocupado} onClick={() => setDivisao(null)}>Cancelar</button>
+              <button className="botao primario cheio" disabled={ocupado} onClick={dividir}>Dividir</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="link" onClick={() => setDivisao({ valor: Math.floor(original.valor / 2), data: somarMesesData(original.data, -1) })}>✂️ Dividir em dois lançamentos (ex.: pagou dois meses juntos)</button>
+        )
+      )}
     </Folha>
   )
 }

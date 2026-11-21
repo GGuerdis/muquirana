@@ -11,6 +11,7 @@ import AvisoNavegador from './components/AvisoNavegador.jsx'
 import { mesAtual } from './lib/datas.js'
 import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
+import { juntarRepetidos } from './lib/repetidos.js'
 
 const ABAS = [
   { id: 'inicio', rotulo: 'Início', icone: '🏠' },
@@ -55,8 +56,28 @@ export default function App({ migrou = null }) {
 }
 
 function Telas() {
-  const { config, contas, abrirLancamento, podeEditar, avisar } = useDados()
-  const { logado } = useNuvem()
+  const dados = useDados()
+  const { config, contas, abrirLancamento, podeEditar, avisar, espacoAtual } = dados
+  const { logado, estado } = useNuvem()
+  // Logo depois de entrar na conta (3 minutos), a cada sincronização: apaga contas/cartões/categorias repetidos
+  // que nunca foram usados (acontece quando o aparelho já tinha os dados iniciais e a conta também).
+  // Só nessa janela, para nunca mexer numa conta que a pessoa criou de propósito depois.
+  const entrouEm = useRef(null)
+  const limpando = useRef(false)
+  const estavaLogado = useRef(logado)
+  useEffect(() => {
+    if (logado && !estavaLogado.current) entrouEm.current = Date.now()
+    estavaLogado.current = logado
+  }, [logado])
+  useEffect(() => {
+    if (!entrouEm.current || Date.now() - entrouEm.current > 3 * 60 * 1000) return
+    if (limpando.current || !logado || estado?.phase !== 'in-sync' || espacoAtual || !podeEditar) return
+    limpando.current = true
+    juntarRepetidos(dados)
+      .then((n) => { if (n) avisar(`Juntei ${n} conta(s)/categoria(s) repetida(s) que vieram ao entrar na conta.`) })
+      .catch((e) => console.error('Falha ao juntar repetidos', e))
+      .finally(() => { limpando.current = false })
+  }, [logado, estado?.phase, espacoAtual, podeEditar, dados, avisar])
   // Entrou numa conta que já tem dados (ex.: celular novo): pula as boas-vindas
   useEffect(() => {
     if (!config.boasVindas && logado && contas.length > 0) salvarConfig('boasVindas', true)

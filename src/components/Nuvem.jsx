@@ -4,12 +4,23 @@ import { useObservable } from 'dexie-react-hooks'
 import Folha from './Folha.jsx'
 import { db } from '../lib/db.js'
 import { useDados } from '../dados.jsx'
-import { dadosLocais, entrar, apagarAparelhoEEntrar, sair, sincronizarAgora, textoSincronizacao, traduzirAlerta, textosDaInteracao } from '../lib/nuvem.js'
+import { alteracoesPendentes, dadosLocais, entrar, apagarAparelhoEEntrar, sair, sincronizarAgora, textoSincronizacao, traduzirAlerta, textosDaInteracao } from '../lib/nuvem.js'
 
 export function useNuvem() {
   const usuario = useObservable(db.cloud.currentUser)
   const estado = useObservable(db.cloud.syncState)
-  return { usuario, estado, logado: !!usuario?.isLoggedIn, status: textoSincronizacao(usuario, estado) }
+  const logado = !!usuario?.isLoggedIn
+  // fila do que ainda não foi para a nuvem (conferida a cada 2 s enquanto há conta conectada)
+  const [pendentes, setPendentes] = useState(0)
+  useEffect(() => {
+    if (!logado) { setPendentes(0); return }
+    let vivo = true
+    const ver = () => alteracoesPendentes().then((n) => { if (vivo) setPendentes(n) }).catch(() => {})
+    ver()
+    const t = setInterval(ver, 2000)
+    return () => { vivo = false; clearInterval(t) }
+  }, [logado])
+  return { usuario, estado, logado, pendentes, status: textoSincronizacao(usuario, estado, pendentes) }
 }
 
 // Janela do login (e-mail → código), mostrada quando o sistema de login pede algo

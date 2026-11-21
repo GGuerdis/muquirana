@@ -34,3 +34,22 @@ export function resumoMes(mes, lancamentos) {
     .sort((a, b) => b.valor - a.valor)
   return { entrou, saiu, resultado: entrou - saiu, categorias }
 }
+
+/**
+ * Contas cujo saldo é só uma estimativa: receberam lançamentos vindos do extrato de OUTRA conta
+ * (ex.: PIX do Santander para o Inter), mas o extrato delas mesmas nunca foi importado e o saldo
+ * não foi conferido depois disso. Ex.: o Inter só com as entradas, sem os gastos dele.
+ */
+export function contasEstimadas(contas, lancamentos) {
+  const comExtrato = new Set()
+  const deFora = new Map() // conta → quando chegou o último lançamento vindo de outro extrato
+  for (const l of lancamentos) {
+    if (typeof l.idExterno !== 'string') continue
+    const origem = /^conta:([^:]+):/.exec(l.idExterno)?.[1] ?? null
+    if (!origem) continue
+    comExtrato.add(origem)
+    const outra = l.contaDestinoId != null && l.contaDestinoId !== origem ? l.contaDestinoId : l.contaId != null && l.contaId !== origem ? l.contaId : null
+    if (outra != null) deFora.set(outra, Math.max(deFora.get(outra) ?? 0, l.criadoEm ?? 0))
+  }
+  return new Set(contas.filter((c) => deFora.has(c.id) && !comExtrato.has(c.id) && !(c.saldoConferidoEm >= deFora.get(c.id))).map((c) => c.id))
+}

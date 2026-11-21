@@ -67,6 +67,15 @@ describe('textos de sincronização', () => {
   ])('usuário %j, estado %j → %s', (u, e, tipo) => {
     expect(textoSincronizacao(u, e).tipo).toBe(tipo)
   })
+  it('com fila para enviar: "Enviando N… não feche o app", mesmo se a fase diz in-sync', () => {
+    const t = textoSincronizacao(logado, { status: 'connected', phase: 'in-sync' }, 2163)
+    expect(t).toMatchObject({ tipo: 'andamento' })
+    expect(t.texto).toBe('Enviando 2.163 para a nuvem… não feche o app')
+    expect(textoSincronizacao(logado, { status: 'offline', phase: 'offline' }, 5).texto).toMatch(/5 ainda não foram para a nuvem/)
+    expect(textoSincronizacao(logado, { status: 'error', phase: 'error' }, 1).texto).toMatch(/1 ainda não foi para a nuvem/)
+    expect(textoSincronizacao({ isLoggedIn: false }, null, 50).tipo).toBe('local') // sem conta: não fala de nuvem
+    expect(textoSincronizacao(logado, { status: 'connected', phase: 'in-sync' }, 0).texto).toBe('Sincronizado')
+  })
   it('licença vencida explica que os dados ficam só no aparelho', () => {
     expect(textoSincronizacao(logado, { phase: 'in-sync', license: 'expired' }).texto).toMatch(/aparelho/)
   })

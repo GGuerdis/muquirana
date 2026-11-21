@@ -3,12 +3,13 @@ import { useDados } from '../dados.jsx'
 import { Mascote, SeletorMes, ItemLancamento, BarrasCategorias } from '../components/Pecas.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes } from '../lib/datas.js'
-import { saldoConta, resumoMes } from '../lib/calculos.js'
+import { saldoConta, resumoMes, contasEstimadas } from '../lib/calculos.js'
 import { faturasPendentes } from '../lib/fatura.js'
 import { humorDoMes } from '../lib/zoeira.js'
 import { compararIds } from '../lib/ids.js'
 import { saldoPrevisto } from '../lib/recorrentes.js'
 import ContasDoMes from '../components/ContasDoMes.jsx'
+import LembreteBackup from '../components/LembreteBackup.jsx'
 import { OrcamentoDoMes } from '../components/Orcamento.jsx'
 import { SeloSincronizacao } from '../components/Nuvem.jsx'
 import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
@@ -22,6 +23,7 @@ export default function Inicio({ mes, setMes, irPara }) {
 
   const saldos = useMemo(() => contas.map((c) => ({ ...c, saldo: saldoConta(c, lancamentos) })), [contas, lancamentos])
   const saldoTotal = saldos.reduce((s, c) => s + c.saldo, 0)
+  const estimadas = useMemo(() => contasEstimadas(contas, lancamentos), [contas, lancamentos])
   const resumo = useMemo(() => resumoMes(mes, lancamentos), [mes, lancamentos])
   const humor = humorDoMes(resumo, mes === mesAtual(), zoeira)
   const faturas = useMemo(
@@ -69,15 +71,21 @@ export default function Inicio({ mes, setMes, irPara }) {
         </div>
         <div className="contas-mini">
           {saldos.map((c) => (
-            <div key={c.id} className="conta-mini">
+            <div key={c.id} className={`conta-mini ${estimadas.has(c.id) ? 'estimada' : ''}`}>
               <span>{c.emoji} {c.nome}</span>
-              <strong className={c.saldo < 0 ? 'negativo' : ''}>{formatar(c.saldo)}</strong>
+              <strong className={c.saldo < 0 ? 'negativo' : ''}>{estimadas.has(c.id) ? '≈ ' : ''}{formatar(c.saldo)}</strong>
             </div>
           ))}
         </div>
+        {estimadas.size > 0 && (
+          <p className="nota-estimada">
+            ≈ Saldo estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta (os gastos de lá ainda não entraram). Importe o extrato dessa conta ou informe o saldo real em ⚙️ Ajustes.
+          </p>
+        )}
       </section>
 
       <ConvitesRecebidos />
+      <LembreteBackup />
 
       <SeletorMes mes={mes} aoMudar={setMes} />
 

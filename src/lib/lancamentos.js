@@ -210,3 +210,21 @@ export async function pagarFatura({ cartaoId, fatura, contaId, valor, data, idEx
     })
   })
 }
+
+// Um lançamento vira dois (ex.: PIX de R$ 1.800 que pagou agosto e setembro juntos):
+// o original fica com o valor que sobra e um novo é criado com `valor` na `data` escolhida.
+// Só para despesa, receita ou transferência de conta, que não seja parcela nem compra no cartão.
+export const podeDividir = (l) => !!l && ['despesa', 'receita', 'transferencia'].includes(l.tipo) && !l.grupoParcelaId && !l.cartaoId
+
+export async function dividirLancamento(id, { valor, data }) {
+  return db.transaction('rw', db.lancamentos, async () => {
+    const l = await db.lancamentos.get(id)
+    if (!l) throw new Error('Lançamento não encontrado.')
+    if (!podeDividir(l)) throw new Error('Este lançamento não pode ser dividido (parcela ou compra no cartão).')
+    if (!Number.isSafeInteger(valor) || valor <= 0 || valor >= l.valor) throw new Error(`A outra parte precisa ser maior que zero e menor que ${formatar(l.valor)}.`)
+    if (!dataValida(data || '')) throw new Error('Escolha a data da outra parte.')
+    await db.lancamentos.update(id, { valor: l.valor - valor })
+    const { id: _id, idExterno: _ext, realmId: _realm, owner: _owner, $ts: _ts, ...resto } = l
+    return db.lancamentos.add({ ...resto, ...(l.realmId != null ? { realmId: l.realmId } : {}), valor, data, criadoEm: Date.now(), divididoDe: id })
+  })
+}

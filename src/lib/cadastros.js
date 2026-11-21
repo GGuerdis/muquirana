@@ -67,7 +67,8 @@ export async function salvarConta({ id, nome, emoji, saldoAtual }, hoje) {
     const conta = await db.contas.get(id)
     if (!conta) throw new Error('Conta não encontrada.')
     const movimento = saldoConta(conta, await db.lancamentos.toArray(), hoje) - (conta.saldoInicial || 0)
-    await db.contas.update(id, { nome, emoji: emoji || '🏦', saldoInicial: saldoAtual - movimento })
+    // saldoConferidoEm: a pessoa informou o saldo real agora (tira o aviso de "saldo estimado")
+    await db.contas.update(id, { nome, emoji: emoji || '🏦', saldoInicial: saldoAtual - movimento, saldoConferidoEm: Date.now() })
     return id
   })
 }

@@ -2,8 +2,11 @@
 
 Controle financeiro pessoal: cada tostão conta.
 
-App web instalável no celular (PWA). Os dados ficam guardados só no aparelho (IndexedDB);
-use **Ajustes → Fazer backup** de vez em quando.
+App web instalável no celular (PWA). Os dados ficam no aparelho (IndexedDB) e, com login, sincronizam na nuvem;
+o app lembra de fazer backup de tempos em tempos.
+
+**No celular, abra sempre pelo Chrome/Safari ou pelo ícone instalado.** O navegador de dentro do WhatsApp/Instagram
+guarda os dados separado e pode apagá-los (o app avisa quando está aberto assim).
 
 ## Rodar no computador
 
@@ -19,6 +22,9 @@ Abra http://localhost:5173
 - Lançamento rápido de despesas, receitas e transferências
 - Cartões com fatura (fechamento/vencimento), compras parceladas e pagamento de fatura (com data)
 - Importação de extrato OFX (conta e cartão) e de PDF do Santander (vários meses de uma vez), sem duplicar, conferindo cada saldo impresso pelo banco
+  - PIX com o seu nome vai para a conta certa (Inter, Caixa…) pela tabela "PIXs Enviados" do extrato, com opção de lançar como pagamento lá
+  - pagamentos de fatura sem cartão cadastrado criam o cartão (nunca são ignorados); importação com saldo diferente do banco pede confirmação
+  - contas que só têm o que veio de outro extrato aparecem como "saldo estimado"
 - Categorização automática (regras prontas + aprende com você)
 - Contas fixas do mês para confirmar com um toque e saldo previsto para o fim do mês
 - Orçamento mensal por categoria, com aviso aos 80% e ao estourar
@@ -26,7 +32,9 @@ Abra http://localhost:5173
 - Login por código no e-mail e sincronização entre aparelhos (Dexie Cloud), funcionando offline
 - Espaços compartilhados (ex.: Casa) com convite por e-mail e permissão de editar ou só ver
 - Lembretes na agenda do celular (.ics) para contas fixas e vencimento de faturas
-- Backup e restauração (inclusive direto na tela de boas-vindas), modo zoeira
+- Dividir um lançamento em dois (ex.: pagamento que cobriu dois meses)
+- Ao entrar na conta, junta contas/categorias iniciais repetidas que nunca foram usadas; o selo mostra o que ainda não foi para a nuvem
+- Backup e restauração (inclusive direto na tela de boas-vindas), lembrete de backup, modo zoeira
 
 ## Testes
 
@@ -34,7 +42,7 @@ Abra http://localhost:5173
 npm test
 ```
 
-São 335 testes automáticos (`tests/`), entre eles:
+São 381 testes automáticos (`tests/`), entre eles:
 
 - datas, centavos e parcelas (soma sempre exata); fatura em 30 mil datas aleatórias
 - saldos, resumo do mês, pagamento de fatura, transferências, validação (nada inválido é gravado)
