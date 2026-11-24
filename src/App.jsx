@@ -58,7 +58,7 @@ export default function App({ migrou = null }) {
   )
 }
 
-// Fundo Synthwave: estrelas (à noite), sol listrado e chão quadriculado (completo só no Início)
+// Fundo Synthwave: estrelas (à noite) e chão quadriculado (completo só no Início). O sol fica no cartão do saldo.
 function Cenario({ completo = false }) {
   return (
     <>
@@ -66,8 +66,6 @@ function Cenario({ completo = false }) {
         <div className="estrelas" />
         <div className="chao" />
       </div>
-      {/* o sol fica preso ao topo da página (rola junto), para não brilhar atrás dos cartões lá embaixo */}
-      {completo && <div className="sol-palco" aria-hidden="true"><div className="sol-halo" /><div className="sol" /></div>}
     </>
   )
 }

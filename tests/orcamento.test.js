@@ -124,14 +124,13 @@ describe('aviso ao lançar', () => {
     expect(avisoDeOrcamento({ meses: ['2026-11'], orcamentos: await orc(), antes, depois: await lancs() })).toMatchObject({ situacao: 'estourado' })
   })
 
-  it('textos do aviso, com e sem zoeira', () => {
+  it('textos do aviso (neutros)', () => {
     const alerta = { situacao: 'alerta', porcentagem: 85, restante: 15000, gasto: 85000, limite: 100000 }
     const estouro = { situacao: 'estourado', porcentagem: 110, restante: -10000, gasto: 110000, limite: 100000 }
     const limpar = (s) => s.replace(/\s/g, ' ')
-    expect(limpar(textoAviso(alerta, 'Alimentação', false))).toBe('Você já usou 85% do orçamento de Alimentação. Restam R$ 150,00.')
-    expect(limpar(textoAviso(estouro, 'Alimentação', false))).toBe('Orçamento de Alimentação ultrapassado em R$ 100,00.')
-    expect(textoAviso(estouro, 'Alimentação', true)).toContain('Estourou')
-    expect(textoAviso(null, 'x', true)).toBeNull()
+    expect(limpar(textoAviso(alerta, 'Alimentação'))).toBe('Você já usou 85% do orçamento de Alimentação. Restam R$ 150,00.')
+    expect(limpar(textoAviso(estouro, 'Alimentação'))).toBe('Orçamento de Alimentação ultrapassado em R$ 100,00.')
+    expect(textoAviso(null, 'x')).toBeNull()
   })
 })
 

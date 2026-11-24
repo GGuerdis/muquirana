@@ -68,15 +68,11 @@ export function avisoDeOrcamento({ meses, orcamentos, antes, depois }) {
   return pior
 }
 
-export function textoAviso(aviso, nomeCategoria, zoeira) {
+export function textoAviso(aviso, nomeCategoria) {
   if (!aviso) return null
   if (aviso.situacao === 'estourado') {
     const passou = formatar(aviso.gasto - aviso.limite)
-    return zoeira
-      ? `😭 Estourou o orçamento de ${nomeCategoria} em ${passou}. O mukirana interior está de luto.`
-      : `Orçamento de ${nomeCategoria} ultrapassado em ${passou}.`
+    return `Orçamento de ${nomeCategoria} ultrapassado em ${passou}.`
   }
-  return zoeira
-    ? `😰 Calma: já foi ${aviso.porcentagem}% do orçamento de ${nomeCategoria}. Restam ${formatar(aviso.restante)}.`
-    : `Você já usou ${aviso.porcentagem}% do orçamento de ${nomeCategoria}. Restam ${formatar(aviso.restante)}.`
+  return `Você já usou ${aviso.porcentagem}% do orçamento de ${nomeCategoria}. Restam ${formatar(aviso.restante)}.`
 }

@@ -56,7 +56,6 @@
 
   --hud-brilho: 6px;
   --hud-brilho-traco: 0%;
-  --halo-forca: 0.7;
   --cromo: linear-gradient(180deg, #3a0f57 0%, #6b1f86 45%, #c8238a 55%, #4a1366 100%);
   --sol: linear-gradient(180deg, #ffd76b 0%, #ff9a5a 45%, #ff6fa5 80%, #e05aa8 100%);
   --linhas-chao: rgba(214, 51, 138, 0.35);
@@ -95,7 +94,6 @@
     --hud-traco: #fff;
     --hud-brilho: 10px;
     --hud-brilho-traco: 100%;
-    --halo-forca: 1;
     --cromo: linear-gradient(180deg, #ffffff 0%, #d9f1ff 42%, #6fb7ff 50%, #ff8bd8 53%, #ffe6f6 85%);
     --sol: linear-gradient(180deg, #ffe66b 0%, #ff9a3d 40%, #ff3d8b 75%, #b5179e 100%);
     --linhas-chao: rgba(255, 61, 190, 0.75);
@@ -151,11 +149,7 @@ main { padding-bottom: calc(var(--nav-altura) + 24px + env(safe-area-inset-botto
 .painel-titulo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .painel h3 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
 
-/* Cabeçalho do Início: mascote + frase, sincronização, espaço e ajustes */
-.inicio-cabeca { display: flex; align-items: center; gap: 12px; }
-.inicio-cabeca .textos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.inicio-cabeca .ola { font-size: 0.82rem; color: var(--texto-3); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.inicio-cabeca .frase { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+/* Cabeçalho do Início: sincronização, espaço e ajustes */
 .botao-redondo { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--superficie); box-shadow: var(--sombra); color: var(--texto-2); flex: none; }
 .botao-redondo svg { width: 20px; height: 20px; }
 
@@ -192,15 +186,6 @@ main { padding-bottom: calc(var(--nav-altura) + 24px + env(safe-area-inset-botto
 .nota-estimada { margin: 0; font-size: 0.76rem; opacity: 0.8; line-height: 1.35; position: relative; z-index: 1; }
 .oculto { letter-spacing: 0.1em; }
 
-.mascote {
-  flex: none;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffe08a, var(--ouro) 55%, var(--ouro-escuro));
-  box-shadow: inset 0 0 0 4px rgb(183 121 31 / 0.6);
-  display: grid;
-  place-items: center;
-  line-height: 1;
-}
 
 /* Seletor de mês */
 .seletor-mes { display: flex; align-items: center; justify-content: space-between; background: var(--superficie); border-radius: 999px; padding: 4px; box-shadow: var(--sombra); }
@@ -554,6 +539,8 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 @media (max-width: 370px) { .cabeca-extra .botao-acao { padding: 7px 10px; font-size: 0.78rem; gap: 5px; } }
 @media (max-width: 340px) { .cabeca .titulo-pagina { font-size: 1.2rem; } }
 .titulo-mes { font-size: 0.8rem; font-weight: 600; color: var(--texto-3); }
+/* Linha de status do Início: sincronização e espaço */
+.inicio-status { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: -6px; }
 /* Modo essencial: botão de escolher os blocos e a lista de chaves */
 .centro-pagina { align-self: center; }
 .centro-pagina svg { width: 16px; height: 16px; }
@@ -588,36 +575,14 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
   background-image: radial-gradient(1.4px 1.4px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 15%, #fff, transparent), radial-gradient(1.2px 1.2px at 85% 40%, #fff, transparent),
     radial-gradient(1px 1px at 40% 10%, #fff, transparent), radial-gradient(1.6px 1.6px at 10% 55%, #ffd6f5, transparent), radial-gradient(1px 1px at 55% 45%, #fff, transparent),
     radial-gradient(1px 1px at 92% 8%, #cfe9ff, transparent), radial-gradient(1.3px 1.3px at 32% 72%, #fff, transparent), radial-gradient(1px 1px at 62% 62%, #ffe8f7, transparent); }
-/* palco do sol: preso à tela (o sol acompanha a rolagem e fica sempre ao fundo) e recorta o halo nas bordas */
-.sol-palco { --sol-w: min(280px, 72vw); --sol-topo: calc(300px + env(safe-area-inset-top));
-  position: fixed; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; }
-/* halo: brilho macio atrás do sol (fora da máscara das listras, para aparecer de verdade) */
-.sol-halo { position: absolute; z-index: 0; pointer-events: none; left: 50%; width: calc(var(--sol-w) * 1.7); aspect-ratio: 1; border-radius: 50%;
-  top: calc(var(--sol-topo) + var(--sol-w) / 2 - var(--sol-w) * 0.85); transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(255, 160, 90, 0.95) 0%, rgba(255, 61, 139, 0.6) 34%, rgba(181, 23, 158, 0.18) 55%, transparent 70%); opacity: var(--halo-forca); }
-.sol { position: absolute; z-index: 0; pointer-events: none; left: 50%; top: var(--sol-topo); width: var(--sol-w); aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: var(--sol);
-  -webkit-mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 20px); mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 20px);
-  filter: drop-shadow(0 0 40px rgba(255, 61, 139, 0.45)); opacity: 0.85; }
 .cenario .chao { position: absolute; left: -50%; right: -50%; bottom: 0; height: 900px; transform: perspective(300px) rotateX(58deg); transform-origin: bottom;
   background-image: linear-gradient(var(--linhas-chao) 2px, transparent 2px), linear-gradient(90deg, var(--linhas-chao) 2px, transparent 2px); background-size: 46px 46px;
   -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 28%); mask-image: linear-gradient(to top, #000 0%, transparent 28%); opacity: 0.55; }
 .cenario.completo .chao { opacity: 1; -webkit-mask-image: linear-gradient(to top, #000 45%, transparent 100%); mask-image: linear-gradient(to top, #000 45%, transparent 100%); }
 @media (prefers-reduced-motion: no-preference) { .cenario.completo .chao { animation: andar 1.6s linear infinite; } }
 @keyframes andar { to { background-position: 0 46px; } }
-/* Sol: as listras descem devagar e ele "respira" (brilho e tamanho) — só se o celular não pedir menos movimento */
-@media (prefers-reduced-motion: no-preference) {
-  .sol { animation: sol-listras 10s linear infinite, sol-respirar 10s ease-in-out infinite alternate; will-change: transform, opacity; }
-  .sol-halo { animation: halo-respirar 10s ease-in-out infinite alternate; will-change: transform, opacity; }
-}
-@keyframes halo-respirar {
-  from { opacity: calc(var(--halo-forca) * 0.12); transform: translateX(-50%) scale(0.82); }
-  to { opacity: var(--halo-forca); transform: translateX(-50%) scale(1.15); }
-}
+/* Sol do cartão de saldo: listras descendo devagar */
 @keyframes sol-listras { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 0 20px; mask-position: 0 20px; } }
-@keyframes sol-respirar {
-  from { opacity: 0.5; transform: translateX(-50%) scale(0.97); }
-  to { opacity: 1; transform: translateX(-50%) scale(1.08); }
-}
 
 /* ---------- Tipografia ---------- */
 .titulo-pagina, .folha-topo h2, .bv-passo h1 { font-family: var(--fonte-titulo); font-style: italic; font-weight: 900; letter-spacing: 0.02em; text-shadow: var(--brilho); }
@@ -634,7 +599,6 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .item-lanc { border-top-color: color-mix(in srgb, var(--borda) 45%, transparent); }
 
 /* ---------- Cabeçalho e saldo do Início (sem cartão: o saldo flutua sobre o sol) ---------- */
-.inicio-cabeca .frase { font-weight: 600; }
 .cartao-topo { background: none; box-shadow: none; color: var(--texto); align-items: center; text-align: center; padding: 6px 0 4px; overflow: visible; border-radius: 0; }
 .cartao-topo::after { display: none; }
 .saldo-total { align-items: center; }
@@ -650,7 +614,6 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .conta-mini { background: var(--superficie); box-shadow: var(--sombra); color: var(--texto); text-align: left; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .conta-mini.estimada { outline: 1.5px dashed var(--neon-2); }
 .nota-estimada { color: var(--texto-2); }
-.mascote { box-shadow: inset 0 0 0 3px rgba(183, 121, 31, 0.5), 0 0 18px rgba(255, 210, 74, 0.45); }
 
 /* Entrou × saiu: entrada em ciano, saída em magenta */
 .cartao-mes .linha-resumo strong { text-shadow: var(--brilho); }
@@ -718,3 +681,72 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .grafico svg path[fill^='var(--serie'] { filter: drop-shadow(0 0 4px rgba(255, 61, 190, 0.35)); }
 /* chips que rolam para o lado: espaço em cima e embaixo para o brilho neon não ser cortado */
 .chips.rolavel { padding: 10px 16px; margin: -10px -16px; }
+
+/* =====================================================================
+   PADRÃO LIMPO (C + D): cartões suaves sem contorno neon, um destaque
+   por tela, números em blocos e seções com título pequeno
+   ===================================================================== */
+:root {
+  --sombra: 0 6px 20px rgba(160, 40, 120, 0.08);
+  --superficie: rgba(255, 255, 255, 0.78);
+  --heroi-fundo: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(255, 232, 244, 0.92));
+  --heroi-borda: 0 0 0 1px rgba(214, 51, 138, 0.3), 0 10px 30px rgba(214, 51, 138, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sombra: 0 8px 24px rgba(0, 0, 0, 0.22);
+    --superficie: rgba(30, 10, 58, 0.62);
+    --heroi-fundo: linear-gradient(160deg, rgba(60, 14, 100, 0.85), rgba(24, 4, 50, 0.9));
+    --heroi-borda: 0 0 0 1px rgba(255, 61, 190, 0.35), 0 0 30px rgba(255, 61, 190, 0.18);
+  }
+}
+
+/* Destaque da tela (saldo no Início, cartão em Cartões), com o sol no canto */
+.heroi { position: relative; overflow: hidden; border-radius: 26px; padding: 20px 18px 18px; background: var(--heroi-fundo); box-shadow: var(--heroi-borda);
+  display: flex; flex-direction: column; gap: 4px; text-align: left; color: var(--texto); }
+.heroi > *:not(.sol-canto) { position: relative; z-index: 1; }
+.sol-canto { position: absolute; z-index: 0; top: -120px; right: -95px; width: 200px; aspect-ratio: 1; border-radius: 50%; background: var(--sol); pointer-events: none; opacity: 0.5;
+  -webkit-mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 20px); mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 20px); }
+@media (prefers-reduced-motion: no-preference) {
+  .sol-canto { animation: sol-listras 10s linear infinite, sol-canto-respirar 10s ease-in-out infinite alternate; }
+}
+@keyframes sol-canto-respirar { from { opacity: 0.35; transform: scale(0.96); } to { opacity: 0.6; transform: scale(1.06); } }
+.heroi .saldo-linha { display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
+.heroi strong.valor-grande { font-family: var(--fonte-titulo); font-style: italic; font-weight: 900; font-size: clamp(2rem, 10vw, 2.6rem); letter-spacing: -0.01em; line-height: 1.15;
+  background: var(--cromo); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 rgba(91, 10, 82, 0.4)) drop-shadow(0 0 12px rgba(255, 61, 190, 0.35)); align-self: flex-start; }
+.heroi strong.valor-grande.oculto { letter-spacing: 0.08em; }
+.heroi .previsao { text-align: left; align-self: flex-start; color: var(--texto-2); font-size: 0.88rem; padding: 0; }
+.heroi .previsao strong { color: var(--texto); }
+.heroi .previsao-detalhe { margin-top: 6px; width: 100%; }
+
+/* Título pequeno de seção (e o seletor de mês, que vira uma linha enxuta) */
+.rotulo-secao, .seletor-mes .mes-nome { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--texto-3); font-weight: 600; }
+.rotulo-secao { margin: 2px 2px -8px; }
+.seletor-mes { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; padding: 0 0 0 2px; margin-bottom: -8px; }
+.seletor-mes .mes-nome { order: -1; flex: 1; text-align: left; padding: 6px 0; }
+.seletor-mes .botao-icone { width: 34px; height: 34px; font-size: 1.15rem; }
+
+/* Blocos 2 × 2 */
+.blocos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bloco { background: var(--superficie); box-shadow: var(--sombra); border-radius: 18px; padding: 13px 15px; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); text-align: left; color: var(--texto); }
+.bloco.largo { grid-column: span 2; }
+.bloco-rot { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--texto-3); font-weight: 600; display: flex; gap: 6px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bloco-rot .bloco-emoji { letter-spacing: 0; font-size: 0.8rem; }
+.bloco strong { font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bloco small { font-size: 0.75rem; color: var(--texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bloco.estimada { outline: 1.5px dashed color-mix(in srgb, var(--texto-3) 60%, transparent); outline-offset: -1.5px; }
+.nota-estimada { color: var(--texto-3); font-size: 0.76rem; margin: -6px 2px 0; text-align: left; }
+
+/* Linha de status do Início: texto simples, sem chips */
+.inicio-status { margin-top: -8px; font-size: 0.85rem; }
+.inicio-status .selo-sync, .inicio-status .seletor-espaco { background: none; box-shadow: none; padding: 2px 0; color: var(--texto-2); }
+.inicio-status .link-essencial { margin-left: auto; color: var(--texto-2); font-size: 0.85rem; display: inline-flex; gap: 5px; align-items: center; }
+.inicio-status .link-essencial svg { width: 15px; height: 15px; }
+
+/* Cartões de crédito no padrão do destaque */
+.heroi.cartao-credito { color: var(--texto); }
+.heroi.cartao-credito small { color: var(--texto-3); }
+.configurar-mais { text-align: center; color: var(--texto-3); font-size: 0.85rem; margin: 0; }
+.configurar-mais .link { font-size: 0.85rem; }
+.heroi.cartao-credito .sol-canto { top: auto; bottom: -125px; }

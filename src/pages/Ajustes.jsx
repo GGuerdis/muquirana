@@ -19,7 +19,7 @@ import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
 
 export default function Ajustes({ irPara }) {
-  const { contas, cartoes, categorias, lancamentos, regras, recorrentes, orcamentos, categoriaPorId, contaPorId, cartaoPorId, zoeira, config, avisar } = useDados()
+  const { contas, cartoes, categorias, lancamentos, regras, recorrentes, orcamentos, categoriaPorId, contaPorId, cartaoPorId, config, avisar } = useDados()
   const [apagandoRegras, setApagandoRegras] = useState(false)
   const [editando, setEditando] = useState(null) // { tipo: 'conta'|'cartao'|'categoria', item }
   const [tipoCat, setTipoCat] = useState('despesa')
@@ -28,7 +28,7 @@ export default function Ajustes({ irPara }) {
 
   async function exportar() {
     if (!(await fazerBackup())) return
-    avisar(zoeira ? 'Backup feito! Seus tostões estão seguros.' : 'Backup exportado.')
+    avisar('Backup exportado.')
   }
 
   function baixar(blob, nome) {
@@ -63,16 +63,6 @@ export default function Ajustes({ irPara }) {
 
       <PainelConta />
       <PainelEspaco />
-
-      <section className="painel">
-        <label className="alternar grande">
-          <span>
-            <strong>Modo zoeira</strong>
-            <small>O Mukirana comenta seus gastos. Desligue se for mostrar o app para alguém sério.</small>
-          </span>
-          <input type="checkbox" role="switch" checked={zoeira} onChange={(e) => salvarConfig('zoeira', e.target.checked)} />
-        </label>
-      </section>
 
       <section className="painel">
         <div className="painel-titulo">
@@ -195,7 +185,7 @@ export default function Ajustes({ irPara }) {
         </div>
       </section>
 
-      <p className="rodape-app">Mukirana · versão {VERSAO} · cada tostão conta 🪙</p>
+      <p className="rodape-app">Mukirana · versão {VERSAO}</p>
 
       {importando && <ImportarExtrato aoFechar={() => setImportando(false)} aoImportar={() => setCategorizando(true)} />}
       {categorizando && <CategorizarRapido aoFechar={() => setCategorizando(false)} />}

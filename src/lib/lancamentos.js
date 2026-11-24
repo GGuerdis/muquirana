@@ -16,7 +16,7 @@ const novoId = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${D
 export function validarLancamento(form, { contas, cartoes, categorias }) {
   const temConta = (id) => contas.some((c) => c.id === id)
   if (!TIPOS.includes(form.tipo)) return 'Tipo de lançamento inválido.'
-  if (!valorValido(form.valor)) return 'Coloca o valor aí, mukirana.'
+  if (!valorValido(form.valor)) return 'Informe o valor.'
   if (!dataValida(form.data)) return 'Data inválida.'
 
   if (form.tipo !== 'transferencia') {

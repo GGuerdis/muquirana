@@ -1,5 +1,5 @@
 // Contas, cartões e categorias repetidos que aparecem ao entrar na conta:
-// quem tocou em "Bora começar" no aparelho e depois entrou numa conta que já tinha dados
+// quem tocou em "Começar" no aparelho e depois entrou numa conta que já tinha dados
 // fica com dois "Santander", duas "Mercado"... Aqui só os repetidos que NUNCA foram usados são apagados
 // (nenhum lançamento, conta fixa, orçamento, regra ou cartão aponta para eles). Nada com dados é mexido.
 import { db } from './db.js'

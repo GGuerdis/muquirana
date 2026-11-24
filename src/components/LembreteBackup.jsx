@@ -5,7 +5,7 @@ import { hoje } from '../lib/datas.js'
 import { lembreteBackup, fazerBackup, adiarBackup } from '../lib/backupArquivo.js'
 
 export default function LembreteBackup() {
-  const { config, lancamentos, usuario, espacoAtual, avisar, zoeira } = useDados()
+  const { config, lancamentos, usuario, espacoAtual, avisar } = useDados()
   const [ocupado, setOcupado] = useState(false)
   if (espacoAtual) return null // o backup é do espaço Pessoal
   const l = lembreteBackup({ ultimoBackup: config.ultimoBackup, adiadoAte: config.backupAdiadoAte, hoje: hoje(), totalLancamentos: lancamentos.length, logado: !!usuario?.isLoggedIn })
@@ -14,7 +14,7 @@ export default function LembreteBackup() {
   async function fazer() {
     setOcupado(true)
     try {
-      if (await fazerBackup()) avisar(zoeira ? 'Backup feito! Seus tostões estão seguros.' : 'Backup exportado.')
+      if (await fazerBackup()) avisar('Backup exportado.')
     } catch (e) {
       avisar(e.message || 'Não foi possível fazer o backup.')
     } finally {

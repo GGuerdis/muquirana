@@ -5,15 +5,6 @@ import { nomeMes, somarMeses, mesAtual, dataCurta } from '../lib/datas.js'
 import { tomDaCategoria, desenhoDaCategoria } from '../lib/cores.js'
 import { DESENHOS_CATEGORIA, IconeEngrenagem, IconeVoltar } from './Icones.jsx'
 
-// Mascote provisório: o rosto muda conforme o humor. Depois trocamos pela arte definitiva.
-export function Mascote({ rosto, tamanho = 64 }) {
-  return (
-    <div className="mascote" style={{ width: tamanho, height: tamanho, fontSize: tamanho * 0.55 }} aria-hidden="true">
-      <span>{rosto}</span>
-    </div>
-  )
-}
-
 // Ícone da categoria: losango HUD na cor da categoria, com o desenho dela (ou o emoji, se for categoria sua).
 // `desenho` força um desenho (transferência, fatura...); sem categoria e sem desenho, fica neutro.
 export function IconeCategoria({ categoria, emoji, desenho, pequeno = false }) {
@@ -128,29 +119,27 @@ export function BarrasCategorias({ categorias, limite = 6 }) {
 }
 
 // Cartão "Entrou / Saiu" com a barra de proporção e o que sobrou (Início e Histórico)
-export function ResumoEntradasSaidas({ entrou, saiu, rotulo = 'no mês' }) {
-  const total = entrou + saiu || 1
+// Um bloco do painel: título pequeno, número e uma linha opcional embaixo
+export function Bloco({ rotulo, valor, extra, tom, emoji, largo = false, estimada = false, titulo, aoTocar }) {
+  const Tag = aoTocar ? 'button' : 'div'
+  return (
+    <Tag className={`bloco ${largo ? 'largo' : ''} ${estimada ? 'estimada' : ''}`} title={titulo} onClick={aoTocar}>
+      <span className="bloco-rot">{emoji && <span className="bloco-emoji">{emoji}</span>}{rotulo}</span>
+      <strong className={tom || ''}>{valor}</strong>
+      {extra && <small>{extra}</small>}
+    </Tag>
+  )
+}
+
+// Entrou, saiu e sobrou (ou faltou) em blocos. `quarto`: um bloco a mais ao lado do "sobrou"
+export function ResumoEntradasSaidas({ entrou, saiu, rotulo = 'no mês', quarto, extraEntrou, extraSaiu }) {
   const resultado = entrou - saiu
   return (
-    <section className="painel cartao-mes">
-      <div className="linha-resumo">
-        <div>
-          <span className="rotulo"><i className="ponto" style={{ background: 'var(--entrada)' }} />Entrou</span>
-          <strong className="entrada">{formatar(entrou)}</strong>
-        </div>
-        <div>
-          <span className="rotulo"><i className="ponto" style={{ background: 'var(--saida)' }} />Saiu</span>
-          <strong>{formatar(saiu)}</strong>
-        </div>
-      </div>
-      <div className="proporcao" role="img" aria-label={`Entrou ${formatar(entrou)}, saiu ${formatar(saiu)}`}>
-        {entrou > 0 && <span style={{ width: `${(entrou / total) * 100}%`, background: 'var(--entrada)' }} />}
-        {saiu > 0 && <span style={{ width: `${(saiu / total) * 100}%`, background: 'var(--saida)' }} />}
-      </div>
-      <div className="sobrou">
-        <span>{resultado >= 0 ? `Sobrou ${rotulo}` : `Faltou ${rotulo}`}</span>
-        <strong className={resultado >= 0 ? 'entrada' : 'saida'}>{formatar(Math.abs(resultado))}</strong>
-      </div>
-    </section>
+    <div className="blocos" role="group" aria-label={`Entrou ${formatar(entrou)}, saiu ${formatar(saiu)}`}>
+      <Bloco rotulo="Entrou" valor={formatar(entrou)} tom="entrada" extra={extraEntrou} />
+      <Bloco rotulo="Saiu" valor={formatar(saiu)} tom="saida" extra={extraSaiu} />
+      <Bloco rotulo={resultado >= 0 ? 'Sobrou' : 'Faltou'} valor={formatar(Math.abs(resultado))} tom={resultado >= 0 ? '' : 'saida'} extra={rotulo} largo={!quarto} />
+      {quarto}
+    </div>
   )
 }

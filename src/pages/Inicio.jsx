@@ -1,12 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina, Mascote, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas } from '../components/Pecas.jsx'
+import { CabecaPagina, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas, Bloco } from '../components/Pecas.jsx'
 import { IconeOlho, IconeOlhoFechado, IconeEssencial, IconeTudo, IconeAjustar } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes, hoje } from '../lib/datas.js'
 import { saldoConta, resumoMes, contasEstimadas } from '../lib/calculos.js'
 import { faturasPendentes } from '../lib/fatura.js'
-import { humorDoMes } from '../lib/zoeira.js'
 import { compararIds } from '../lib/ids.js'
 import { saldoPrevisto } from '../lib/recorrentes.js'
 import { salvarConfig } from '../lib/db.js'
@@ -22,7 +21,7 @@ const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ 
 const OCULTO = 'R$ •••••'
 
 export default function Inicio({ mes, setMes, irPara }) {
-  const { contas, cartoes, lancamentos, recorrentes, zoeira, config } = useDados()
+  const { contas, cartoes, lancamentos, recorrentes, orcamentos, config } = useDados()
   const [verPrevisao, setVerPrevisao] = useState(false)
   const ocultar = config.ocultarValores === true
   // "Só o essencial": mostra só o saldo e os blocos que você marcou (escolha fica guardada)
@@ -37,11 +36,12 @@ export default function Inicio({ mes, setMes, irPara }) {
   const saldoTotal = saldos.reduce((s, c) => s + c.saldo, 0)
   const estimadas = useMemo(() => contasEstimadas(contas, lancamentos), [contas, lancamentos])
   const resumo = useMemo(() => resumoMes(mes, lancamentos), [mes, lancamentos])
-  const humor = humorDoMes(resumo, mes === mesAtual(), zoeira)
   const faturas = useMemo(
     () => cartoes.flatMap((c) => faturasPendentes(c, lancamentos).map((r) => ({ cartao: c, ...r }))),
     [cartoes, lancamentos],
   )
+  // A fatura em aberto que vence primeiro (vira um bloco ao lado do "sobrou")
+  const proximaFatura = useMemo(() => faturas.filter((f) => f.status !== 'paga' && f.restante > 0).sort((a, b) => a.vencimento.localeCompare(b.vencimento))[0] || null, [faturas])
   // Os 5 lançamentos mais recentes; uma compra parcelada aparece uma vez só (pela 1ª parcela)
   const recentes = useMemo(() => {
     const vistos = new Set()
@@ -60,62 +60,60 @@ export default function Inicio({ mes, setMes, irPara }) {
 
   return (
     <div className="pagina">
-      <CabecaPagina titulo="Mukirana" irPara={irPara} extra={
-        <button className="botao-acao" onClick={() => salvarConfig('inicioEssencial', !essencial)} aria-pressed={essencial}>
+      <CabecaPagina titulo="Mukirana" irPara={irPara} />
+      <div className="inicio-status">
+        <SeloSincronizacao /><SeletorEspaco />
+        <button className="link-essencial" onClick={() => salvarConfig('inicioEssencial', !essencial)} aria-pressed={essencial}>
           {essencial ? <><IconeTudo /> Mostrar tudo</> : <><IconeEssencial /> Só o essencial</>}
         </button>
-      } />
-      {ver.has('mascote') && <div className="inicio-cabeca">
-        <Mascote rosto={humor.rosto} tamanho={52} />
-        <div className="textos">
-          <span className="ola"><SeloSincronizacao /><SeletorEspaco /></span>
-          <span className="frase">{humor.mensagem}</span>
-        </div>
-      </div>}
+      </div>
 
-      <section className="cartao-topo">
-        <div className="saldo-total">
-          <div className="saldo-linha">
-            <span className="rotulo-claro">Saldo nas contas</span>
-            <button className="botao-olho" onClick={() => salvarConfig('ocultarValores', !ocultar)} aria-label={ocultar ? 'Mostrar valores' : 'Esconder valores'} aria-pressed={ocultar}>
-              {ocultar ? <IconeOlhoFechado /> : <IconeOlho />}
-            </button>
-          </div>
-          <strong className={`valor-grande ${ocultar ? 'oculto' : ''}`}>{mostrar(saldoTotal)}</strong>
-          {ver.has('previsao') && <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
-            Previsto para {dataCurta(previsao.fimMes)}: <strong>{mostrar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
-          </button>}
-          {verPrevisao && ver.has('previsao') && !ocultar && (
-            <div className="previsao-detalhe">
-              <span>Saldo hoje <b>{formatar(previsao.saldoHoje)}</b></span>
-              {previsao.agendados !== 0 && <span>Lançamentos agendados <b>{previsao.agendados > 0 ? '+' : '−'} {formatar(Math.abs(previsao.agendados))}</b></span>}
-              {previsao.contasFixas !== 0 && <span>Contas fixas a lançar <b>{previsao.contasFixas > 0 ? '+' : '−'} {formatar(Math.abs(previsao.contasFixas))}</b></span>}
-              {previsao.faturas !== 0 && <span>Faturas a pagar até {dataCurta(previsao.fimMes)} <b>− {formatar(previsao.faturas)}</b></span>}
-            </div>
-          )}
+      <section className="heroi">
+        <div className="sol-canto" aria-hidden="true" />
+        <div className="saldo-linha">
+          <span className="rotulo">Saldo nas contas</span>
+          <button className="botao-olho" onClick={() => salvarConfig('ocultarValores', !ocultar)} aria-label={ocultar ? 'Mostrar valores' : 'Esconder valores'} aria-pressed={ocultar}>
+            {ocultar ? <IconeOlhoFechado /> : <IconeOlho />}
+          </button>
         </div>
-        {ver.has('contas') && <div className="contas-mini">
-          {saldos.map((c) => (
-            <div key={c.id} className={`conta-mini ${estimadas.has(c.id) ? 'estimada' : ''}`}>
-              <span>{c.emoji} {c.nome}</span>
-              <strong>{estimadas.has(c.id) && !ocultar ? '≈ ' : ''}{mostrar(c.saldo)}</strong>
-            </div>
-          ))}
-        </div>}
-        {ver.has('contas') && estimadas.size > 0 && (
-          <p className="nota-estimada">
-            ≈ Estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta. Importe o extrato dela ou informe o saldo real em Ajustes.
-          </p>
+        <strong className={`valor-grande ${ocultar ? 'oculto' : ''}`}>{mostrar(saldoTotal)}</strong>
+        {ver.has('previsao') && <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
+          Previsto para {dataCurta(previsao.fimMes)}: <strong>{mostrar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
+        </button>}
+        {verPrevisao && ver.has('previsao') && !ocultar && (
+          <div className="previsao-detalhe">
+            <span>Saldo hoje <b>{formatar(previsao.saldoHoje)}</b></span>
+            {previsao.agendados !== 0 && <span>Lançamentos agendados <b>{previsao.agendados > 0 ? '+' : '−'} {formatar(Math.abs(previsao.agendados))}</b></span>}
+            {previsao.contasFixas !== 0 && <span>Contas fixas a lançar <b>{previsao.contasFixas > 0 ? '+' : '−'} {formatar(Math.abs(previsao.contasFixas))}</b></span>}
+            {previsao.faturas !== 0 && <span>Faturas a pagar até {dataCurta(previsao.fimMes)} <b>− {formatar(previsao.faturas)}</b></span>}
+          </div>
         )}
       </section>
 
       <ConvitesRecebidos />
       {ver.has('backup') && <LembreteBackup />}
+
       {ver.has('resumo') && <>
         <SeletorMes mes={mes} aoMudar={setMes} />
-        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} />
+        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} quarto={proximaFatura && (
+          <Bloco rotulo={`Fatura ${proximaFatura.cartao.nome}`} valor={mostrar(proximaFatura.restante)} extra={`vence ${dataCurta(proximaFatura.vencimento)}`} aoTocar={() => irPara('cartoes')} />
+        )} />
       </>}
-      {ver.has('orcamento') && <OrcamentoDoMes mes={mes} irPara={irPara} />}
+
+      {ver.has('contas') && <>
+        <span className="rotulo-secao">Contas</span>
+        <div className="blocos">
+          {saldos.map((c) => (
+            <Bloco key={c.id} emoji={c.emoji} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} />
+          ))}
+        </div>
+        {estimadas.size > 0 && (
+          <p className="nota-estimada">
+            ≈ Estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta. Importe o extrato dela ou informe o saldo real em Ajustes.
+          </p>
+        )}
+      </>}
+      {ver.has('orcamento') && orcamentos.length > 0 && <OrcamentoDoMes mes={mes} irPara={irPara} />}
 
       {ver.has('categorias') && <section className="painel">
         <div className="painel-titulo">
@@ -125,7 +123,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         <BarrasCategorias categorias={resumo.categorias} limite={5} />
       </section>}
 
-      {ver.has('contasFixas') && <ContasDoMes mes={mes} irPara={irPara} />}
+      {ver.has('contasFixas') && recorrentes.length > 0 && <ContasDoMes mes={mes} irPara={irPara} />}
 
       {ver.has('faturas') && faturas.length > 0 && (
         <section className="painel">
@@ -149,6 +147,11 @@ export default function Inicio({ mes, setMes, irPara }) {
         )}
       </section>}
 
+      {!essencial && (!orcamentos.length || !recorrentes.length) && (
+        <p className="configurar-mais">
+          {!orcamentos.length && !recorrentes.length ? 'Orçamento e contas fixas' : !orcamentos.length ? 'Orçamento por categoria' : 'Contas fixas'}: <button className="link" onClick={() => irPara('ajustes')}>configurar</button>
+        </p>
+      )}
       {essencial && (
         <button className="botao-acao centro-pagina" onClick={() => setEscolhendo(true)}><IconeAjustar /> Escolher o que aparece</button>
       )}

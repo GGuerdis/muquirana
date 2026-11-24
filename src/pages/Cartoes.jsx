@@ -66,7 +66,8 @@ export default function Cartoes({ irPara }) {
         <Chips rolavel opcoes={cartoes.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: '💳' }))} valor={cartao.id} aoMudar={(id) => { setIdSel(id); setFatura(null) }} />
       )}
 
-      <section className="cartao-credito">
+      <section className="heroi cartao-credito">
+        <div className="sol-canto" aria-hidden="true" />
         <div className="painel-titulo">
           <strong>💳 {cartao.nome}</strong>
           <button className="link" onClick={() => setEditando(cartao)}>Editar</button>
@@ -125,7 +126,7 @@ export default function Cartoes({ irPara }) {
 }
 
 function PagarFatura({ cartao, resumo, aoFechar }) {
-  const { contas, contaPorId, avisar, zoeira } = useDados()
+  const { contas, contaPorId, avisar } = useDados()
   const [valor, setValor] = useState(resumo.restante)
   const [contaId, setContaId] = useState(contaPorId.has(cartao.contaPagamentoId) ? cartao.contaPagamentoId : contas[0]?.id ?? null)
   const [erro, setErro] = useState('')
@@ -143,7 +144,7 @@ function PagarFatura({ cartao, resumo, aoFechar }) {
     setOcupado(true)
     try {
       await pagarFatura({ cartaoId: cartao.id, fatura: resumo.fatura, contaId, valor, data })
-      avisar(zoeira ? (valor >= resumo.restante ? 'Fatura paga! Livre... até a próxima.' : 'Pagou uma parte. O resto continua te olhando.') : 'Pagamento registrado.')
+      avisar('Pagamento registrado.')
       aoFechar()
     } catch (e) {
       setErro(e.message)

@@ -2,7 +2,6 @@
 // O saldo total aparece sempre; os outros blocos podem ser ligados ou desligados.
 
 export const BLOCOS_INICIO = [
-  { id: 'mascote', nome: 'Mascote e frase do dia' },
   { id: 'previsao', nome: 'Previsão do fim do mês' },
   { id: 'contas', nome: 'Saldo de cada conta' },
   { id: 'resumo', nome: 'Entrou × saiu do mês', dica: 'Com o seletor de mês' },

@@ -42,7 +42,6 @@ export function ProvedorDados({ children, acoes }) {
     const papel = !espaco ? 'dono' : espaco.souDono ? 'dono' : papelDe(eu)
     return {
       contas, cartoes, categorias, lancamentos, config, regras, recorrentes, orcamentos,
-      zoeira: config.zoeira !== false,
       categoriaPorId: indice(categorias),
       contaPorId: indice(contas),
       cartaoPorId: indice(cartoes),

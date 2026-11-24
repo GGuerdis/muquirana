@@ -11,7 +11,6 @@ import { salvarLancamento, apagarLancamento, formDoLancamento, validarLancamento
 import { faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprender } from '../lib/categorizar.js'
 import { db, salvarConfig } from '../lib/db.js'
-import { comentarioAoSalvar } from '../lib/zoeira.js'
 
 const TIPOS = [
   { valor: 'despesa', rotulo: 'Despesa', tom: 'tom-saida' },
@@ -49,7 +48,7 @@ function estadoInicial(original, dados, modelo) {
 
 export default function NovoLancamento({ original, modelo = null, aoFechar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, regras, orcamentos, lancamentos, categoriaPorId, cartaoPorId, avisar, zoeira, podeEditar } = dados
+  const { contas, cartoes, categorias, regras, orcamentos, lancamentos, categoriaPorId, cartaoPorId, avisar, podeEditar } = dados
   const [f, setF] = useState(() => estadoInicial(original, dados, modelo))
   const [erro, setErro] = useState('')
   const [confirmandoApagar, setConfirmandoApagar] = useState(false)
@@ -119,12 +118,12 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       await salvarLancamento(form, original)
       if (!original) salvarConfig('ultimaOrigem', f.origem)
       if (form.tipo !== 'transferencia' && form.descricao) aprender(form.descricao, form.tipo, form.categoriaId).catch(() => {})
-      let mensagem = original ? 'Lançamento atualizado.' : comentarioAoSalvar(form, categoriaPorId.get(f.categoriaId), zoeira)
+      let mensagem = original ? 'Lançamento atualizado.' : 'Lançamento salvo.'
       // Passou de 80% ou estourou o orçamento da categoria? O aviso do orçamento tem prioridade
       if (form.tipo === 'despesa' && orcamentos.length) {
         const meses = Array.from({ length: form.parcelas || 1 }, (_, i) => mesDe(somarMesesData(form.data, i)))
         const aviso = avisoDeOrcamento({ meses, orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
-        if (aviso) mensagem = textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '', zoeira)
+        if (aviso) mensagem = textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '')
       }
       avisar(mensagem)
       aoFechar()
@@ -143,7 +142,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
     setOcupado(true)
     try {
       await apagarLancamento(original)
-      avisar(zoeira ? 'Apagado. Como se nunca tivesse acontecido.' : 'Lançamento apagado.')
+      avisar('Lançamento apagado.')
       aoFechar()
     } catch (e) {
       setErro(e.message || 'Não foi possível apagar.')

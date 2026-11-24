@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { saldoConta, resumoMes } from '../src/lib/calculos.js'
-import { humorDoMes } from '../src/lib/zoeira.js'
 
 const conta = { id: 1, saldoInicial: 100000 }
 const L = [
@@ -48,21 +47,5 @@ describe('resumo do mês', () => {
   })
   it('mês sem nada', () => {
     expect(resumoMes('2030-01', L)).toEqual({ entrou: 0, saiu: 0, resultado: 0, categorias: [] })
-  })
-})
-
-describe('humor do Mukirana', () => {
-  const r = (entrou, saiu) => ({ entrou, saiu })
-  it.each([
-    [r(0, 0), true, 'sumido'],
-    [r(0, 500), true, 'semEntrada'],
-    [r(1000, 1001), true, 'chorando'],
-    [r(1000, 801), true, 'suando'],
-    [r(1000, 800), false, 'comemorando'],
-  ])('%o mês atual=%s → %s', (resumo, atual, humor) => {
-    expect(humorDoMes(resumo, atual, true).humor).toBe(humor)
-  })
-  it('modo sério não faz piada', () => {
-    expect(humorDoMes(r(1000, 2000), true, false).mensagem).toBe('Os gastos do mês passaram das entradas.')
   })
 })

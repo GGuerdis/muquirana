@@ -57,7 +57,7 @@ const ehPdf = (f) => /\.pdf$/i.test(f.name) || f.type === 'application/pdf'
 
 export default function ImportarExtrato({ aoFechar, aoImportar }) {
   const dados = useDados()
-  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, config, categoriaPorId, contaPorId, cartaoPorId, avisar, zoeira, podeEditar, usuario } = dados
+  const { contas, cartoes, categorias, lancamentos, regras, orcamentos, config, categoriaPorId, contaPorId, cartaoPorId, avisar, podeEditar, usuario } = dados
   const arquivo = useRef(null)
   const [extrato, setExtrato] = useState(null)
   const [nomeArquivo, setNomeArquivo] = useState('')
@@ -259,11 +259,11 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
         cartaoPorPagamento: { ...(config.lembrarImportacao?.cartaoPorPagamento || {}), ...cartaoPag },
       })
       if (extrato.titular && (!config.titular || extrato.titular.length > config.titular.length)) await salvarConfig('titular', extrato.titular)
-      let mensagem = zoeira ? `${n} lançamento(s) importado(s). Menos digitação, mais tempo para economizar!` : `${n} lançamento(s) importado(s).`
+      let mensagem = `${n} lançamento(s) importado(s).`
       if (usuario?.isLoggedIn) mensagem += ' Espere o topo mostrar ☁️ Sincronizado antes de fechar o app.'
       if (orcamentos.length) {
         const aviso = avisoDeOrcamento({ meses: [...new Set(aGravar.map((i) => mesDe(i.dataLancamento)))].slice(-3), orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
-        if (aviso) mensagem += ' ' + textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '', zoeira)
+        if (aviso) mensagem += ' ' + textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '')
       }
       avisar(mensagem)
       aoFechar()

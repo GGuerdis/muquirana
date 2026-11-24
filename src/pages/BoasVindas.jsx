@@ -1,7 +1,6 @@
 // Primeiro uso: informar saldos e cadastrar os cartões
 import { useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { Mascote } from '../components/Pecas.jsx'
 import { CampoValor, Campo } from '../components/Campos.jsx'
 import { db, salvarConfig, criarDadosIniciais } from '../lib/db.js'
 import { BotaoEntrar } from '../components/Nuvem.jsx'
@@ -54,11 +53,10 @@ export default function BoasVindas() {
       {passo === 0 && (
         <div className="bv-passo centro">
           <AvisoNavegador forte />
-          <Mascote rosto="🤑" tamanho={120} />
-          <h1>Prazer, eu sou o Mukirana.</h1>
-          <p>Vou cuidar de cada tostão seu. Prometo zoar só um pouquinho quando você gastar demais.</p>
+          <h1>Bem-vindo ao Mukirana</h1>
+          <p>Contas, cartões e gastos organizados num lugar só.</p>
           <p className="discreto">Seus dados ficam no aparelho. Se quiser, entre com sua conta para sincronizar entre celular e computador.</p>
-          <button className="botao primario cheio" disabled={ocupado} onClick={async () => { setOcupado(true); await criarDadosIniciais(); setOcupado(false); setPasso(1) }}>Bora começar</button>
+          <button className="botao primario cheio" disabled={ocupado} onClick={async () => { setOcupado(true); await criarDadosIniciais(); setOcupado(false); setPasso(1) }}>Começar</button>
           <ConvitesRecebidos />
           <div className="restaurar-bv">
             <span className="discreto">Já usa o Mukirana?</span>
