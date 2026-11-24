@@ -102,6 +102,8 @@
 /* ---------- Base ---------- */
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+/* A tela que desliza no gesto não pode alargar a página: no celular isso empurra a barra de baixo para fora da tela */
+html, body { overflow-x: hidden; overflow-x: clip; }
 body {
   background: var(--fundo);
   color: var(--texto);

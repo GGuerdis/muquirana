@@ -26,13 +26,15 @@ describe('trocar de tela arrastando para o lado', () => {
     expect(arrasto(150, 0, 300, 30)).toBe(-1)
   })
   it('segue a ordem da barra e para nas pontas', () => {
-    expect(ABAS_GESTO).toEqual(['inicio', 'lancamentos', 'historico', 'cartoes', 'ajustes'])
+    expect(ABAS_GESTO).toEqual(['inicio', 'lancamentos', 'historico', 'cartoes'])
     expect(abaVizinha('inicio', 1)).toBe('lancamentos')
     expect(abaVizinha('historico', -1)).toBe('lancamentos')
     expect(abaVizinha('inicio', -1)).toBeNull()
-    expect(abaVizinha('cartoes', 1)).toBe('ajustes')
+  })
+  it('Ajustes só abre pela engrenagem: o gesto não entra nem sai de lá', () => {
+    expect(abaVizinha('cartoes', 1)).toBeNull()
     expect(abaVizinha('ajustes', 1)).toBeNull()
-    expect(abaVizinha('ajustes', -1)).toBe('cartoes')
+    expect(abaVizinha('ajustes', -1)).toBeNull()
     expect(abaVizinha('outra', 1)).toBeNull()
     expect(abaVizinha('inicio', 0)).toBeNull()
   })
@@ -71,5 +73,14 @@ describe('marcador da barra acompanha o arrasto', () => {
     expect(posicaoIndicador(A, null, 0.4)).toEqual({ x: 40, y: 20, opacidade: 0.6 })
     expect(posicaoIndicador(null, B, 0.4)).toEqual({ x: 140, y: 20, opacidade: 0.4 })
     expect(posicaoIndicador(null, null, 0.5)).toEqual({ x: null, y: null, opacidade: 0 })
+  })
+})
+
+describe('a tela deslizando não alarga a página', () => {
+  // Sem isso, no celular a página fica mais larga durante o gesto e a barra de baixo é empurrada para fora da tela
+  it('o estilo corta o que passa para o lado', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync(new URL('../src/estilos.css', import.meta.url), 'utf8')
+    expect(css).toMatch(/html,\s*body\s*\{[^}]*overflow-x:\s*clip/)
   })
 })

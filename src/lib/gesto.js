@@ -1,7 +1,10 @@
-// Trocar de tela arrastando o dedo para o lado (na ordem da barra de baixo, com Ajustes no fim).
+// Trocar de tela arrastando o dedo para o lado (na ordem da barra de baixo).
 // Arrastar para a ESQUERDA vai para a próxima aba; para a DIREITA, volta.
+// Ajustes fica fora do gesto: só abre pela engrenagem (e lá o gesto não troca de tela).
 
-export const ABAS_GESTO = ['inicio', 'lancamentos', 'historico', 'cartoes', 'ajustes']
+export const ABAS_GESTO = ['inicio', 'lancamentos', 'historico', 'cartoes']
+// Ordem das telas só para o lado da animação ao trocar (Ajustes entra pela direita)
+const ORDEM_TELAS = [...ABAS_GESTO, 'ajustes']
 
 export const BORDA = 24 // perto da beirada é o gesto de "voltar" do celular: não mexe
 export const MINIMO = 60 // distância mínima (px) para um arrasto lento contar
@@ -39,8 +42,8 @@ export function abaVizinha(atual, direcao) {
 
 // De que lado a tela nova entra (para a animação): 1 = vem da direita, -1 = vem da esquerda, 0 = sem animação
 export function ladoDaEntrada(de, para) {
-  const a = ABAS_GESTO.indexOf(de)
-  const b = ABAS_GESTO.indexOf(para)
+  const a = ORDEM_TELAS.indexOf(de)
+  const b = ORDEM_TELAS.indexOf(para)
   if (a < 0 || b < 0 || a === b) return 0
   return b > a ? 1 : -1
 }
