@@ -750,3 +750,11 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .configurar-mais { text-align: center; color: var(--texto-3); font-size: 0.85rem; margin: 0; }
 .configurar-mais .link { font-size: 0.85rem; }
 .heroi.cartao-credito .sol-canto { top: auto; bottom: -125px; }
+
+/* Troca de tela: a nova entra pelo lado (do gesto de arrastar ou do toque na barra) */
+@media (prefers-reduced-motion: no-preference) {
+  .entra-direita { animation: entra-direita 0.24s ease-out; }
+  .entra-esquerda { animation: entra-esquerda 0.24s ease-out; }
+}
+@keyframes entra-direita { from { transform: translateX(48px); opacity: 0.3; } to { transform: none; opacity: 1; } }
+@keyframes entra-esquerda { from { transform: translateX(-48px); opacity: 0.3; } to { transform: none; opacity: 1; } }

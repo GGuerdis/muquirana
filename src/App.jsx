@@ -15,6 +15,8 @@ import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
 import { juntarRepetidos } from './lib/repetidos.js'
 import { IconeInicio, IconeLista, IconeGrafico, IconeCartao } from './components/Icones.jsx'
+import { useArrastoTelas } from './components/useArrastoTelas.js'
+import { ladoDaEntrada } from './lib/gesto.js'
 
 const ABAS = [
   { id: 'inicio', rotulo: 'Início', icone: <IconeInicio /> },
@@ -100,23 +102,28 @@ function Telas() {
   }, [config.boasVindas, logado, contas.length])
   const [aba, setAba] = useState(() => (import.meta.env.DEV && new URLSearchParams(location.search).get('aba')) || 'inicio')
   const [mes, setMes] = useState(mesAtual())
+  // De que lado a tela nova entra (anima a troca); arrastar o dedo para o lado também troca de tela
+  const [entrada, setEntrada] = useState(0)
+  const mainRef = useRef(null)
+  const irPara = (id) => { setEntrada(ladoDaEntrada(aba, id)); setAba(id); window.scrollTo(0, 0) }
+  useArrastoTelas({ aba, irPara, alvoRef: mainRef, ativo: !!config.boasVindas })
 
   if (!config.boasVindas) return <><Cenario completo /><BoasVindas /></>
-
-  const irPara = (id) => { setAba(id); window.scrollTo(0, 0) }
 
   return (
     <>
       <Cenario completo={aba === 'inicio'} />
-      <main>
+      <main ref={mainRef}>
         <AvisoNavegador />
         <AvisoVersao nova={versaoNova} />
         <AvisoRecusa />
-        {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
-        {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} irPara={irPara} />}
-        {aba === 'historico' && <Historico irPara={irPara} />}
-        {aba === 'cartoes' && <Cartoes irPara={irPara} />}
-        {aba === 'ajustes' && <Ajustes irPara={irPara} />}
+        <div key={aba} className={entrada > 0 ? 'entra-direita' : entrada < 0 ? 'entra-esquerda' : undefined}>
+          {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
+          {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} irPara={irPara} />}
+          {aba === 'historico' && <Historico irPara={irPara} />}
+          {aba === 'cartoes' && <Cartoes irPara={irPara} />}
+          {aba === 'ajustes' && <Ajustes irPara={irPara} />}
+        </div>
       </main>
       <nav className="barra-nav">
         {ABAS.map((a) =>
