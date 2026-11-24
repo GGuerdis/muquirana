@@ -67,7 +67,7 @@ function Cenario({ completo = false }) {
         <div className="chao" />
       </div>
       {/* o sol fica preso ao topo da página (rola junto), para não brilhar atrás dos cartões lá embaixo */}
-      {completo && <div className="sol" aria-hidden="true" />}
+      {completo && <div className="sol-palco" aria-hidden="true"><div className="sol-halo" /><div className="sol" /></div>}
     </>
   )
 }

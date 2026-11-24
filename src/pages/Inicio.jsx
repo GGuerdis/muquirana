@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { CabecaPagina, Mascote, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas } from '../components/Pecas.jsx'
-import { IconeOlho, IconeOlhoFechado } from '../components/Icones.jsx'
+import { IconeOlho, IconeOlhoFechado, IconeEssencial, IconeTudo } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes, hoje } from '../lib/datas.js'
 import { saldoConta, resumoMes, contasEstimadas } from '../lib/calculos.js'
@@ -23,6 +23,8 @@ export default function Inicio({ mes, setMes, irPara }) {
   const { contas, cartoes, lancamentos, recorrentes, zoeira, config } = useDados()
   const [verPrevisao, setVerPrevisao] = useState(false)
   const ocultar = config.ocultarValores === true
+  // "Só o essencial": deixa só o saldo e o "Para onde foi o dinheiro" (fica guardado nos ajustes)
+  const essencial = config.inicioEssencial === true
   const mostrar = (v) => (ocultar ? OCULTO : formatar(v))
   const previsao = useMemo(() => saldoPrevisto({ mes: mesAtual(), contas, cartoes, recorrentes, lancamentos }), [contas, cartoes, recorrentes, lancamentos])
 
@@ -53,14 +55,18 @@ export default function Inicio({ mes, setMes, irPara }) {
 
   return (
     <div className="pagina">
-      <CabecaPagina titulo="Muquirana" irPara={irPara} />
-      <div className="inicio-cabeca">
+      <CabecaPagina titulo="Muquirana" irPara={irPara} extra={
+        <button className="botao-acao" onClick={() => salvarConfig('inicioEssencial', !essencial)} aria-pressed={essencial}>
+          {essencial ? <><IconeTudo /> Mostrar tudo</> : <><IconeEssencial /> Só o essencial</>}
+        </button>
+      } />
+      {!essencial && <div className="inicio-cabeca">
         <Mascote rosto={humor.rosto} tamanho={52} />
         <div className="textos">
           <span className="ola"><SeloSincronizacao /><SeletorEspaco /></span>
           <span className="frase">{humor.mensagem}</span>
         </div>
-      </div>
+      </div>}
 
       <section className="cartao-topo">
         <div className="saldo-total">
@@ -71,10 +77,10 @@ export default function Inicio({ mes, setMes, irPara }) {
             </button>
           </div>
           <strong className={`valor-grande ${ocultar ? 'oculto' : ''}`}>{mostrar(saldoTotal)}</strong>
-          <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
+          {!essencial && <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
             Previsto para {dataCurta(previsao.fimMes)}: <strong>{mostrar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
-          </button>
-          {verPrevisao && !ocultar && (
+          </button>}
+          {verPrevisao && !essencial && !ocultar && (
             <div className="previsao-detalhe">
               <span>Saldo hoje <b>{formatar(previsao.saldoHoje)}</b></span>
               {previsao.agendados !== 0 && <span>Lançamentos agendados <b>{previsao.agendados > 0 ? '+' : '−'} {formatar(Math.abs(previsao.agendados))}</b></span>}
@@ -83,15 +89,15 @@ export default function Inicio({ mes, setMes, irPara }) {
             </div>
           )}
         </div>
-        <div className="contas-mini">
+        {!essencial && <div className="contas-mini">
           {saldos.map((c) => (
             <div key={c.id} className={`conta-mini ${estimadas.has(c.id) ? 'estimada' : ''}`}>
               <span>{c.emoji} {c.nome}</span>
               <strong>{estimadas.has(c.id) && !ocultar ? '≈ ' : ''}{mostrar(c.saldo)}</strong>
             </div>
           ))}
-        </div>
-        {estimadas.size > 0 && (
+        </div>}
+        {!essencial && estimadas.size > 0 && (
           <p className="nota-estimada">
             ≈ Estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta. Importe o extrato dela ou informe o saldo real em Ajustes.
           </p>
@@ -99,25 +105,24 @@ export default function Inicio({ mes, setMes, irPara }) {
       </section>
 
       <ConvitesRecebidos />
-      <LembreteBackup />
-
-      <SeletorMes mes={mes} aoMudar={setMes} />
-
-      <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} />
-
-      <OrcamentoDoMes mes={mes} irPara={irPara} />
+      {!essencial && <>
+        <LembreteBackup />
+        <SeletorMes mes={mes} aoMudar={setMes} />
+        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} />
+        <OrcamentoDoMes mes={mes} irPara={irPara} />
+      </>}
 
       <section className="painel">
         <div className="painel-titulo">
-          <h3>Para onde foi o dinheiro</h3>
+          <h3>Para onde foi o dinheiro{essencial && <small className="titulo-mes"> · {nomeMes(mes)}</small>}</h3>
           {resumo.categorias.length > 0 && <button className="link" onClick={() => irPara('historico')}>Histórico</button>}
         </div>
         <BarrasCategorias categorias={resumo.categorias} limite={5} />
       </section>
 
-      <ContasDoMes mes={mes} irPara={irPara} />
+      {!essencial && <ContasDoMes mes={mes} irPara={irPara} />}
 
-      {faturas.length > 0 && (
+      {!essencial && faturas.length > 0 && (
         <section className="painel">
           <h3>Faturas</h3>
           {faturas.map((f) => (
@@ -129,7 +134,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         </section>
       )}
 
-      <section className="painel">
+      {!essencial && <section className="painel">
         <div className="painel-titulo">
           <h3>Últimos lançamentos</h3>
           {recentes.length > 0 && <button className="link" onClick={() => irPara('lancamentos')}>Ver todos</button>}
@@ -137,7 +142,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         {recentes.length ? recentes.map((l) => <ItemLancamento key={l.id} l={l} mostrarData />) : (
           <p className="vazio">Toque no <strong>+</strong> para lançar seu primeiro gasto.</p>
         )}
-      </section>
+      </section>}
     </div>
   )
 }

@@ -31,11 +31,12 @@ export function IconeCategoria({ categoria, emoji, desenho, pequeno = false }) {
 
 // Cabeçalho igual em todas as telas: título à esquerda, engrenagem (ou voltar) à direita,
 // e os botões de ação da tela numa fileira logo abaixo.
-export function CabecaPagina({ titulo, irPara, voltar = false, acoes }) {
+export function CabecaPagina({ titulo, irPara, voltar = false, acoes, extra }) {
   return (
     <>
       <header className="cabeca">
         <h1 className="titulo-pagina">{titulo}</h1>
+        {extra && <span className="cabeca-extra">{extra}</span>}
         {irPara && (voltar
           ? <button className="botao-redondo" onClick={() => irPara('inicio')} aria-label="Voltar ao início"><IconeVoltar /></button>
           : <button className="botao-redondo" onClick={() => irPara('ajustes')} aria-label="Ajustes"><IconeEngrenagem /></button>)}

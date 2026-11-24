@@ -59,3 +59,10 @@ export const IconeVoltar = () => (
 export const IconeMais = () => (
   <svg {...base}><path d="M12 5v14M5 12h14" /></svg>
 )
+// "Só o essencial" (linhas encolhendo) e "Mostrar tudo" (linhas cheias)
+export const IconeEssencial = () => (
+  <svg {...base}><path d="M4 7h16M4 12h10M4 17h5" /></svg>
+)
+export const IconeTudo = () => (
+  <svg {...base}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+)

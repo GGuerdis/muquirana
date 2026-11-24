@@ -56,6 +56,7 @@
 
   --hud-brilho: 6px;
   --hud-brilho-traco: 0%;
+  --halo-forca: 0.7;
   --cromo: linear-gradient(180deg, #3a0f57 0%, #6b1f86 45%, #c8238a 55%, #4a1366 100%);
   --sol: linear-gradient(180deg, #ffd76b 0%, #ff9a5a 45%, #ff6fa5 80%, #e05aa8 100%);
   --linhas-chao: rgba(214, 51, 138, 0.35);
@@ -94,6 +95,7 @@
     --hud-traco: #fff;
     --hud-brilho: 10px;
     --hud-brilho-traco: 100%;
+    --halo-forca: 1;
     --cromo: linear-gradient(180deg, #ffffff 0%, #d9f1ff 42%, #6fb7ff 50%, #ff8bd8 53%, #ffe6f6 85%);
     --sol: linear-gradient(180deg, #ffe66b 0%, #ff9a3d 40%, #ff3d8b 75%, #b5179e 100%);
     --linhas-chao: rgba(255, 61, 190, 0.75);
@@ -542,7 +544,16 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 .acoes-titulo { display: flex; gap: 8px; }
 /* Cabeçalho comum a todas as telas */
 .cabeca { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
-.cabeca .titulo-pagina { margin: 0; }
+.cabeca .titulo-pagina { margin: 0 auto 0 0; }
+.cabeca-extra { display: flex; }
+.cabeca-extra .botao-acao { white-space: nowrap; }
+.cabeca-extra .botao-acao svg { width: 16px; height: 16px; }
+/* telas estreitas: título e botão encolhem um pouco para tudo caber numa linha */
+.cabeca { gap: 8px; }
+.cabeca .titulo-pagina { font-size: clamp(1.3rem, 7vw, 1.6rem); white-space: nowrap; }
+@media (max-width: 370px) { .cabeca-extra .botao-acao { padding: 7px 10px; font-size: 0.78rem; gap: 5px; } }
+@media (max-width: 340px) { .cabeca .titulo-pagina { font-size: 1.2rem; } }
+.titulo-mes { font-size: 0.8rem; font-weight: 600; color: var(--texto-3); }
 .acoes-pagina { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -6px; }
 .acoes-pagina .botao-acao svg { width: 16px; height: 16px; }
 .faixa-totais { display: flex; justify-content: space-between; gap: 8px; font-size: 0.85rem; color: var(--texto-2); padding: 0 4px; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
@@ -573,7 +584,14 @@ main { position: relative; z-index: 1; padding-bottom: calc(var(--nav-altura) + 
   background-image: radial-gradient(1.4px 1.4px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 15%, #fff, transparent), radial-gradient(1.2px 1.2px at 85% 40%, #fff, transparent),
     radial-gradient(1px 1px at 40% 10%, #fff, transparent), radial-gradient(1.6px 1.6px at 10% 55%, #ffd6f5, transparent), radial-gradient(1px 1px at 55% 45%, #fff, transparent),
     radial-gradient(1px 1px at 92% 8%, #cfe9ff, transparent), radial-gradient(1.3px 1.3px at 32% 72%, #fff, transparent), radial-gradient(1px 1px at 62% 62%, #ffe8f7, transparent); }
-.sol { position: absolute; z-index: 0; pointer-events: none; left: 50%; top: calc(300px + env(safe-area-inset-top)); width: min(280px, 72vw); aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: var(--sol);
+/* palco do sol: preso à tela (o sol acompanha a rolagem e fica sempre ao fundo) e recorta o halo nas bordas */
+.sol-palco { --sol-w: min(280px, 72vw); --sol-topo: calc(300px + env(safe-area-inset-top));
+  position: fixed; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; }
+/* halo: brilho macio atrás do sol (fora da máscara das listras, para aparecer de verdade) */
+.sol-halo { position: absolute; z-index: 0; pointer-events: none; left: 50%; width: calc(var(--sol-w) * 1.7); aspect-ratio: 1; border-radius: 50%;
+  top: calc(var(--sol-topo) + var(--sol-w) / 2 - var(--sol-w) * 0.85); transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 160, 90, 0.95) 0%, rgba(255, 61, 139, 0.6) 34%, rgba(181, 23, 158, 0.18) 55%, transparent 70%); opacity: var(--halo-forca); }
+.sol { position: absolute; z-index: 0; pointer-events: none; left: 50%; top: var(--sol-topo); width: var(--sol-w); aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: var(--sol);
   -webkit-mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 20px); mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 20px);
   filter: drop-shadow(0 0 40px rgba(255, 61, 139, 0.45)); opacity: 0.85; }
 .cenario .chao { position: absolute; left: -50%; right: -50%; bottom: 0; height: 900px; transform: perspective(300px) rotateX(58deg); transform-origin: bottom;
@@ -582,6 +600,20 @@ main { position: relative; z-index: 1; padding-bottom: calc(var(--nav-altura) + 
 .cenario.completo .chao { opacity: 1; -webkit-mask-image: linear-gradient(to top, #000 45%, transparent 100%); mask-image: linear-gradient(to top, #000 45%, transparent 100%); }
 @media (prefers-reduced-motion: no-preference) { .cenario.completo .chao { animation: andar 1.6s linear infinite; } }
 @keyframes andar { to { background-position: 0 46px; } }
+/* Sol: as listras descem devagar e ele "respira" (brilho e tamanho) — só se o celular não pedir menos movimento */
+@media (prefers-reduced-motion: no-preference) {
+  .sol { animation: sol-listras 10s linear infinite, sol-respirar 10s ease-in-out infinite alternate; will-change: transform, opacity; }
+  .sol-halo { animation: halo-respirar 10s ease-in-out infinite alternate; will-change: transform, opacity; }
+}
+@keyframes halo-respirar {
+  from { opacity: calc(var(--halo-forca) * 0.12); transform: translateX(-50%) scale(0.82); }
+  to { opacity: var(--halo-forca); transform: translateX(-50%) scale(1.15); }
+}
+@keyframes sol-listras { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 0 20px; mask-position: 0 20px; } }
+@keyframes sol-respirar {
+  from { opacity: 0.5; transform: translateX(-50%) scale(0.97); }
+  to { opacity: 1; transform: translateX(-50%) scale(1.08); }
+}
 
 /* ---------- Tipografia ---------- */
 .titulo-pagina, .folha-topo h2, .bv-passo h1 { font-family: var(--fonte-titulo); font-style: italic; font-weight: 900; letter-spacing: 0.02em; text-shadow: var(--brilho); }
