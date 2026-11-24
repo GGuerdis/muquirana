@@ -16,6 +16,7 @@ import { salvarConfig } from './lib/db.js'
 import { juntarRepetidos } from './lib/repetidos.js'
 import { IconeInicio, IconeLista, IconeGrafico, IconeCartao } from './components/Icones.jsx'
 import { useArrastoTelas } from './components/useArrastoTelas.js'
+import { useIndicadorNav } from './components/useIndicadorNav.js'
 import { ladoDaEntrada } from './lib/gesto.js'
 
 const ABAS = [
@@ -60,16 +61,9 @@ export default function App({ migrou = null }) {
   )
 }
 
-// Fundo Synthwave: estrelas (à noite) e chão quadriculado (completo só no Início). O sol fica no cartão do saldo.
-function Cenario({ completo = false }) {
-  return (
-    <>
-      <div className={`cenario ${completo ? 'completo' : ''}`} aria-hidden="true">
-        <div className="estrelas" />
-        <div className="chao" />
-      </div>
-    </>
-  )
+// Fundo: só o degradê do céu, parado. O sol fica no cartão do saldo.
+function Cenario() {
+  return <div className="cenario" aria-hidden="true" />
 }
 
 function Telas() {
@@ -107,19 +101,21 @@ function Telas() {
   // Filtro pedido ao abrir Lançamentos (ex.: tocou no bloco "Saiu" ou numa conta no Início)
   const [filtroLanc, setFiltroLanc] = useState(null)
   const mainRef = useRef(null)
+  const navRef = useRef(null)
   const irPara = (id, extra = {}) => {
     setEntrada({ lado: ladoDaEntrada(aba, id), deslizou: !!extra.deslizou })
     setFiltroLanc(extra.filtro || null)
     setAba(id)
     window.scrollTo(0, 0)
   }
-  useArrastoTelas({ aba, irPara, alvoRef: mainRef, ativo: !!config.boasVindas })
+  useArrastoTelas({ aba, irPara, alvoRef: mainRef, navRef, ativo: !!config.boasVindas })
+  useIndicadorNav(navRef, config.boasVindas ? aba : null)
 
-  if (!config.boasVindas) return <><Cenario completo /><BoasVindas /></>
+  if (!config.boasVindas) return <><Cenario /><BoasVindas /></>
 
   return (
     <>
-      <Cenario completo={aba === 'inicio'} />
+      <Cenario />
       <main ref={mainRef}>
         <AvisoNavegador />
         <AvisoVersao nova={versaoNova} />
@@ -132,12 +128,13 @@ function Telas() {
           {aba === 'ajustes' && <Ajustes irPara={irPara} />}
         </div>
       </main>
-      <nav className="barra-nav">
+      <nav className="barra-nav" ref={navRef}>
+        <span className="nav-indicador" aria-hidden="true" />
         {ABAS.map((a) =>
           a.id === 'novo' ? (
             <button key="novo" className="botao-novo" onClick={() => (podeEditar ? abrirLancamento() : avisar('Neste espaço você só pode ver: peça a quem criou para liberar a edição.'))} aria-label="Novo lançamento">+</button>
           ) : (
-            <button key={a.id} className={`nav-item ${aba === a.id ? 'ativo' : ''}`} onClick={() => irPara(a.id)} aria-current={aba === a.id ? 'page' : undefined}>
+            <button key={a.id} data-aba={a.id} className={`nav-item ${aba === a.id ? 'ativo' : ''}`} onClick={() => irPara(a.id)} aria-current={aba === a.id ? 'page' : undefined}>
               <span className="nav-icone">{a.icone}</span>
               <span>{a.rotulo}</span>
             </button>

@@ -58,8 +58,6 @@
   --hud-brilho-traco: 0%;
   --cromo: linear-gradient(180deg, #3a0f57 0%, #6b1f86 45%, #c8238a 55%, #4a1366 100%);
   --sol: linear-gradient(180deg, #ffd76b 0%, #ff9a5a 45%, #ff6fa5 80%, #e05aa8 100%);
-  --linhas-chao: rgba(214, 51, 138, 0.35);
-  --estrelas: 0;
   color-scheme: light;
 }
 
@@ -96,8 +94,6 @@
     --hud-brilho-traco: 100%;
     --cromo: linear-gradient(180deg, #ffffff 0%, #d9f1ff 42%, #6fb7ff 50%, #ff8bd8 53%, #ffe6f6 85%);
     --sol: linear-gradient(180deg, #ffe66b 0%, #ff9a3d 40%, #ff3d8b 75%, #b5179e 100%);
-    --linhas-chao: rgba(255, 61, 190, 0.75);
-    --estrelas: 1;
     color-scheme: dark;
   }
 }
@@ -183,7 +179,6 @@ main { padding-bottom: calc(var(--nav-altura) + 24px + env(safe-area-inset-botto
 .conta-mini span { opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conta-mini strong { font-size: 0.98rem; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .conta-mini.estimada { outline: 1px dashed rgb(255 255 255 / 0.45); outline-offset: -1px; }
-.nota-estimada { margin: 0; font-size: 0.76rem; opacity: 0.8; line-height: 1.35; position: relative; z-index: 1; }
 .oculto { letter-spacing: 0.1em; }
 
 
@@ -569,18 +564,8 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 body { font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'; background: var(--fundo); }
 main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(safe-area-inset-bottom)); }
 
-/* ---------- Cenário de fundo: estrelas, sol listrado e chão quadriculado ---------- */
-.cenario { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--ceu); }
-.cenario .estrelas { position: absolute; inset: 0 0 45% 0; opacity: var(--estrelas);
-  background-image: radial-gradient(1.4px 1.4px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 15%, #fff, transparent), radial-gradient(1.2px 1.2px at 85% 40%, #fff, transparent),
-    radial-gradient(1px 1px at 40% 10%, #fff, transparent), radial-gradient(1.6px 1.6px at 10% 55%, #ffd6f5, transparent), radial-gradient(1px 1px at 55% 45%, #fff, transparent),
-    radial-gradient(1px 1px at 92% 8%, #cfe9ff, transparent), radial-gradient(1.3px 1.3px at 32% 72%, #fff, transparent), radial-gradient(1px 1px at 62% 62%, #ffe8f7, transparent); }
-.cenario .chao { position: absolute; left: -50%; right: -50%; bottom: 0; height: 900px; transform: perspective(300px) rotateX(58deg); transform-origin: bottom;
-  background-image: linear-gradient(var(--linhas-chao) 2px, transparent 2px), linear-gradient(90deg, var(--linhas-chao) 2px, transparent 2px); background-size: 46px 46px;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 28%); mask-image: linear-gradient(to top, #000 0%, transparent 28%); opacity: 0.55; }
-.cenario.completo .chao { opacity: 1; -webkit-mask-image: linear-gradient(to top, #000 45%, transparent 100%); mask-image: linear-gradient(to top, #000 45%, transparent 100%); }
-@media (prefers-reduced-motion: no-preference) { .cenario.completo .chao { animation: andar 1.6s linear infinite; } }
-@keyframes andar { to { background-position: 0 46px; } }
+/* ---------- Fundo: degradê parado ---------- */
+.cenario { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: var(--ceu); }
 /* Sol do cartão de saldo: listras descendo devagar */
 @keyframes sol-listras { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 0 20px; mask-position: 0 20px; } }
 
@@ -613,7 +598,6 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .contas-mini { justify-content: flex-start; margin: 0 -16px; padding: 4px 16px; width: calc(100% + 32px); }
 .conta-mini { background: var(--superficie); box-shadow: var(--sombra); color: var(--texto); text-align: left; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .conta-mini.estimada { outline: 1.5px dashed var(--neon-2); }
-.nota-estimada { color: var(--texto-2); }
 
 /* Entrou × saiu: entrada em ciano, saída em magenta */
 .cartao-mes .linha-resumo strong { text-shadow: var(--brilho); }
@@ -736,7 +720,6 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .bloco strong { font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bloco small { font-size: 0.75rem; color: var(--texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bloco.estimada { outline: 1.5px dashed color-mix(in srgb, var(--texto-3) 60%, transparent); outline-offset: -1.5px; }
-.nota-estimada { color: var(--texto-3); font-size: 0.76rem; margin: -6px 2px 0; text-align: left; }
 
 /* Linha de status do Início: texto simples, sem chips */
 .inicio-status { margin-top: -8px; font-size: 0.85rem; }
@@ -791,3 +774,10 @@ button.bloco { font: inherit; cursor: pointer; position: relative; }
 .grupo-corpo > .painel { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; padding: 14px 0; border-top: 1px solid var(--linha); }
 @media (prefers-reduced-motion: no-preference) { .grupo[open] .grupo-corpo { animation: abrir-grupo 0.22s ease-out; } }
 @keyframes abrir-grupo { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Marcador da barra: desliza até a tela atual e acompanha o arrasto ---------- */
+.nav-indicador { position: absolute; left: 0; top: 0; width: 54px; height: 34px; border-radius: 999px; pointer-events: none; opacity: 0; z-index: 0;
+  background: color-mix(in srgb, var(--marca-2) 15%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--marca-2) 30%, transparent); will-change: transform; }
+.nav-item, .botao-novo { position: relative; z-index: 1; }
+.nav-item { transition: color 0.2s ease; }
+.nav-item .nav-icone { transition: color 0.2s ease, filter 0.2s ease; }

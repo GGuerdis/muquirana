@@ -107,11 +107,6 @@ export default function Inicio({ mes, setMes, irPara }) {
             <Bloco key={c.id} emoji={c.emoji} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} aoTocar={() => irPara('lancamentos', { filtro: { contaId: c.id } })} />
           ))}
         </div>
-        {estimadas.size > 0 && (
-          <p className="nota-estimada">
-            ≈ Estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta. Importe o extrato dela ou informe o saldo real em Ajustes.
-          </p>
-        )}
       </>}
       {ver.has('orcamento') && orcamentos.length > 0 && <OrcamentoDoMes mes={mes} irPara={irPara} />}
 

@@ -44,3 +44,13 @@ export function ladoDaEntrada(de, para) {
   if (a < 0 || b < 0 || a === b) return 0
   return b > a ? 1 : -1
 }
+
+// Onde fica o marcador da barra de baixo entre a tela atual (de) e a vizinha (para), com p de 0 a 1.
+// de/para: centro do item na barra, ou null quando a tela não está na barra (ex.: Ajustes) — aí ele some/aparece.
+export function posicaoIndicador(de, para, p) {
+  const f = Math.min(1, Math.max(0, Number(p) || 0))
+  if (de && para) return { x: de.x + (para.x - de.x) * f, y: de.y + (para.y - de.y) * f, opacidade: 1 }
+  if (de) return { x: de.x, y: de.y, opacidade: 1 - f }
+  if (para) return { x: para.x, y: para.y, opacidade: f }
+  return { x: null, y: null, opacidade: 0 }
+}

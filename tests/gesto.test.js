@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { direcaoDoArrasto, abaVizinha, ladoDaEntrada, ehLateral, ignorarAlvo, ABAS_GESTO } from '../src/lib/gesto.js'
+import { direcaoDoArrasto, abaVizinha, ladoDaEntrada, ehLateral, ignorarAlvo, posicaoIndicador, ABAS_GESTO } from '../src/lib/gesto.js'
 
 const L = 390
 const arrasto = (dx, dy = 0, ms = 300, inicioX = 200) => direcaoDoArrasto({ dx, dy, ms, inicioX, largura: L })
@@ -52,5 +52,24 @@ describe('trocar de tela arrastando para o lado', () => {
     expect(ignorarAlvo(el('.folha-fundo'))).toBe(true)
     expect(ignorarAlvo(el('.painel'))).toBe(false)
     expect(ignorarAlvo(null)).toBe(false)
+  })
+})
+
+describe('marcador da barra acompanha o arrasto', () => {
+  const A = { x: 40, y: 20 }, B = { x: 140, y: 20 }
+  it('desliza proporcionalmente entre os dois itens', () => {
+    expect(posicaoIndicador(A, B, 0)).toEqual({ x: 40, y: 20, opacidade: 1 })
+    expect(posicaoIndicador(A, B, 0.25)).toEqual({ x: 65, y: 20, opacidade: 1 })
+    expect(posicaoIndicador(A, B, 1)).toEqual({ x: 140, y: 20, opacidade: 1 })
+  })
+  it('não passa dos limites', () => {
+    expect(posicaoIndicador(A, B, 3).x).toBe(140)
+    expect(posicaoIndicador(A, B, -1).x).toBe(40)
+    expect(posicaoIndicador(A, B, NaN).x).toBe(40)
+  })
+  it('indo para Ajustes (fora da barra) some aos poucos; voltando, aparece', () => {
+    expect(posicaoIndicador(A, null, 0.4)).toEqual({ x: 40, y: 20, opacidade: 0.6 })
+    expect(posicaoIndicador(null, B, 0.4)).toEqual({ x: 140, y: 20, opacidade: 0.4 })
+    expect(posicaoIndicador(null, null, 0.5)).toEqual({ x: null, y: null, opacidade: 0 })
   })
 })
