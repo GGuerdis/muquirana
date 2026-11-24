@@ -23,7 +23,7 @@ export function OrcamentoDoMes({ mes, irPara }) {
     return (
       <section className="painel">
         <h3>Orçamento</h3>
-        <p className="dica">Defina quanto quer gastar por mês em cada categoria (ex.: Alimentação até R$ 800). O Muquirana avisa quando chegar perto.</p>
+        <p className="dica">Defina quanto quer gastar por mês em cada categoria (ex.: Alimentação até R$ 800). O Mukirana avisa quando chegar perto.</p>
         <button className="link" onClick={() => irPara('ajustes')}>+ Definir orçamento</button>
       </section>
     )

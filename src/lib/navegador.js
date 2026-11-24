@@ -1,6 +1,6 @@
 // Navegador "de dentro" de outro app (WhatsApp, Instagram, Facebook...): quando você toca num link nesses apps,
 // a página pode abrir num navegador interno que guarda os dados separado do Chrome e pode apagá-los ao fechar.
-// O Muquirana guarda tudo no aparelho, então nesses casos é preciso abrir no navegador de verdade.
+// O Mukirana guarda tudo no aparelho, então nesses casos é preciso abrir no navegador de verdade.
 
 const APPS = [
   ['WhatsApp', /WhatsApp/i],

@@ -23,7 +23,7 @@ const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 export async function criarEspaco(nome, { nomeConta = 'Conta da casa' } = {}) {
   nome = (nome || '').trim().slice(0, 40)
   if (!nome) throw new Error('Dê um nome para o espaço.')
-  const realmId = await db.realms.add({ name: nome, represents: 'um espaço do Muquirana' })
+  const realmId = await db.realms.add({ name: nome, represents: 'um espaço do Mukirana' })
   definirEspacoParaNovos(realmId)
   await criarDadosIniciais({ contas: [{ nome: nomeConta, emoji: '🏠', saldoInicial: 0 }], espaco: realmId })
   await salvarConfig('espacoAtual', realmId)

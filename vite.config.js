@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [
     react(),
     {
-      name: 'muquirana-versao',
+      name: 'mukirana-versao',
       apply: 'build',
       generateBundle() {
         this.emitFile({ type: 'asset', fileName: 'versao.json', source: JSON.stringify({ versao: VERSAO }) })
@@ -26,8 +26,8 @@ export default defineConfig({
       },
       includeAssets: ['icone.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Muquirana',
-        short_name: 'Muquirana',
+        name: 'Mukirana',
+        short_name: 'Mukirana',
         description: 'Controle financeiro pessoal: cada tostão conta.',
         lang: 'pt-BR',
         theme_color: '#1d0640',

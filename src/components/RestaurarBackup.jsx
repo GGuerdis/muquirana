@@ -1,6 +1,6 @@
 // Escolher um arquivo de backup e restaurar (usado em Ajustes e nas boas-vindas)
 import { useRef, useState } from 'react'
-import { restaurarBackup } from '../lib/db.js'
+import { restaurarBackup, ehBackupDoApp } from '../lib/db.js'
 
 export default function RestaurarBackup({ rotulo = 'Restaurar', classe = 'botao secundario cheio', avisar, aoRestaurar }) {
   const arquivo = useRef(null)
@@ -15,10 +15,10 @@ export default function RestaurarBackup({ rotulo = 'Restaurar', classe = 'botao 
     setErro('')
     try {
       const dados = JSON.parse(await f.text())
-      if (dados?.app !== 'muquirana' || !dados.dados) throw new Error()
+      if (!ehBackupDoApp(dados)) throw new Error()
       setBackup(dados)
     } catch {
-      setErro('Esse arquivo não parece ser um backup do Muquirana.')
+      setErro('Esse arquivo não parece ser um backup do Mukirana.')
     }
   }
 

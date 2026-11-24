@@ -66,7 +66,7 @@ function evento({ uid, titulo, descricao, inicio, regra, avisos, carimbo }) {
 export function gerarAgenda({ recorrentes, cartoes, nomeConta = () => '', nomeCartao = () => '', hoje, agora = new Date() }) {
   const carimbo = agora.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const mesHoje = hoje.slice(0, 7)
-  const linhas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Muquirana//Lembretes//PT-BR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Muquirana']
+  const linhas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mukirana//Lembretes//PT-BR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Mukirana']
   let eventos = 0
   for (const r of recorrentes) {
     if (r.fim && r.fim < mesHoje) continue // já acabou
@@ -76,7 +76,7 @@ export function gerarAgenda({ recorrentes, cartoes, nomeConta = () => '', nomeCa
     linhas.push(...evento({
       uid: `fixa-${r.id}@muquirana`,
       titulo: `${r.tipo === 'receita' ? '💰' : '🧾'} ${r.descricao} (${formatar(r.valor).replace(/\s/g, ' ')})`,
-      descricao: `${r.tipo === 'receita' ? 'Entrada' : 'Conta fixa'} no Muquirana: ${r.descricao}, ${formatar(r.valor).replace(/\s/g, ' ')}${onde ? ` · ${onde}` : ''}. Lembre de confirmar no app.`,
+      descricao: `${r.tipo === 'receita' ? 'Entrada' : 'Conta fixa'} no Mukirana: ${r.descricao}, ${formatar(r.valor).replace(/\s/g, ' ')}${onde ? ` · ${onde}` : ''}. Lembre de confirmar no app.`,
       inicio: primeiraOcorrencia(mesInicio, r.dia),
       regra: regraMensal(r.dia, ate),
       avisos: r.tipo === 'receita' ? ['PT9H'] : ['-PT15H', 'PT9H'], // despesa: na véspera e no dia, às 9h (o evento começa à meia-noite)
@@ -88,7 +88,7 @@ export function gerarAgenda({ recorrentes, cartoes, nomeConta = () => '', nomeCa
     linhas.push(...evento({
       uid: `fatura-${c.id}@muquirana`,
       titulo: `💳 Vence a fatura do ${nomeCartao(c.id) || c.nome}`,
-      descricao: `Fatura do cartão ${c.nome} vence hoje (fecha dia ${c.diaFechamento}). Confira o valor no Muquirana.`,
+      descricao: `Fatura do cartão ${c.nome} vence hoje (fecha dia ${c.diaFechamento}). Confira o valor no Mukirana.`,
       inicio: primeiraOcorrencia(mesHoje, c.diaVencimento),
       regra: regraMensal(c.diaVencimento),
       avisos: ['-P1DT15H', 'PT9H'], // dois dias antes e no dia, às 9h

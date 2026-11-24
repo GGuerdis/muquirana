@@ -122,7 +122,7 @@ export function PainelConta() {
       <span className={`selo-sync selo-${status.tipo}`}>{status.icone} {status.texto}</span>
       {!logado && (
         <>
-          <p className="dica">Entre com seu e-mail para usar o Muquirana em mais de um aparelho (celular e computador) com os dados sincronizados. Sem senha: você recebe um código por e-mail.</p>
+          <p className="dica">Entre com seu e-mail para usar o Mukirana em mais de um aparelho (celular e computador) com os dados sincronizados. Sem senha: você recebe um código por e-mail.</p>
           <BotaoEntrar />
         </>
       )}

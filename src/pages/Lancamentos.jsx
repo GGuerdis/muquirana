@@ -59,7 +59,7 @@ export default function Lancamentos({ mes, setMes, irPara }) {
       <input className="busca" type="search" placeholder="Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
       <Chips rolavel opcoes={FILTROS} valor={filtro} aoMudar={setFiltro} />
 
-      {dias.length === 0 && <div className="painel vazio-grande"><p>🪙</p><p>{busca ? 'Nada encontrado com essa busca.' : 'Nada por aqui neste mês. Até o Muquirana ficou surpreso.'}</p></div>}
+      {dias.length === 0 && <div className="painel vazio-grande"><p>🪙</p><p>{busca ? 'Nada encontrado com essa busca.' : 'Nada por aqui neste mês. Até o Mukirana ficou surpreso.'}</p></div>}
       {dias.map(([data, itens]) => {
         const t = totalDia(itens)
         return (

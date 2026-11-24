@@ -51,7 +51,7 @@ describe('resumo do mês', () => {
   })
 })
 
-describe('humor do Muquirana', () => {
+describe('humor do Mukirana', () => {
   const r = (entrou, saiu) => ({ entrou, saiu })
   it.each([
     [r(0, 0), true, 'sumido'],

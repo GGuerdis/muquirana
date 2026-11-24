@@ -1,4 +1,4 @@
-# Muquirana 🪙
+# Mukirana 🪙
 
 Controle financeiro pessoal: cada tostão conta.
 
@@ -68,7 +68,7 @@ O resultado fica em `dist/`, pronto para subir no GitHub Pages, Vercel ou Netlif
 - `src/lib/fatura.js`: regras de fechamento e vencimento de fatura
 - `src/lib/lancamentos.js`: salvar, editar e apagar (inclusive parcelas)
 - `src/lib/calculos.js`: saldos e resumo do mês
-- `src/lib/zoeira.js`: as frases do Muquirana
+- `src/lib/zoeira.js`: as frases do Mukirana
 - `src/lib/db.js`: banco local, categorias padrão e backup
 - `src/lib/ofx.js` e `src/lib/importacao.js`: leitura de extrato e importação
 - `src/lib/categorizar.js`: sugestão de categoria

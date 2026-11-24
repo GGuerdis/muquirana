@@ -15,7 +15,7 @@ export default function AvisoNavegador({ forte = false }) {
 
   return (
     <div className={`aviso-navegador ${forte ? 'forte' : ''}`} role="alert">
-      <strong>⚠️ Você abriu o Muquirana {onde}</strong>
+      <strong>⚠️ Você abriu o Mukirana {onde}</strong>
       <span>Aqui os seus dados podem sumir quando você fechar ou trocar de tela. {nav.android ? 'Abra no Chrome' : 'Abra no Safari'} e, de preferência, instale o app na tela inicial.</span>
       <div className="aviso-navegador-botoes">
         {nav.android && <a className="botao primario mini" href={linkParaChrome(endereco)}>Abrir no Chrome</a>}

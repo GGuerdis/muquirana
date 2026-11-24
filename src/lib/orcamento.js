@@ -73,7 +73,7 @@ export function textoAviso(aviso, nomeCategoria, zoeira) {
   if (aviso.situacao === 'estourado') {
     const passou = formatar(aviso.gasto - aviso.limite)
     return zoeira
-      ? `😭 Estourou o orçamento de ${nomeCategoria} em ${passou}. O muquirana interior está de luto.`
+      ? `😭 Estourou o orçamento de ${nomeCategoria} em ${passou}. O mukirana interior está de luto.`
       : `Orçamento de ${nomeCategoria} ultrapassado em ${passou}.`
   }
   return zoeira

@@ -99,7 +99,7 @@ export function PainelEspaco() {
     try {
       await convidar(espaco.realmId, { email, papel })
       setEmail('')
-      avisar('Convite enviado. A pessoa recebe um e-mail e aceita ao entrar no Muquirana.')
+      avisar('Convite enviado. A pessoa recebe um e-mail e aceita ao entrar no Mukirana.')
     } catch (e) { setErro(e.message) }
   }
   async function confirmar(acao, fn) {

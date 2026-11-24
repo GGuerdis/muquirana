@@ -178,11 +178,15 @@ export async function exportarBackup() {
   const compartilhados = new Set((await db.realms.toArray()).map((r) => r.realmId))
   const dados = {}
   for (const t of TABELAS) dados[t] = (await db.table(t).toArray()).filter((x) => t === 'config' || !compartilhados.has(x.realmId))
-  return { app: 'muquirana', versao: 3, exportadoEm: new Date().toISOString(), dados }
+  return { app: APP_BACKUP, versao: 3, exportadoEm: new Date().toISOString(), dados }
 }
 
+// Backups novos dizem "mukirana"; os feitos antes da troca de nome dizem "muquirana" e continuam valendo
+export const APP_BACKUP = 'mukirana'
+export const ehBackupDoApp = (b) => (b?.app === APP_BACKUP || b?.app === 'muquirana') && !!b.dados
+
 export function validarBackup(backup) {
-  if (backup?.app !== 'muquirana' || !backup.dados) throw new Error('Este arquivo não é um backup do Muquirana.')
+  if (!ehBackupDoApp(backup)) throw new Error('Este arquivo não é um backup do Mukirana.')
   for (const t of TABELAS) {
     if (backup.dados[t] != null && !Array.isArray(backup.dados[t])) throw new Error('Backup corrompido.')
   }

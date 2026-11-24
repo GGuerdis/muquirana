@@ -71,7 +71,7 @@ const ALERTAS = {
   INVALID_EMAIL: 'E-mail inválido.',
   LICENSE_LIMIT_REACHED: 'O limite de usuários do plano foi atingido.',
   NO_SEATS_AVAILABLE: 'O limite de usuários do plano foi atingido.',
-  USER_NOT_REGISTERED: 'Este e-mail não tem acesso ao Muquirana.',
+  USER_NOT_REGISTERED: 'Este e-mail não tem acesso ao Mukirana.',
   USER_NOT_ACCEPTED: 'Este e-mail não foi aceito.',
   USER_DEACTIVATED: 'Este usuário foi desativado.',
   LOGOUT_CONFIRMATION: 'Existem {numUnsyncedChanges} alteração(ões) que ainda não foram para a nuvem. Se sair agora, elas serão perdidas.',
@@ -87,7 +87,7 @@ export function traduzirAlerta(alerta) {
 export function textosDaInteracao(ui) {
   switch (ui.type) {
     case 'email':
-      return { titulo: 'Entrar no Muquirana', explicacao: 'Vamos mandar um código para o seu e-mail. Não precisa de senha.', enviar: 'Enviar código', cancelar: 'Cancelar', rotulos: { email: 'Seu e-mail' } }
+      return { titulo: 'Entrar no Mukirana', explicacao: 'Vamos mandar um código para o seu e-mail. Não precisa de senha.', enviar: 'Enviar código', cancelar: 'Cancelar', rotulos: { email: 'Seu e-mail' } }
     case 'otp':
       return { titulo: 'Digite o código', explicacao: '', enviar: 'Entrar', cancelar: 'Cancelar', rotulos: { otp: 'Código recebido por e-mail' } }
     case 'logout-confirmation':

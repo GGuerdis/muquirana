@@ -1,4 +1,4 @@
-// A personalidade do Muquirana. Com o "modo zoeira" desligado, as mensagens ficam sérias.
+// A personalidade do Mukirana. Com o "modo zoeira" desligado, as mensagens ficam sérias.
 import { hoje } from './datas.js'
 
 // Escolhe uma frase que muda por dia (e não a cada clique)
@@ -29,7 +29,7 @@ const FRASES = {
     'Gastando e nada entrando? Cadê o salário nessa conta?',
   ],
   tranquilo: [
-    'Tudo sob controle. Continue assim, muquirana.',
+    'Tudo sob controle. Continue assim, mukirana.',
     'O cofrinho está em paz. Por enquanto.',
     'Gastando com responsabilidade. Estou orgulhoso.',
   ],
@@ -40,13 +40,13 @@ const FRASES = {
   ],
   chorando: [
     'Saiu mais do que entrou. Estou chorando abraçado ao cofrinho.',
-    'No vermelho! O muquirana interior está de luto.',
+    'No vermelho! O mukirana interior está de luto.',
     'Lá se foi a bufunfa. E levou junto a minha dignidade.',
   ],
   comemorando: [
     'Sobrou dinheiro! Cada tostão contou.',
     'Mês fechando no azul. Hoje tem pão com mortadela extra.',
-    'Olha só, sobrou! O muquirana aprova.',
+    'Olha só, sobrou! O mukirana aprova.',
   ],
 }
 
@@ -79,14 +79,14 @@ export function comentarioAoSalvar(form, categoria, zoeira) {
   const aleatorio = (lista) => lista[Math.floor(Math.random() * lista.length)]
 
   if (form.tipo === 'receita') {
-    return aleatorio(['Dinheiro entrando! Agora segura ele aí.', 'Opa, bufunfa nova! Não gasta tudo de uma vez.', 'Entrou! O muquirana sorriu.'])
+    return aleatorio(['Dinheiro entrando! Agora segura ele aí.', 'Opa, bufunfa nova! Não gasta tudo de uma vez.', 'Entrou! O mukirana sorriu.'])
   }
   if (form.tipo === 'transferencia') return 'Dinheiro trocando de bolso. Tudo certo.'
   if (form.parcelas > 1) {
     return aleatorio([`Parcelou em ${form.parcelas}x... o você do futuro mandou um abraço.`, `${form.parcelas} parcelas. Pelo menos é sem juros, né? NÉ?`])
   }
   if (/alimenta|delivery|ifood/i.test(cat) && reais >= 40) return 'iFood de novo? A cozinha está com saudade de você.'
-  if (reais >= 500) return aleatorio(['Eita. Lá se vai a bufunfa.', 'Gasto grande registrado. Respira.', 'Meu coraçãozinho de muquirana até parou.'])
+  if (reais >= 500) return aleatorio(['Eita. Lá se vai a bufunfa.', 'Gasto grande registrado. Respira.', 'Meu coraçãozinho de mukirana até parou.'])
   if (reais <= 10) return aleatorio(['Gastinho de nada. Mas é de grão em grão...', 'Até o cafezinho entra na conta. Muito bem!'])
-  return aleatorio(['Anotado. Cada tostão conta!', 'Registrado. Estou de olho.', 'Gasto lançado. O muquirana agradece a honestidade.'])
+  return aleatorio(['Anotado. Cada tostão conta!', 'Registrado. Estou de olho.', 'Gasto lançado. O mukirana agradece a honestidade.'])
 }

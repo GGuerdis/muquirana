@@ -91,7 +91,7 @@ describe('mensagens do login em português', () => {
     expect(traduzirAlerta({ messageCode: 'NOVO_CODIGO', message: 'Something new', messageParams: {} })).toBe('Something new')
   })
   it('títulos e botões de cada etapa', () => {
-    expect(textosDaInteracao({ type: 'email' })).toMatchObject({ titulo: 'Entrar no Muquirana', enviar: 'Enviar código' })
+    expect(textosDaInteracao({ type: 'email' })).toMatchObject({ titulo: 'Entrar no Mukirana', enviar: 'Enviar código' })
     expect(textosDaInteracao({ type: 'otp' })).toMatchObject({ titulo: 'Digite o código', enviar: 'Entrar' })
     expect(textosDaInteracao({ type: 'logout-confirmation' })).toMatchObject({ enviar: 'Sair mesmo assim' })
     expect(textosDaInteracao({ type: 'message-alert', title: 'Aviso', cancelLabel: null })).toMatchObject({ titulo: 'Aviso', cancelar: null })

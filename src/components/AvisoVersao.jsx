@@ -14,7 +14,7 @@ export function useVersaoNova() {
   return nova
 }
 
-export default function AvisoVersao({ nova, texto = 'Tem uma versão nova do Muquirana.' }) {
+export default function AvisoVersao({ nova, texto = 'Tem uma versão nova do Mukirana.' }) {
   const [atualizando, setAtualizando] = useState(false)
   if (!nova) return null
   return (

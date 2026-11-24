@@ -554,6 +554,10 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
 @media (max-width: 370px) { .cabeca-extra .botao-acao { padding: 7px 10px; font-size: 0.78rem; gap: 5px; } }
 @media (max-width: 340px) { .cabeca .titulo-pagina { font-size: 1.2rem; } }
 .titulo-mes { font-size: 0.8rem; font-weight: 600; color: var(--texto-3); }
+/* Modo essencial: botão de escolher os blocos e a lista de chaves */
+.centro-pagina { align-self: center; }
+.centro-pagina svg { width: 16px; height: 16px; }
+.lista-essencial { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
 .acoes-pagina { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -6px; }
 .acoes-pagina .botao-acao svg { width: 16px; height: 16px; }
 .faixa-totais { display: flex; justify-content: space-between; gap: 8px; font-size: 0.85rem; color: var(--texto-2); padding: 0 4px; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
@@ -576,7 +580,7 @@ h3 + .linha-fatura, .painel-titulo + .linha-ajuste, h3 + .linha-pagamento { bord
    TEMA SYNTHWAVE (vem por último: dá o visual final por cima da base)
    ===================================================================== */
 body { font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'; background: var(--fundo); }
-main { position: relative; z-index: 1; padding-bottom: calc(var(--nav-altura) + 44px + env(safe-area-inset-bottom)); }
+main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(safe-area-inset-bottom)); }
 
 /* ---------- Cenário de fundo: estrelas, sol listrado e chão quadriculado ---------- */
 .cenario { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: var(--ceu); }

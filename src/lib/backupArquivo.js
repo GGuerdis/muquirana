@@ -40,12 +40,12 @@ function baixar(blob, nome) {
 // Retorna false se a pessoa cancelou.
 export async function fazerBackup() {
   const backup = await exportarBackup()
-  const nome = `muquirana-backup-${hoje()}.json`
+  const nome = `mukirana-backup-${hoje()}.json`
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
   const file = new File([blob], nome, { type: 'application/json' })
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Backup do Muquirana' })
+      await navigator.share({ files: [file], title: 'Backup do Mukirana' })
     } catch (e) {
       if (e.name === 'AbortError') return false
       baixar(blob, nome)

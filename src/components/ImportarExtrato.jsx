@@ -406,7 +406,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
       <input ref={arquivo} type="file" multiple accept=".ofx,.OFX,.pdf,.PDF,application/pdf,application/x-ofx,application/ofx,text/plain" hidden onChange={lerArquivos} />
 
       <AvisoNavegador forte />
-      <AvisoVersao nova={versaoNova} texto="Este aparelho está com uma versão antiga do Muquirana." />
+      <AvisoVersao nova={versaoNova} texto="Este aparelho está com uma versão antiga do Mukirana." />
       {lendo && <p className="conferencia">⏳ Lendo PDF {lendo.atual} de {lendo.total}…</p>}
 
       {!extrato && !lendo && (

@@ -55,13 +55,13 @@ export default function BoasVindas() {
         <div className="bv-passo centro">
           <AvisoNavegador forte />
           <Mascote rosto="🤑" tamanho={120} />
-          <h1>Prazer, eu sou o Muquirana.</h1>
+          <h1>Prazer, eu sou o Mukirana.</h1>
           <p>Vou cuidar de cada tostão seu. Prometo zoar só um pouquinho quando você gastar demais.</p>
           <p className="discreto">Seus dados ficam no aparelho. Se quiser, entre com sua conta para sincronizar entre celular e computador.</p>
           <button className="botao primario cheio" disabled={ocupado} onClick={async () => { setOcupado(true); await criarDadosIniciais(); setOcupado(false); setPasso(1) }}>Bora começar</button>
           <ConvitesRecebidos />
           <div className="restaurar-bv">
-            <span className="discreto">Já usa o Muquirana?</span>
+            <span className="discreto">Já usa o Mukirana?</span>
             <BotaoEntrar rotulo="Entrar na minha conta" classe="link" />
             <RestaurarBackup rotulo="Restaurar um backup" classe="link" />
           </div>

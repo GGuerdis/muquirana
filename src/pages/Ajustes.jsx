@@ -46,11 +46,11 @@ export default function Ajustes({ irPara }) {
       nomeConta: (id) => contaPorId.get(id)?.nome ?? '', nomeCartao: (id) => cartaoPorId.get(id)?.nome ?? '',
     })
     if (!eventos) return avisar('Cadastre contas fixas ou cartões para gerar os lembretes.')
-    const nome = 'muquirana-lembretes.ics'
+    const nome = 'mukirana-lembretes.ics'
     const blob = new Blob([conteudo], { type: 'text/calendar' })
     const file = new File([blob], nome, { type: 'text/calendar' })
     if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'Lembretes do Muquirana' }) } catch (e) { if (e.name !== 'AbortError') baixar(blob, nome) }
+      try { await navigator.share({ files: [file], title: 'Lembretes do Mukirana' }) } catch (e) { if (e.name !== 'AbortError') baixar(blob, nome) }
     } else baixar(blob, nome)
     avisar(`${eventos} lembrete(s) gerado(s). Abra o arquivo com a sua agenda.`)
   }
@@ -68,7 +68,7 @@ export default function Ajustes({ irPara }) {
         <label className="alternar grande">
           <span>
             <strong>Modo zoeira</strong>
-            <small>O Muquirana comenta seus gastos. Desligue se for mostrar o app para alguém sério.</small>
+            <small>O Mukirana comenta seus gastos. Desligue se for mostrar o app para alguém sério.</small>
           </span>
           <input type="checkbox" role="switch" checked={zoeira} onChange={(e) => salvarConfig('zoeira', e.target.checked)} />
         </label>
@@ -195,7 +195,7 @@ export default function Ajustes({ irPara }) {
         </div>
       </section>
 
-      <p className="rodape-app">Muquirana · versão {VERSAO} · cada tostão conta 🪙</p>
+      <p className="rodape-app">Mukirana · versão {VERSAO} · cada tostão conta 🪙</p>
 
       {importando && <ImportarExtrato aoFechar={() => setImportando(false)} aoImportar={() => setCategorizando(true)} />}
       {categorizando && <CategorizarRapido aoFechar={() => setCategorizando(false)} />}

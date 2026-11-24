@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { CabecaPagina, Mascote, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas } from '../components/Pecas.jsx'
-import { IconeOlho, IconeOlhoFechado, IconeEssencial, IconeTudo } from '../components/Icones.jsx'
+import { IconeOlho, IconeOlhoFechado, IconeEssencial, IconeTudo, IconeAjustar } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes, hoje } from '../lib/datas.js'
 import { saldoConta, resumoMes, contasEstimadas } from '../lib/calculos.js'
@@ -12,6 +12,8 @@ import { saldoPrevisto } from '../lib/recorrentes.js'
 import { salvarConfig } from '../lib/db.js'
 import ContasDoMes from '../components/ContasDoMes.jsx'
 import LembreteBackup from '../components/LembreteBackup.jsx'
+import EscolherEssencial from '../components/EscolherEssencial.jsx'
+import { blocosVisiveis } from '../lib/inicio.js'
 import { OrcamentoDoMes } from '../components/Orcamento.jsx'
 import { SeloSincronizacao } from '../components/Nuvem.jsx'
 import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
@@ -23,8 +25,11 @@ export default function Inicio({ mes, setMes, irPara }) {
   const { contas, cartoes, lancamentos, recorrentes, zoeira, config } = useDados()
   const [verPrevisao, setVerPrevisao] = useState(false)
   const ocultar = config.ocultarValores === true
-  // "Só o essencial": deixa só o saldo e o "Para onde foi o dinheiro" (fica guardado nos ajustes)
+  // "Só o essencial": mostra só o saldo e os blocos que você marcou (escolha fica guardada)
   const essencial = config.inicioEssencial === true
+  const ver = blocosVisiveis(essencial, config.inicioEssencialBlocos)
+  const [escolhendo, setEscolhendo] = useState(false)
+  const fecharEscolha = useCallback(() => setEscolhendo(false), [])
   const mostrar = (v) => (ocultar ? OCULTO : formatar(v))
   const previsao = useMemo(() => saldoPrevisto({ mes: mesAtual(), contas, cartoes, recorrentes, lancamentos }), [contas, cartoes, recorrentes, lancamentos])
 
@@ -55,12 +60,12 @@ export default function Inicio({ mes, setMes, irPara }) {
 
   return (
     <div className="pagina">
-      <CabecaPagina titulo="Muquirana" irPara={irPara} extra={
+      <CabecaPagina titulo="Mukirana" irPara={irPara} extra={
         <button className="botao-acao" onClick={() => salvarConfig('inicioEssencial', !essencial)} aria-pressed={essencial}>
           {essencial ? <><IconeTudo /> Mostrar tudo</> : <><IconeEssencial /> Só o essencial</>}
         </button>
       } />
-      {!essencial && <div className="inicio-cabeca">
+      {ver.has('mascote') && <div className="inicio-cabeca">
         <Mascote rosto={humor.rosto} tamanho={52} />
         <div className="textos">
           <span className="ola"><SeloSincronizacao /><SeletorEspaco /></span>
@@ -77,10 +82,10 @@ export default function Inicio({ mes, setMes, irPara }) {
             </button>
           </div>
           <strong className={`valor-grande ${ocultar ? 'oculto' : ''}`}>{mostrar(saldoTotal)}</strong>
-          {!essencial && <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
+          {ver.has('previsao') && <button className="previsao" onClick={() => setVerPrevisao((v) => !v)} aria-expanded={verPrevisao}>
             Previsto para {dataCurta(previsao.fimMes)}: <strong>{mostrar(previsao.previsto)}</strong> {verPrevisao ? '▴' : '▾'}
           </button>}
-          {verPrevisao && !essencial && !ocultar && (
+          {verPrevisao && ver.has('previsao') && !ocultar && (
             <div className="previsao-detalhe">
               <span>Saldo hoje <b>{formatar(previsao.saldoHoje)}</b></span>
               {previsao.agendados !== 0 && <span>Lançamentos agendados <b>{previsao.agendados > 0 ? '+' : '−'} {formatar(Math.abs(previsao.agendados))}</b></span>}
@@ -89,7 +94,7 @@ export default function Inicio({ mes, setMes, irPara }) {
             </div>
           )}
         </div>
-        {!essencial && <div className="contas-mini">
+        {ver.has('contas') && <div className="contas-mini">
           {saldos.map((c) => (
             <div key={c.id} className={`conta-mini ${estimadas.has(c.id) ? 'estimada' : ''}`}>
               <span>{c.emoji} {c.nome}</span>
@@ -97,7 +102,7 @@ export default function Inicio({ mes, setMes, irPara }) {
             </div>
           ))}
         </div>}
-        {!essencial && estimadas.size > 0 && (
+        {ver.has('contas') && estimadas.size > 0 && (
           <p className="nota-estimada">
             ≈ Estimado em {saldos.filter((c) => estimadas.has(c.id)).map((c) => c.nome).join(', ')}: só tem o que veio do extrato de outra conta. Importe o extrato dela ou informe o saldo real em Ajustes.
           </p>
@@ -105,24 +110,24 @@ export default function Inicio({ mes, setMes, irPara }) {
       </section>
 
       <ConvitesRecebidos />
-      {!essencial && <>
-        <LembreteBackup />
+      {ver.has('backup') && <LembreteBackup />}
+      {ver.has('resumo') && <>
         <SeletorMes mes={mes} aoMudar={setMes} />
         <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} />
-        <OrcamentoDoMes mes={mes} irPara={irPara} />
       </>}
+      {ver.has('orcamento') && <OrcamentoDoMes mes={mes} irPara={irPara} />}
 
-      <section className="painel">
+      {ver.has('categorias') && <section className="painel">
         <div className="painel-titulo">
-          <h3>Para onde foi o dinheiro{essencial && <small className="titulo-mes"> · {nomeMes(mes)}</small>}</h3>
+          <h3>Para onde foi o dinheiro{!ver.has('resumo') && <small className="titulo-mes"> · {nomeMes(mes)}</small>}</h3>
           {resumo.categorias.length > 0 && <button className="link" onClick={() => irPara('historico')}>Histórico</button>}
         </div>
         <BarrasCategorias categorias={resumo.categorias} limite={5} />
-      </section>
+      </section>}
 
-      {!essencial && <ContasDoMes mes={mes} irPara={irPara} />}
+      {ver.has('contasFixas') && <ContasDoMes mes={mes} irPara={irPara} />}
 
-      {!essencial && faturas.length > 0 && (
+      {ver.has('faturas') && faturas.length > 0 && (
         <section className="painel">
           <h3>Faturas</h3>
           {faturas.map((f) => (
@@ -134,7 +139,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         </section>
       )}
 
-      {!essencial && <section className="painel">
+      {ver.has('recentes') && <section className="painel">
         <div className="painel-titulo">
           <h3>Últimos lançamentos</h3>
           {recentes.length > 0 && <button className="link" onClick={() => irPara('lancamentos')}>Ver todos</button>}
@@ -143,6 +148,11 @@ export default function Inicio({ mes, setMes, irPara }) {
           <p className="vazio">Toque no <strong>+</strong> para lançar seu primeiro gasto.</p>
         )}
       </section>}
+
+      {essencial && (
+        <button className="botao-acao centro-pagina" onClick={() => setEscolhendo(true)}><IconeAjustar /> Escolher o que aparece</button>
+      )}
+      {escolhendo && <EscolherEssencial guardado={config.inicioEssencialBlocos} aoFechar={fecharEscolha} />}
     </div>
   )
 }
