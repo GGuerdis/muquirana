@@ -95,7 +95,7 @@ export default function Inicio({ mes, setMes, irPara }) {
 
       {ver.has('resumo') && <>
         <SeletorMes mes={mes} aoMudar={setMes} />
-        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} quarto={proximaFatura && (
+        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} aoTocar={(tipo) => irPara('lancamentos', { filtro: { tipo } })} quarto={proximaFatura && (
           <Bloco rotulo={`Fatura ${proximaFatura.cartao.nome}`} valor={mostrar(proximaFatura.restante)} extra={`vence ${dataCurta(proximaFatura.vencimento)}`} aoTocar={() => irPara('cartoes')} />
         )} />
       </>}
@@ -104,7 +104,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         <span className="rotulo-secao">Contas</span>
         <div className="blocos">
           {saldos.map((c) => (
-            <Bloco key={c.id} emoji={c.emoji} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} />
+            <Bloco key={c.id} emoji={c.emoji} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} aoTocar={() => irPara('lancamentos', { filtro: { contaId: c.id } })} />
           ))}
         </div>
         {estimadas.size > 0 && (

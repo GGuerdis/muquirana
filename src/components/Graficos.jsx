@@ -6,11 +6,13 @@ export function useLargura() {
   const ref = useRef(null)
   const [largura, setLargura] = useState(320)
   useEffect(() => {
-    if (!ref.current) return
-    const medir = () => setLargura(Math.max(240, Math.floor(ref.current.getBoundingClientRect().width)))
+    const el = ref.current
+    if (!el) return
+    // usa o elemento guardado: o gráfico pode sair da tela (troca de aba) antes do aviso de tamanho chegar
+    const medir = () => { if (el.isConnected) setLargura(Math.max(240, Math.floor(el.getBoundingClientRect().width))) }
     medir()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null
-    ro?.observe(ref.current)
+    ro?.observe(el)
     return () => ro?.disconnect()
   }, [])
   return [ref, largura]
@@ -68,7 +70,7 @@ function Tooltip({ ponto, series, formatar, x, largura }) {
   )
 }
 
-const ALTURA = 210
+const ALTURA = 170 // altura dos gráficos (menor, para sobrar tela para rolar e arrastar)
 const M = { topo: 12, dir: 8, base: 26, esq: 48 }
 
 /** pontos: [{ rotulo, titulo?, valores: [n|null, ...] }]  series: [{ nome, cor }] */

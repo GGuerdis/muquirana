@@ -18,19 +18,29 @@ const FILTROS = [
 
 const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-export default function Lancamentos({ mes, setMes, irPara }) {
-  const { lancamentos, categoriaPorId } = useDados()
-  const [filtro, setFiltro] = useState('todos')
+export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
+  const { lancamentos, categoriaPorId, contaPorId } = useDados()
+  const [filtro, setFiltro] = useState(filtroInicial?.tipo || 'todos')
+  // Só uma conta (veio de um toque no bloco da conta no Início)
+  const [contaFiltro, setContaFiltro] = useState(filtroInicial?.contaId ?? null)
+  const contaDoFiltro = contaFiltro != null ? contaPorId.get(contaFiltro) : null
   const [busca, setBusca] = useState('')
   const [importando, setImportando] = useState(false)
   const [categorizando, setCategorizando] = useState(false)
 
-  const dias = useMemo(() => {
+  // Lançamentos do mês (e da conta/busca, se houver). Os blocos de Entrou/Saiu somam isso,
+  // sem o filtro de tipo: com "Despesas" ligado, o "Entrou" continua mostrando o mês de verdade.
+  const doMes = useMemo(() => {
     const termo = normalizar(busca)
-    const lista = lancamentos
+    return lancamentos
       .filter((l) => mesDe(l.data) === mes)
+      .filter((l) => contaFiltro == null || l.contaId === contaFiltro || l.contaDestinoId === contaFiltro)
+      .filter((l) => !termo || normalizar(`${l.descricao || ''} ${categoriaPorId.get(l.categoriaId)?.nome || ''}`).includes(termo))
+  }, [lancamentos, mes, busca, categoriaPorId, contaFiltro])
+
+  const dias = useMemo(() => {
+    const lista = doMes
       .filter((l) => filtro === 'todos' || (filtro === 'outros' ? ['transferencia', 'pagamentoFatura'].includes(l.tipo) : l.tipo === filtro))
-      .filter((l) => !termo || normalizar(`${l.descricao || ""} ${categoriaPorId.get(l.categoriaId)?.nome || ""}`).includes(termo))
       .sort((a, b) => b.data.localeCompare(a.data) || (b.criadoEm || 0) - (a.criadoEm || 0) || compararIds(b.id, a.id))
     const grupos = new Map()
     for (const l of lista) {
@@ -38,9 +48,9 @@ export default function Lancamentos({ mes, setMes, irPara }) {
       grupos.get(l.data).push(l)
     }
     return [...grupos.entries()]
-  }, [lancamentos, mes, filtro, busca, categoriaPorId])
+  }, [doMes, filtro])
 
-  const totais = useMemo(() => dias.flatMap(([, itens]) => itens).reduce((t, l) => ({ entrou: t.entrou + (l.tipo === 'receita' ? l.valor : 0), saiu: t.saiu + (l.tipo === 'despesa' ? l.valor : 0), nEntrou: t.nEntrou + (l.tipo === 'receita' ? 1 : 0), nSaiu: t.nSaiu + (l.tipo === 'despesa' ? 1 : 0), n: t.n + 1 }), { entrou: 0, saiu: 0, nEntrou: 0, nSaiu: 0, n: 0 }), [dias])
+  const totais = useMemo(() => doMes.reduce((t, l) => ({ entrou: t.entrou + (l.tipo === 'receita' ? l.valor : 0), saiu: t.saiu + (l.tipo === 'despesa' ? l.valor : 0), nEntrou: t.nEntrou + (l.tipo === 'receita' ? 1 : 0), nSaiu: t.nSaiu + (l.tipo === 'despesa' ? 1 : 0), n: t.n + 1 }), { entrou: 0, saiu: 0, nEntrou: 0, nSaiu: 0, n: 0 }), [doMes])
   const totalDia = (itens) => itens.reduce((s, l) => s + (l.tipo === 'receita' ? l.valor : l.tipo === 'despesa' ? -l.valor : 0), 0)
 
   return (
@@ -58,6 +68,11 @@ export default function Lancamentos({ mes, setMes, irPara }) {
       )}
       <input className="busca" type="search" placeholder="Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
       <Chips rolavel opcoes={FILTROS} valor={filtro} aoMudar={setFiltro} />
+      {contaDoFiltro && (
+        <button className="filtro-ativo" onClick={() => setContaFiltro(null)} aria-label={`Tirar filtro da conta ${contaDoFiltro.nome}`}>
+          Só {contaDoFiltro.emoji} {contaDoFiltro.nome} <span aria-hidden="true">✕</span>
+        </button>
+      )}
 
       {dias.length === 0 && <div className="painel vazio-grande"><p>🪙</p><p>{busca ? 'Nada encontrado com essa busca.' : 'Nenhum lançamento neste mês.'}</p></div>}
       {dias.map(([data, itens]) => {

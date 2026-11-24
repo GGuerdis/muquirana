@@ -17,6 +17,23 @@ import { PainelEspaco } from '../components/Espacos.jsx'
 import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
+import { IconeNuvem, IconeCartao, IconeEtiqueta, IconeArquivo } from '../components/Icones.jsx'
+
+const contar = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+
+// Grupo de ajustes que abre e fecha ao tocar no título
+function Grupo({ titulo, resumo, icone, children }) {
+  return (
+    <details className="painel grupo">
+      <summary>
+        <span className="grupo-icone">{icone}</span>
+        <span className="grupo-textos"><strong>{titulo}</strong><small>{resumo}</small></span>
+        <span className="grupo-seta" aria-hidden="true">›</span>
+      </summary>
+      <div className="grupo-corpo">{children}</div>
+    </details>
+  )
+}
 
 export default function Ajustes({ irPara }) {
   const { contas, cartoes, categorias, lancamentos, regras, recorrentes, orcamentos, categoriaPorId, contaPorId, cartaoPorId, config, avisar } = useDados()
@@ -61,9 +78,13 @@ export default function Ajustes({ irPara }) {
     <div className="pagina">
       <CabecaPagina titulo="Ajustes" irPara={irPara} voltar />
 
-      <PainelConta />
-      <PainelEspaco />
+      <Grupo titulo="Conta e sincronização" resumo="Entrar, nuvem e espaços compartilhados" icone={<IconeNuvem />}>
+        <PainelConta />
+        <PainelEspaco />
+      </Grupo>
 
+
+      <Grupo titulo="Contas e cartões" resumo={`${contar(contas.length, 'conta', 'contas')} · ${contar(cartoes.length, 'cartão', 'cartões')} · ${contar(recorrentes.length, 'conta fixa', 'contas fixas')}`} icone={<IconeCartao />}>
       <section className="painel">
         <div className="painel-titulo">
           <h3>Contas</h3>
@@ -118,7 +139,9 @@ export default function Ajustes({ irPara }) {
           )
         })}
       </section>
+      </Grupo>
 
+      <Grupo titulo="Categorias" resumo={`${contar(categorias.length, 'categoria', 'categorias')} · ${contar(regras.length, 'aprendida', 'aprendidas')}`} icone={<IconeEtiqueta />}>
       <section className="painel">
         <div className="painel-titulo">
           <h3>Categorias</h3>
@@ -156,7 +179,9 @@ export default function Ajustes({ irPara }) {
           )
         })}
       </section>
+      </Grupo>
 
+      <Grupo titulo="Dados e backup" resumo={config.ultimoBackup ? `Último backup em ${dataCurta(config.ultimoBackup)}` : 'Backup, importar extrato e lembretes'} icone={<IconeArquivo />}>
       <section className="painel">
         <h3>Lembretes na agenda</h3>
         <p className="dica">
@@ -184,6 +209,7 @@ export default function Ajustes({ irPara }) {
           <RestaurarBackup avisar={avisar} />
         </div>
       </section>
+      </Grupo>
 
       <p className="rodape-app">Mukirana · versão {VERSAO}</p>
 

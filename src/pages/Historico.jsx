@@ -6,11 +6,12 @@ import { CabecaPagina, ResumoEntradasSaidas } from '../components/Pecas.jsx'
 import { GraficoBarras, GraficoLinha, Legenda, TabelaDados } from '../components/Graficos.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { hoje as hojeTexto, mesAtual, nomeMes, somarMeses } from '../lib/datas.js'
-import { movimentos, saldoInicialDe, serie, compararMeses, compararAnos, periodosDisponiveis } from '../lib/historico.js'
+import { movimentos, saldoInicialDe, serie, compararMeses, compararAnos, periodosDisponiveis, gastosPorCategoria } from '../lib/historico.js'
 
 // entrou em ciano e saiu em magenta (como no Início); comparações: A ciano, B magenta
 const COR = { saldo: 'var(--serie-1)', entradas: 'var(--serie-1)', saidas: 'var(--serie-2)', a: 'var(--serie-1)', b: 'var(--serie-2)' }
 const TODAS = '__todas__'
+const SEM_CATEGORIA = '__sem__'
 // Nas comparações, o mês sempre com o ano ("outubro 2026"), para não confundir
 const mesComAno = (m, curto = false) => { const n = nomeMes(m, curto); return /\d/.test(n) ? n : `${n} ${curto ? m.slice(2, 4) : m.slice(0, 4)}` }
 
@@ -43,6 +44,7 @@ export default function Historico({ irPara }) {
   const [anoA, setAnoA] = useState(Number(hoje.slice(0, 4)) - 1)
   const [anoB, setAnoB] = useState(Number(hoje.slice(0, 4)))
   const [medidaAnos, setMedidaAnos] = useState('saidas')
+  const [catSel, setCatSel] = useState(null)
 
   const contaId = conta === TODAS ? null : conta
   const movs = useMemo(() => movimentos(lancamentos, contaId), [lancamentos, contaId])
@@ -52,6 +54,14 @@ export default function Historico({ irPara }) {
   const totais = dados.reduce((s, p) => ({ entradas: s.entradas + p.entradas, saidas: s.saidas + p.saidas }), { entradas: 0, saidas: 0 })
   const cmpMeses = useMemo(() => compararMeses(movs, mesA, mesB, hoje), [movs, mesA, mesB, hoje])
   const cmpAnos = useMemo(() => compararAnos(movs, anoA, anoB, hoje), [movs, anoA, anoB, hoje])
+  // Gastos de uma categoria ao longo dos meses (ou anos)
+  const porCategoria = useMemo(() => gastosPorCategoria(lancamentos, { granularidade: gran === 'ano' ? 'ano' : 'mes', ano, hoje }), [lancamentos, gran, ano, hoje])
+  const catsTop = porCategoria.categorias.slice(0, 8)
+  const catAtual = catsTop.some((x) => (x.categoriaId ?? SEM_CATEGORIA) === catSel) ? catSel : (catsTop[0] ? (catsTop[0].categoriaId ?? SEM_CATEGORIA) : null)
+  const nomeCat = (id) => (id == null || id === SEM_CATEGORIA ? 'Sem categoria' : categoriaPorId.get(id)?.nome || 'Categoria apagada')
+  const serieCat = catAtual == null ? [] : porCategoria.serieDe(catAtual === SEM_CATEGORIA ? null : catAtual)
+  const totalCat = serieCat.reduce((s, p) => s + (p.valor || 0), 0)
+  const periodosCat = serieCat.filter((p) => p.valor != null).length || 1
 
   const nomeConta = contaId ? contas.find((c) => c.id === contaId)?.nome : 'todas as contas'
   const tituloPeriodo = gran === 'ano' ? 'por ano' : gran === 'mes' ? `em ${ano}` : `em ${nomeMes(mes)}${mes.slice(0, 4) === hoje.slice(0, 4) ? ` de ${mes.slice(0, 4)}` : ''}`
@@ -124,6 +134,19 @@ export default function Historico({ irPara }) {
               />
             )}
           </section>
+          {gran !== 'dia' && catsTop.length > 0 && (
+            <section className="painel">
+              <h3>Gastos por categoria {gran === 'ano' ? 'por ano' : `em ${ano}`}</h3>
+              <Chips rolavel valor={catAtual} aoMudar={setCatSel} opcoes={catsTop.map((x) => ({ valor: x.categoriaId ?? SEM_CATEGORIA, rotulo: nomeCat(x.categoriaId) }))} />
+              <GraficoBarras
+                rotuloAcessivel={`Gastos com ${nomeCat(catAtual)} ${gran === 'ano' ? 'por ano' : `por mês em ${ano}`}`}
+                series={[{ nome: nomeCat(catAtual), cor: COR.saidas }]}
+                formatar={formatar}
+                pontos={serieCat.map((p) => ({ rotulo: p.rotulo, titulo: gran === 'ano' ? p.rotulo : nomeMes(p.chave), valores: [p.valor] }))}
+              />
+              <p className="dica">{nomeCat(catAtual)}: {formatar(totalCat)} {gran === 'ano' ? 'no total' : `em ${ano}`} · média de {formatar(Math.round(totalCat / periodosCat))} por {gran === 'ano' ? 'ano' : 'mês'}. Inclui compras no cartão.</p>
+            </section>
+          )}
           <p className="dica">Visão do dinheiro que entrou e saiu {contaId ? `da conta ${nomeConta} (inclui transferências e pagamentos de fatura)` : 'das suas contas (transferências entre as suas contas não contam)'}. Toque no gráfico para ver os valores.</p>
         </>
       )}

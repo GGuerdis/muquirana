@@ -103,9 +103,16 @@ function Telas() {
   const [aba, setAba] = useState(() => (import.meta.env.DEV && new URLSearchParams(location.search).get('aba')) || 'inicio')
   const [mes, setMes] = useState(mesAtual())
   // De que lado a tela nova entra (anima a troca); arrastar o dedo para o lado também troca de tela
-  const [entrada, setEntrada] = useState(0)
+  const [entrada, setEntrada] = useState({ lado: 0, deslizou: false })
+  // Filtro pedido ao abrir Lançamentos (ex.: tocou no bloco "Saiu" ou numa conta no Início)
+  const [filtroLanc, setFiltroLanc] = useState(null)
   const mainRef = useRef(null)
-  const irPara = (id) => { setEntrada(ladoDaEntrada(aba, id)); setAba(id); window.scrollTo(0, 0) }
+  const irPara = (id, extra = {}) => {
+    setEntrada({ lado: ladoDaEntrada(aba, id), deslizou: !!extra.deslizou })
+    setFiltroLanc(extra.filtro || null)
+    setAba(id)
+    window.scrollTo(0, 0)
+  }
   useArrastoTelas({ aba, irPara, alvoRef: mainRef, ativo: !!config.boasVindas })
 
   if (!config.boasVindas) return <><Cenario completo /><BoasVindas /></>
@@ -117,9 +124,9 @@ function Telas() {
         <AvisoNavegador />
         <AvisoVersao nova={versaoNova} />
         <AvisoRecusa />
-        <div key={aba} className={entrada > 0 ? 'entra-direita' : entrada < 0 ? 'entra-esquerda' : undefined}>
+        <div key={aba} className={[entrada.lado > 0 ? 'entra-direita' : entrada.lado < 0 ? 'entra-esquerda' : '', entrada.lado && entrada.deslizou ? 'apos-gesto' : ''].join(' ').trim() || undefined}>
           {aba === 'inicio' && <Inicio mes={mes} setMes={setMes} irPara={irPara} />}
-          {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} irPara={irPara} />}
+          {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} irPara={irPara} filtroInicial={filtroLanc} />}
           {aba === 'historico' && <Historico irPara={irPara} />}
           {aba === 'cartoes' && <Cartoes irPara={irPara} />}
           {aba === 'ajustes' && <Ajustes irPara={irPara} />}

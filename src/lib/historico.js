@@ -155,3 +155,30 @@ export function periodosDisponiveis(movs, hoje) {
 }
 
 export const mesAnterior = (mes) => somarMeses(mes, -1)
+
+// Gastos de cada categoria por período (meses do ano escolhido, ou um ponto por ano).
+// Conta tudo que é despesa (conta e cartão). Meses que ainda não chegaram ficam sem valor (null).
+// Devolve as categorias da mais gasta para a menos gasta e a série de uma categoria.
+export function gastosPorCategoria(lancamentos, { granularidade, ano, hoje }) {
+  const despesas = lancamentos.filter((l) => l.tipo === 'despesa' && l.data)
+  const porAno = granularidade === 'ano'
+  const chaves = porAno
+    ? [...new Set(despesas.map((l) => l.data.slice(0, 4)))].sort().map((a) => ({ chave: a, rotulo: a }))
+    : MESES_CURTOS.map((rotulo, i) => ({ chave: `${ano}-${pad(i + 1)}`, rotulo }))
+  const validas = new Set(chaves.map((c) => c.chave))
+  const totais = new Map()
+  const porCategoria = new Map()
+  for (const l of despesas) {
+    const k = l.data.slice(0, porAno ? 4 : 7)
+    if (!validas.has(k)) continue
+    const cat = l.categoriaId ?? null
+    totais.set(cat, (totais.get(cat) || 0) + l.valor)
+    if (!porCategoria.has(cat)) porCategoria.set(cat, new Map())
+    const m = porCategoria.get(cat)
+    m.set(k, (m.get(k) || 0) + l.valor)
+  }
+  const futuro = (k) => !porAno && k > hoje.slice(0, 7)
+  const categorias = [...totais].map(([categoriaId, total]) => ({ categoriaId, total })).sort((a, b) => b.total - a.total)
+  const serieDe = (categoriaId) => chaves.map((c) => ({ ...c, valor: futuro(c.chave) ? null : porCategoria.get(categoriaId)?.get(c.chave) || 0 }))
+  return { categorias, serieDe }
+}

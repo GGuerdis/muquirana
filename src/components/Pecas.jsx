@@ -123,7 +123,7 @@ export function BarrasCategorias({ categorias, limite = 6 }) {
 export function Bloco({ rotulo, valor, extra, tom, emoji, largo = false, estimada = false, titulo, aoTocar }) {
   const Tag = aoTocar ? 'button' : 'div'
   return (
-    <Tag className={`bloco ${largo ? 'largo' : ''} ${estimada ? 'estimada' : ''}`} title={titulo} onClick={aoTocar}>
+    <Tag className={`bloco ${largo ? 'largo' : ''} ${estimada ? 'estimada' : ''} ${aoTocar ? 'tocavel' : ''}`} title={titulo} onClick={aoTocar}>
       <span className="bloco-rot">{emoji && <span className="bloco-emoji">{emoji}</span>}{rotulo}</span>
       <strong className={tom || ''}>{valor}</strong>
       {extra && <small>{extra}</small>}
@@ -132,13 +132,13 @@ export function Bloco({ rotulo, valor, extra, tom, emoji, largo = false, estimad
 }
 
 // Entrou, saiu e sobrou (ou faltou) em blocos. `quarto`: um bloco a mais ao lado do "sobrou"
-export function ResumoEntradasSaidas({ entrou, saiu, rotulo = 'no mês', quarto, extraEntrou, extraSaiu }) {
+export function ResumoEntradasSaidas({ entrou, saiu, rotulo = 'no mês', quarto, extraEntrou, extraSaiu, aoTocar }) {
   const resultado = entrou - saiu
   return (
     <div className="blocos" role="group" aria-label={`Entrou ${formatar(entrou)}, saiu ${formatar(saiu)}`}>
-      <Bloco rotulo="Entrou" valor={formatar(entrou)} tom="entrada" extra={extraEntrou} />
-      <Bloco rotulo="Saiu" valor={formatar(saiu)} tom="saida" extra={extraSaiu} />
-      <Bloco rotulo={resultado >= 0 ? 'Sobrou' : 'Faltou'} valor={formatar(Math.abs(resultado))} tom={resultado >= 0 ? '' : 'saida'} extra={rotulo} largo={!quarto} />
+      <Bloco rotulo="Entrou" valor={formatar(entrou)} tom="entrada" extra={extraEntrou} aoTocar={aoTocar && (() => aoTocar('receita'))} />
+      <Bloco rotulo="Saiu" valor={formatar(saiu)} tom="saida" extra={extraSaiu} aoTocar={aoTocar && (() => aoTocar('despesa'))} />
+      <Bloco rotulo={resultado >= 0 ? 'Sobrou' : 'Faltou'} valor={formatar(Math.abs(resultado))} tom={resultado >= 0 ? '' : 'saida'} extra={rotulo} largo={!quarto} aoTocar={aoTocar && (() => aoTocar('todos'))} />
       {quarto}
     </div>
   )
