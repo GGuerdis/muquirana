@@ -2,7 +2,8 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { Abas, Chips } from '../components/Campos.jsx'
-import { CabecaPagina, ResumoEntradasSaidas } from '../components/Pecas.jsx'
+import { CabecaPagina, ResumoEntradasSaidas, MarcaConta, IconeCategoria } from '../components/Pecas.jsx'
+import { IconeGrafico } from '../components/Icones.jsx'
 import { GraficoBarras, GraficoLinha, Legenda, TabelaDados } from '../components/Graficos.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { hoje as hojeTexto, mesAtual, nomeMes, somarMeses } from '../lib/datas.js'
@@ -11,6 +12,8 @@ import { movimentos, saldoInicialDe, serie, compararMeses, compararAnos, periodo
 // entrou em ciano e saiu em magenta (como no Início); comparações: A ciano, B magenta
 const COR = { saldo: 'var(--serie-1)', entradas: 'var(--serie-1)', saidas: 'var(--serie-2)', a: 'var(--serie-1)', b: 'var(--serie-2)' }
 const TODAS = '__todas__'
+// Como ver o histórico: uma fileira só (antes eram duas: Evolução/Comparar e Anual/Mês/Dia)
+const VISTAS = [{ valor: 'ano', rotulo: 'Anos' }, { valor: 'mes', rotulo: 'Meses' }, { valor: 'dia', rotulo: 'Dias' }, { valor: 'comparar', rotulo: 'Comparar' }]
 const SEM_CATEGORIA = '__sem__'
 // Nas comparações, o mês sempre com o ano ("outubro 2026"), para não confundir
 const mesComAno = (m, curto = false) => { const n = nomeMes(m, curto); return /\d/.test(n) ? n : `${n} ${curto ? m.slice(2, 4) : m.slice(0, 4)}` }
@@ -71,7 +74,7 @@ export default function Historico({ irPara }) {
     return (
       <div className="pagina">
         <CabecaPagina titulo="Histórico" irPara={irPara} />
-        <div className="painel vazio-grande"><p>📈</p><p>Ainda não há lançamentos. Importe seus extratos em Lançamentos → Importar extrato para ver todo o seu histórico aqui.</p></div>
+        <div className="painel vazio-grande"><p className="vazio-icone"><IconeGrafico /></p><p>Ainda não há lançamentos. Importe seus extratos em Lançamentos → Importar extrato para ver todo o seu histórico aqui.</p></div>
       </div>
     )
   }
@@ -81,15 +84,14 @@ export default function Historico({ irPara }) {
       <CabecaPagina titulo="Histórico" irPara={irPara} />
 
       <Chips rolavel valor={conta} aoMudar={setContaSel} opcoes={[
-        ...contas.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: c.emoji })),
-        { valor: TODAS, rotulo: 'Todas', emoji: '🏦' },
+        ...contas.map((c) => ({ valor: c.id, rotulo: c.nome, marca: <MarcaConta conta={c} /> })),
+        { valor: TODAS, rotulo: 'Todas' },
       ]} />
 
-      <Abas opcoes={[{ valor: 'evolucao', rotulo: 'Evolução' }, { valor: 'comparar', rotulo: 'Comparar' }]} valor={modo} aoMudar={setModo} />
+      <Abas opcoes={VISTAS} valor={modo === 'comparar' ? 'comparar' : gran} aoMudar={(v) => { if (v === 'comparar') setModo('comparar'); else { setModo('evolucao'); setGran(v) } }} />
 
       {modo === 'evolucao' && (
         <>
-          <Abas pequenas opcoes={[{ valor: 'ano', rotulo: 'Anual' }, { valor: 'mes', rotulo: 'Mês' }, { valor: 'dia', rotulo: 'Dia' }]} valor={gran} aoMudar={setGran} />
           {gran === 'mes' && (
             <div className="seletor-mes">
               <button className="botao-icone" aria-label="Ano anterior" onClick={() => setAno(ano - 1)} disabled={ano <= disp.anos[0]}>‹</button>
@@ -108,7 +110,7 @@ export default function Historico({ irPara }) {
           <ResumoEntradasSaidas entrou={totais.entradas} saiu={totais.saidas} rotulo={gran === 'ano' ? 'no período' : gran === 'mes' ? `em ${ano}` : 'no mês'} />
 
           <section className="painel">
-            <h3>Saldo de {nomeConta} {gran === 'ano' ? 'no fim de cada ano' : gran === 'mes' ? `no fim de cada mês de ${ano}` : `no fim de cada dia`}</h3>
+            <h3>{contaId ? `Saldo da conta ${nomeConta}` : 'Saldo de todas as contas'} {gran === 'ano' ? 'no fim de cada ano' : gran === 'mes' ? `no fim de cada mês de ${ano}` : `no fim de cada dia`}</h3>
             <GraficoLinha
               rotuloAcessivel={`Saldo ${tituloPeriodo}`}
               series={[{ nome: 'Saldo', cor: COR.saldo }]}
@@ -227,11 +229,11 @@ export default function Historico({ irPara }) {
                 {cmpMeses.categorias.length === 0 && <p className="vazio">Sem gastos nesses meses.</p>}
                 <ul className="barras">
                   {cmpMeses.categorias.slice(0, 10).map((c) => {
-                    const cat = categoriaPorId.get(c.categoriaId) || { emoji: '📦', nome: 'Sem categoria' }
+                    const cat = categoriaPorId.get(c.categoriaId) || { nome: 'Sem categoria' }
                     const max = Math.max(...cmpMeses.categorias.map((x) => Math.max(x.a, x.b)), 1)
                     return (
                       <li key={c.categoriaId ?? 'sem'} className="barra-linha">
-                        <div className="barra-topo"><span>{cat.emoji} {cat.nome}</span><span className="barra-valor">{formatar(c.a)} → {formatar(c.b)}</span></div>
+                        <div className="barra-topo"><span className="com-icone"><IconeCategoria categoria={cat} pequeno />{cat.nome}</span><span className="barra-valor">{formatar(c.a)} → {formatar(c.b)}</span></div>
                         <div className="barra-trilho dupla"><div className="barra" style={{ width: `${(c.a / max) * 100}%`, background: COR.a }} /></div>
                         <div className="barra-trilho dupla"><div className="barra" style={{ width: `${(c.b / max) * 100}%`, background: COR.b }} /></div>
                       </li>

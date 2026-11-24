@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina, ItemLancamento } from '../components/Pecas.jsx'
-import { IconeMais } from '../components/Icones.jsx'
+import { CabecaPagina, ItemLancamento, MarcaCartao, MarcaConta } from '../components/Pecas.jsx'
+import { IconeMais, IconeCartao, IconeCadeado, IconeOk, IconeAlerta, IconeRecibo, IconeCalendario, Ic } from '../components/Icones.jsx'
 import { FormCartao } from '../components/Formularios.jsx'
 import { CampoValor, Chips } from '../components/Campos.jsx'
 import Folha from '../components/Folha.jsx'
@@ -11,10 +11,10 @@ import { resumoFatura, faturasPendentes, limiteUsado } from '../lib/fatura.js'
 import { pagarFatura, apagarLancamento } from '../lib/lancamentos.js'
 
 const STATUS = {
-  aberta: { rotulo: 'Aberta', icone: '🟣' },
-  fechada: { rotulo: 'Fechada', icone: '🔒' },
-  paga: { rotulo: 'Paga', icone: '✅' },
-  atrasada: { rotulo: 'Atrasada', icone: '⚠️' },
+  aberta: { rotulo: 'Aberta', icone: <span className="ponto-status" aria-hidden="true" /> },
+  fechada: { rotulo: 'Fechada', icone: <Ic i={IconeCadeado} /> },
+  paga: { rotulo: 'Paga', icone: <Ic i={IconeOk} /> },
+  atrasada: { rotulo: 'Atrasada', icone: <Ic i={IconeAlerta} /> },
 }
 
 export default function Cartoes({ irPara }) {
@@ -36,7 +36,7 @@ export default function Cartoes({ irPara }) {
       <div className="pagina">
         <CabecaPagina titulo="Cartões" irPara={irPara} />
         <div className="painel vazio-grande">
-          <p>💳</p>
+          <p className="vazio-icone"><IconeCartao /></p>
           <p>Nenhum cartão cadastrado.</p>
           <button className="botao primario" onClick={() => setEditando('novo')}>Cadastrar cartão</button>
         </div>
@@ -63,13 +63,13 @@ export default function Cartoes({ irPara }) {
       } />
 
       {cartoes.length > 1 && (
-        <Chips rolavel opcoes={cartoes.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: '💳' }))} valor={cartao.id} aoMudar={(id) => { setIdSel(id); setFatura(null) }} />
+        <Chips rolavel opcoes={cartoes.map((c) => ({ valor: c.id, rotulo: c.nome, marca: <MarcaCartao /> }))} valor={cartao.id} aoMudar={(id) => { setIdSel(id); setFatura(null) }} />
       )}
 
       <section className="heroi cartao-credito">
         <div className="sol-canto" aria-hidden="true" />
         <div className="painel-titulo">
-          <strong>💳 {cartao.nome}</strong>
+          <strong className="com-marca"><MarcaCartao />{cartao.nome}</strong>
           <button className="link" onClick={() => setEditando(cartao)}>Editar</button>
         </div>
         {cartao.limite > 0 && (
@@ -92,7 +92,7 @@ export default function Cartoes({ irPara }) {
 
       <section className="painel fatura">
         <div className="fatura-topo">
-          <span className={`status status-${resumo.status}`}>{st.icone} {st.rotulo}</span>
+          <span className={`status status-${resumo.status}`}>{st.icone}{st.rotulo}</span>
           <span className="discreto">fecha {dataCurta(resumo.fechamento)} · vence {dataCurta(resumo.vencimento)}</span>
         </div>
         <strong className="fatura-total">{formatar(resumo.total)}</strong>
@@ -105,7 +105,7 @@ export default function Cartoes({ irPara }) {
           <h3>Pagamentos</h3>
           {resumo.pagamentos.map((p) => (
             <div key={p.id} className="linha-pagamento">
-              <span>🧾 {dataCurta(p.data)} · {formatar(p.valor)}</span>
+              <span className="com-marca"><Ic i={IconeRecibo} />{dataCurta(p.data)} · {formatar(p.valor)}</span>
               <button className={desfazendo === p.id ? 'link perigo' : 'link'} onClick={() => desfazer(p)}>
                 {desfazendo === p.id ? 'Confirmar?' : 'Desfazer'}
               </button>
@@ -163,7 +163,7 @@ function PagarFatura({ cartao, resumo, aoFechar }) {
       <CampoValor grande rotulo={`Valor pago (falta ${formatar(resumo.restante)})`} valor={valor} aoMudar={(v) => { setErro(''); setValor(v) }} />
       <div className="bloco">
         <span className="rotulo">Pago com a conta</span>
-        <Chips rolavel opcoes={contas.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: c.emoji }))} valor={contaId} aoMudar={setContaId} />
+        <Chips rolavel opcoes={contas.map((c) => ({ valor: c.id, rotulo: c.nome, marca: <MarcaConta conta={c} /> }))} valor={contaId} aoMudar={setContaId} />
       </div>
       <div className="bloco">
         <span className="rotulo">Data do pagamento</span>
@@ -171,7 +171,7 @@ function PagarFatura({ cartao, resumo, aoFechar }) {
           <button type="button" className={`chip ${data === hoje() ? 'ativo' : ''}`} onClick={() => setData(hoje())}>Hoje</button>
           <button type="button" className={`chip ${data === ontem() ? 'ativo' : ''}`} onClick={() => setData(ontem())}>Ontem</button>
           <label className={`chip chip-data ${data !== hoje() && data !== ontem() ? 'ativo' : ''}`}>
-            📅 {data !== hoje() && data !== ontem() ? dataCurta(data) : 'Outra'}
+            <Ic i={IconeCalendario} /> {data !== hoje() && data !== ontem() ? dataCurta(data) : 'Outra'}
             <input type="date" value={data} onChange={(e) => e.target.value && setData(e.target.value)} aria-label="Escolher data do pagamento" />
           </label>
         </div>

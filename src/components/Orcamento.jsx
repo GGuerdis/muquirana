@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
 import Folha from './Folha.jsx'
 import { IconeCategoria } from './Pecas.jsx'
+import { IconeAlerta, Ic } from './Icones.jsx'
 import { CampoValor } from './Campos.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { nomeMes } from '../lib/datas.js'
@@ -10,8 +11,8 @@ import { orcamentoDoMes, definirOrcamento } from '../lib/orcamento.js'
 
 // Situação sempre com ícone + texto (nunca só cor)
 function textoSituacao(i) {
-  if (i.situacao === 'estourado') return { icone: '🚨', texto: `passou ${formatar(i.gasto - i.limite)}` }
-  if (i.situacao === 'alerta') return { icone: '⚠️', texto: `${i.porcentagem}% · restam ${formatar(i.restante)}` }
+  if (i.situacao === 'estourado') return { icone: <Ic i={IconeAlerta} />, texto: `passou ${formatar(i.gasto - i.limite)}` }
+  if (i.situacao === 'alerta') return { icone: <Ic i={IconeAlerta} />, texto: `${i.porcentagem}% · restam ${formatar(i.restante)}` }
   return { icone: '', texto: `restam ${formatar(i.restante)}` }
 }
 
@@ -47,7 +48,7 @@ export function OrcamentoDoMes({ mes, irPara }) {
                 <span className="barra-valor">{formatar(i.gasto)} <small>de {formatar(i.limite)}</small></span>
               </div>
               <div className="barra-trilho"><div className={`barra orc-${i.situacao}`} style={{ width: `${Math.max(largura, i.gasto ? 2 : 0)}%` }} /></div>
-              <span className={`orc-texto orc-texto-${i.situacao}`}>{s.icone} {s.texto}</span>
+              <span className={`orc-texto orc-texto-${i.situacao}`}>{s.icone}{s.icone ? ' ' : ''}{s.texto}</span>
             </li>
           )
         })}
@@ -77,7 +78,7 @@ export function FormOrcamento({ categoria, aoFechar }) {
   }
 
   return (
-    <Folha titulo={`Orçamento: ${categoria.emoji} ${categoria.nome}`} aoFechar={aoFechar} rodape={
+    <Folha titulo={`Orçamento: ${categoria.nome}`} aoFechar={aoFechar} rodape={
       <>
         {erro && <p className="erro" role="alert">{erro}</p>}
         <div className="linha-botoes">

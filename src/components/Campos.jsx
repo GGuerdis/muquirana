@@ -31,7 +31,7 @@ export function Chips({ opcoes, valor, aoMudar, rolavel = false }) {
           onClick={() => aoMudar(o.valor)}
           aria-pressed={valor === o.valor}
         >
-          {o.emoji && <span className="chip-emoji">{o.emoji}</span>}
+          {o.marca}
           {o.rotulo}
         </button>
       ))}

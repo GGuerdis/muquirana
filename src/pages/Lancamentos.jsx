@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina, SeletorMes, ItemLancamento, Bloco } from '../components/Pecas.jsx'
+import { CabecaPagina, SeletorMes, ItemLancamento, Bloco, MarcaConta } from '../components/Pecas.jsx'
 import { Chips } from '../components/Campos.jsx'
-import { IconeEtiqueta, IconeImportar } from '../components/Icones.jsx'
+import { IconeEtiqueta, IconeImportar, IconeMoeda } from '../components/Icones.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
 import CategorizarRapido from '../components/CategorizarRapido.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesDe, rotuloDia } from '../lib/datas.js'
 import { compararIds } from '../lib/ids.js'
+import { totalDoDiaVisivel } from '../lib/lancamentos.js'
 
 const FILTROS = [
   { valor: 'todos', rotulo: 'Tudo' },
@@ -51,7 +52,6 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
   }, [doMes, filtro])
 
   const totais = useMemo(() => doMes.reduce((t, l) => ({ entrou: t.entrou + (l.tipo === 'receita' ? l.valor : 0), saiu: t.saiu + (l.tipo === 'despesa' ? l.valor : 0), nEntrou: t.nEntrou + (l.tipo === 'receita' ? 1 : 0), nSaiu: t.nSaiu + (l.tipo === 'despesa' ? 1 : 0), n: t.n + 1 }), { entrou: 0, saiu: 0, nEntrou: 0, nSaiu: 0, n: 0 }), [doMes])
-  const totalDia = (itens) => itens.reduce((s, l) => s + (l.tipo === 'receita' ? l.valor : l.tipo === 'despesa' ? -l.valor : 0), 0)
 
   return (
     <div className="pagina">
@@ -70,25 +70,27 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
       <Chips rolavel opcoes={FILTROS} valor={filtro} aoMudar={setFiltro} />
       {contaDoFiltro && (
         <button className="filtro-ativo" onClick={() => setContaFiltro(null)} aria-label={`Tirar filtro da conta ${contaDoFiltro.nome}`}>
-          Só {contaDoFiltro.emoji} {contaDoFiltro.nome} <span aria-hidden="true">✕</span>
+          Só <MarcaConta conta={contaDoFiltro} /> {contaDoFiltro.nome} <span aria-hidden="true">✕</span>
         </button>
       )}
 
-      {dias.length === 0 && <div className="painel vazio-grande"><p>🪙</p><p>{busca ? 'Nada encontrado com essa busca.' : 'Nenhum lançamento neste mês.'}</p></div>}
-      {dias.map(([data, itens]) => {
-        const t = totalDia(itens)
-        return (
-          <section key={data} className="dia-grupo">
-            <div className="dia-topo">
-              <span>{rotuloDia(data)}</span>
-              {t !== 0 && <span className={t > 0 ? 'entrada' : ''}>{t > 0 ? '+' : '−'} {formatar(Math.abs(t))}</span>}
-            </div>
-            <div className="painel dia">
-              {itens.map((l) => <ItemLancamento key={l.id} l={l} />)}
-            </div>
-          </section>
-        )
-      })}
+      {dias.length === 0 && <div className="painel vazio-grande"><p className="vazio-icone"><IconeMoeda /></p><p>{busca ? 'Nada encontrado com essa busca.' : 'Nenhum lançamento neste mês.'}</p></div>}
+      {dias.length > 0 && (
+        <section className="painel lista-mes">
+          {dias.map(([data, itens]) => {
+            const t = totalDoDiaVisivel(itens)
+            return (
+              <div key={data} className="dia-bloco">
+                <div className="dia-topo">
+                  <span>{rotuloDia(data)}</span>
+                  {t !== 0 && <span className={t > 0 ? 'entrada' : ''}>{t > 0 ? '+' : '−'} {formatar(Math.abs(t))}</span>}
+                </div>
+                {itens.map((l) => <ItemLancamento key={l.id} l={l} />)}
+              </div>
+            )
+          })}
+        </section>
+      )}
       {importando && <ImportarExtrato aoFechar={() => setImportando(false)} aoImportar={() => setCategorizando(true)} />}
       {categorizando && <CategorizarRapido aoFechar={() => setCategorizando(false)} />}
     </div>

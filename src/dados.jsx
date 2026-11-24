@@ -54,7 +54,7 @@ export function ProvedorDados({ children, acoes }) {
     }
   }, [contasT, cartoesT, categoriasT, lancamentosT, regrasT, recorrentesT, orcamentosT, config, realms, membros, espacoAtual, usuario, acoes])
 
-  if (!valor) return <div className="carregando">🪙</div>
+  if (!valor) return <div className="carregando" role="status" aria-label="Carregando"><span className="carregando-ponto" /></div>
   return <Dados.Provider value={valor}>{children}</Dados.Provider>
 }
 

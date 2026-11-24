@@ -7,6 +7,9 @@ import { salvarRecorrente, excluirRecorrente } from '../lib/recorrentes.js'
 import { useDados } from '../dados.jsx'
 import { saldoConta } from '../lib/calculos.js'
 import { salvarCartao, excluirCartao, salvarConta, excluirConta, salvarCategoria, excluirCategoria } from '../lib/cadastros.js'
+import { MarcaConta, MarcaCartao, IconeCategoria } from './Pecas.jsx'
+import { CORES_CONTA, corDaConta, desenhoParaCategoria } from '../lib/cores.js'
+import { DESENHOS_ESCOLHA } from './Icones.jsx'
 
 // Lógica comum: salvar/excluir com proteção contra toque duplo e exibição de erro
 function useAcoes(aoFechar) {
@@ -74,7 +77,7 @@ export function FormCartao({ cartao, aoFechar }) {
       </p>
       <div className="bloco">
         <span className="rotulo">Conta que costuma pagar a fatura</span>
-        <Chips rolavel opcoes={contas.map((c) => ({ valor: c.id, rotulo: c.nome, emoji: c.emoji }))} valor={f.contaPagamentoId} aoMudar={(v) => setF({ ...f, contaPagamentoId: v })} />
+        <Chips rolavel opcoes={contas.map((c) => ({ valor: c.id, rotulo: c.nome, marca: <MarcaConta conta={c} /> }))} valor={f.contaPagamentoId} aoMudar={(v) => setF({ ...f, contaPagamentoId: v })} />
       </div>
     </Folha>
   )
@@ -82,20 +85,24 @@ export function FormCartao({ cartao, aoFechar }) {
 
 export function FormConta({ conta, aoFechar }) {
   const { lancamentos, avisar } = useDados()
-  const [f, setF] = useState(() => ({ nome: conta?.nome || '', emoji: conta?.emoji || '🏦', saldo: conta ? saldoConta(conta, lancamentos) : 0 }))
+  const [f, setF] = useState(() => ({ nome: conta?.nome || '', emoji: conta?.emoji, cor: conta?.cor || null, saldo: conta ? saldoConta(conta, lancamentos) : 0 }))
   const acoes = useAcoes(aoFechar)
 
   const salvar = () => acoes.executar(async () => {
-    await salvarConta({ id: conta?.id, nome: f.nome, emoji: f.emoji, saldoAtual: f.saldo })
+    await salvarConta({ id: conta?.id, nome: f.nome, emoji: f.emoji, cor: f.cor, saldoAtual: f.saldo })
     avisar(conta ? 'Conta atualizada.' : 'Conta criada.')
   })
   const excluir = () => acoes.executar(() => excluirConta(conta.id))
 
   return (
     <Folha titulo={conta ? 'Editar conta' : 'Nova conta'} aoFechar={aoFechar} rodape={<Rodape podeExcluir={!!conta} acoes={acoes} aoSalvar={salvar} aoExcluir={excluir} />}>
-      <div className="duas-colunas estreita">
-        <Campo rotulo="Ícone"><input value={f.emoji} onChange={(e) => setF({ ...f, emoji: e.target.value })} maxLength={4} className="centro" /></Campo>
-        <Campo rotulo="Nome"><input value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} placeholder="Ex.: Nubank, Poupança" maxLength={40} /></Campo>
+      <Campo rotulo="Nome"><input value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} placeholder="Ex.: Nubank, Poupança" maxLength={40} /></Campo>
+      <span className="rotulo">Cor</span>
+      <div className="escolha-cor" role="radiogroup" aria-label="Cor da conta">
+        {CORES_CONTA.map((cor) => {
+          const atual = (f.cor || corDaConta({ ...conta, nome: f.nome, cor: null })) === cor
+          return <button key={cor} type="button" role="radio" aria-checked={atual} aria-label={`Cor ${cor}`} className={`amostra-cor ${atual ? 'ativo' : ''}`} style={{ '--cor-conta': cor }} onClick={() => setF({ ...f, cor })} />
+        })}
       </div>
       <CampoValor rotulo="Saldo atual" valor={Math.abs(f.saldo)} aoMudar={(v) => setF({ ...f, saldo: f.saldo < 0 ? -v : v })} />
       <label className="alternar">
@@ -109,7 +116,7 @@ export function FormConta({ conta, aoFechar }) {
 
 export function FormCategoria({ categoria, tipo, aoFechar }) {
   const { avisar } = useDados()
-  const [f, setF] = useState(() => categoria || { nome: '', emoji: '📦', tipo })
+  const [f, setF] = useState(() => categoria ? { ...categoria, desenho: desenhoParaCategoria(categoria) } : { nome: '', desenho: 'outros', tipo })
   const acoes = useAcoes(aoFechar)
 
   const salvar = () => acoes.executar(async () => {
@@ -120,9 +127,14 @@ export function FormCategoria({ categoria, tipo, aoFechar }) {
 
   return (
     <Folha titulo={categoria ? 'Editar categoria' : `Nova categoria de ${f.tipo}`} aoFechar={aoFechar} rodape={<Rodape podeExcluir={!!categoria} acoes={acoes} aoSalvar={salvar} aoExcluir={excluir} />}>
-      <div className="duas-colunas estreita">
-        <Campo rotulo="Ícone"><input value={f.emoji} onChange={(e) => setF({ ...f, emoji: e.target.value })} maxLength={4} className="centro" /></Campo>
-        <Campo rotulo="Nome"><input value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} placeholder="Ex.: Academia" maxLength={30} /></Campo>
+      <Campo rotulo="Nome"><input value={f.nome} onChange={(e) => setF({ ...f, nome: e.target.value })} placeholder="Ex.: Academia" maxLength={30} /></Campo>
+      <span className="rotulo">Ícone</span>
+      <div className="escolha-desenho" role="radiogroup" aria-label="Ícone da categoria">
+        {DESENHOS_ESCOLHA.map((d) => (
+          <button key={d} type="button" role="radio" aria-checked={f.desenho === d} aria-label={d} className={`amostra-desenho ${f.desenho === d ? 'ativo' : ''}`} onClick={() => setF({ ...f, desenho: d })}>
+            <IconeCategoria categoria={{ nome: f.nome || 'Nova' }} desenho={d} pequeno />
+          </button>
+        ))}
       </div>
     </Folha>
   )
@@ -141,8 +153,8 @@ export function FormRecorrente({ recorrente, aoFechar }) {
   const meses = Array.from({ length: 37 }, (_, i) => somarMeses(atual, i - 12))
   const cats = categorias.filter((c) => c.tipo === f.tipo)
   const origens = [
-    ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, emoji: c.emoji })),
-    ...(f.tipo === 'despesa' ? cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' })) : []),
+    ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, marca: <MarcaConta conta={c} /> })),
+    ...(f.tipo === 'despesa' ? cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, marca: <MarcaCartao /> })) : []),
   ]
 
   const salvar = () => acoes.executar(async () => {
@@ -170,7 +182,7 @@ export function FormRecorrente({ recorrente, aoFechar }) {
         <span className="rotulo">Categoria</span>
         <select className="seletor" value={f.categoriaId ?? ''} onChange={(e) => mudar('categoriaId', e.target.value || null)}>
           <option value="">Escolha…</option>
-          {cats.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+          {cats.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
       </label>
       <div className="bloco">

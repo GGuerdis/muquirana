@@ -229,3 +229,9 @@ export async function dividirLancamento(id, { valor, data }) {
     return db.lancamentos.add({ ...resto, ...(l.realmId != null ? { realmId: l.realmId } : {}), valor, data, criadoEm: Date.now(), divididoDe: id })
   })
 }
+
+// Total do dia ao lado da data: só quando o dia tem 2 ou mais lançamentos (com um só, repetiria o valor da linha)
+export function totalDoDiaVisivel(itens) {
+  if (itens.length < 2) return 0
+  return itens.reduce((s, l) => s + (l.tipo === 'receita' ? l.valor : l.tipo === 'despesa' ? -l.valor : 0), 0)
+}

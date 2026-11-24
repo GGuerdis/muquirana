@@ -59,17 +59,18 @@ export async function excluirCartao(id) {
 
 // ---------- Contas ----------
 // O usuário informa o saldo ATUAL; o saldo inicial é ajustado para bater com ele.
-export async function salvarConta({ id, nome, emoji, saldoAtual }, hoje) {
+export async function salvarConta({ id, nome, emoji, cor, saldoAtual }, hoje) {
   nome = semControle(nome)
   if (!nome) throw new Error('Dê um nome para a conta.')
   if (!Number.isSafeInteger(saldoAtual)) throw new Error('Saldo inválido.')
   return db.transaction('rw', db.contas, db.lancamentos, async () => {
-    if (id == null) return db.contas.add({ nome, emoji: emoji || '🏦', saldoInicial: saldoAtual })
+    const extra = cor ? { cor } : {} // cor da bolinha escolhida por você
+    if (id == null) return db.contas.add({ nome, emoji: emoji || '🏦', ...extra, saldoInicial: saldoAtual })
     const conta = await db.contas.get(id)
     if (!conta) throw new Error('Conta não encontrada.')
     const movimento = saldoConta(conta, await db.lancamentos.toArray(), hoje) - (conta.saldoInicial || 0)
     // saldoConferidoEm: a pessoa informou o saldo real agora (tira o aviso de "saldo estimado")
-    await db.contas.update(id, { nome, emoji: emoji || '🏦', saldoInicial: saldoAtual - movimento, saldoConferidoEm: Date.now() })
+    await db.contas.update(id, { nome, emoji: emoji || conta.emoji || '🏦', ...extra, saldoInicial: saldoAtual - movimento, saldoConferidoEm: Date.now() })
     return id
   })
 }
@@ -85,11 +86,11 @@ export async function excluirConta(id) {
 }
 
 // ---------- Categorias ----------
-export async function salvarCategoria({ id, nome, emoji, tipo }) {
+export async function salvarCategoria({ id, nome, emoji, desenho, tipo }) {
   nome = semControle(nome)
   if (!nome) throw new Error('Dê um nome para a categoria.')
   if (!['despesa', 'receita'].includes(tipo)) throw new Error('Tipo de categoria inválido.')
-  const dados = { nome, emoji: emoji || '📦', tipo }
+  const dados = { nome, emoji: emoji || '📦', tipo, ...(desenho ? { desenho } : {}) } // desenho: ícone escolhido para a categoria
   if (id == null) return db.categorias.add(dados)
   await db.categorias.update(id, dados)
   return id

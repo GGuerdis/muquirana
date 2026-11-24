@@ -52,17 +52,17 @@ export const sincronizarAgora = () => db.cloud.sync({ wait: false, purpose: 'pul
 
 // Texto curto do estado da sincronização
 export function textoSincronizacao(usuario, estado, pendentes = 0) {
-  if (!usuario?.isLoggedIn) return { icone: '📱', texto: 'Só neste aparelho', tipo: 'local' }
+  if (!usuario?.isLoggedIn) return { icone: 'celular', texto: 'Só neste aparelho', tipo: 'local' }
   const fila = pendentes > 0 ? ` (${pendentes.toLocaleString('pt-BR')} ainda não ${pendentes === 1 ? 'foi' : 'foram'} para a nuvem)` : ''
-  if (!estado) return { icone: '☁️', texto: 'Conectando…', tipo: 'andamento' }
-  if (estado.license === 'expired') return { icone: '⚠️', texto: 'Período de avaliação acabou: dados salvos só neste aparelho', tipo: 'erro' }
-  if (estado.license === 'deactivated') return { icone: '⚠️', texto: 'Conta desativada na nuvem', tipo: 'erro' }
-  if (estado.status === 'offline' || estado.phase === 'offline') return { icone: '📴', texto: `Sem internet: salvo no aparelho, sincroniza depois${fila}`, tipo: 'offline' }
-  if (estado.phase === 'error' || estado.status === 'error') return { icone: '⚠️', texto: `Erro ao sincronizar. Vamos tentar de novo.${fila}`, tipo: 'erro' }
-  if (pendentes > 0) return { icone: '🔄', texto: `Enviando ${pendentes.toLocaleString('pt-BR')} para a nuvem… não feche o app`, tipo: 'andamento' }
-  if (estado.phase === 'pushing' || estado.phase === 'pulling' || estado.status === 'connecting') return { icone: '🔄', texto: 'Sincronizando…', tipo: 'andamento' }
-  if (estado.phase === 'in-sync') return { icone: '☁️', texto: 'Sincronizado', tipo: 'ok' }
-  return { icone: '☁️', texto: 'Conectando…', tipo: 'andamento' }
+  if (!estado) return { icone: 'nuvem', texto: 'Conectando…', tipo: 'andamento' }
+  if (estado.license === 'expired') return { icone: 'alerta', texto: 'Período de avaliação acabou: dados salvos só neste aparelho', tipo: 'erro' }
+  if (estado.license === 'deactivated') return { icone: 'alerta', texto: 'Conta desativada na nuvem', tipo: 'erro' }
+  if (estado.status === 'offline' || estado.phase === 'offline') return { icone: 'sem-internet', texto: `Sem internet: salvo no aparelho, sincroniza depois${fila}`, tipo: 'offline' }
+  if (estado.phase === 'error' || estado.status === 'error') return { icone: 'alerta', texto: `Erro ao sincronizar. Vamos tentar de novo.${fila}`, tipo: 'erro' }
+  if (pendentes > 0) return { icone: 'atualizar', texto: `Enviando ${pendentes.toLocaleString('pt-BR')} para a nuvem… não feche o app`, tipo: 'andamento' }
+  if (estado.phase === 'pushing' || estado.phase === 'pulling' || estado.status === 'connecting') return { icone: 'atualizar', texto: 'Sincronizando…', tipo: 'andamento' }
+  if (estado.phase === 'in-sync') return { icone: 'nuvem', texto: 'Sincronizado', tipo: 'ok' }
+  return { icone: 'nuvem', texto: 'Conectando…', tipo: 'andamento' }
 }
 
 // Tradução das mensagens do servidor de login

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas, Bloco } from '../components/Pecas.jsx'
+import { CabecaPagina, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntradasSaidas, Bloco, MarcaConta, MarcaCartao } from '../components/Pecas.jsx'
 import { IconeOlho, IconeOlhoFechado, IconeEssencial, IconeTudo, IconeAjustar } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes, hoje } from '../lib/datas.js'
@@ -17,7 +17,7 @@ import { OrcamentoDoMes } from '../components/Orcamento.jsx'
 import { SeloSincronizacao } from '../components/Nuvem.jsx'
 import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
 
-const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: '⚠️ atrasada', paga: 'paga' }
+const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: 'atrasada', paga: 'paga' }
 const OCULTO = 'R$ •••••'
 
 export default function Inicio({ mes, setMes, irPara }) {
@@ -104,7 +104,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         <span className="rotulo-secao">Contas</span>
         <div className="blocos">
           {saldos.map((c) => (
-            <Bloco key={c.id} emoji={c.emoji} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} aoTocar={() => irPara('lancamentos', { filtro: { contaId: c.id } })} />
+            <Bloco key={c.id} marca={<MarcaConta conta={c} />} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} aoTocar={() => irPara('lancamentos', { filtro: { contaId: c.id } })} />
           ))}
         </div>
       </>}
@@ -125,8 +125,8 @@ export default function Inicio({ mes, setMes, irPara }) {
           <h3>Faturas</h3>
           {faturas.map((f) => (
             <button key={`${f.cartao.id}-${f.fatura}`} className="linha-fatura" onClick={() => irPara('cartoes')}>
-              <span>💳 {f.cartao.nome} · {nomeMes(f.fatura, true)}<small>{ROTULO_FATURA[f.status]} · vence {dataCurta(f.vencimento)}</small></span>
-              <strong>{f.status === 'paga' ? 'Paga ✅' : formatar(f.restante)}</strong>
+              <span className="com-marca"><MarcaCartao /><span>{f.cartao.nome} · {nomeMes(f.fatura, true)}<small className={f.status === 'atrasada' ? 'saida' : undefined}>{ROTULO_FATURA[f.status]} · vence {dataCurta(f.vencimento)}</small></span></span>
+              <strong className={f.status === 'paga' ? 'entrada' : undefined}>{f.status === 'paga' ? 'Paga' : formatar(f.restante)}</strong>
             </button>
           ))}
         </section>

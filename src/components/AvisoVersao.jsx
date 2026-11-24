@@ -1,6 +1,7 @@
 // Faixa "versão nova": aparece quando o aparelho está rodando uma versão velha do app
 import { useEffect, useState } from 'react'
 import { versaoNova, atualizarApp } from '../lib/versao.js'
+import { IconeAtualizar, Ic } from './Icones.jsx'
 
 export function useVersaoNova() {
   const [nova, setNova] = useState(null)
@@ -19,7 +20,7 @@ export default function AvisoVersao({ nova, texto = 'Tem uma versão nova do Muk
   if (!nova) return null
   return (
     <div className="aviso-navegador forte" role="alert">
-      <strong>🔄 {texto}</strong>
+      <strong><Ic i={IconeAtualizar} /> {texto}</strong>
       <span>Toque em atualizar (seus dados continuam aqui).</span>
       <div className="aviso-navegador-botoes">
         <button className="botao primario mini" disabled={atualizando} onClick={() => { setAtualizando(true); atualizarApp() }}>{atualizando ? 'Atualizando…' : 'Atualizar agora'}</button>

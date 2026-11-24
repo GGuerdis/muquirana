@@ -4,6 +4,7 @@ import { useObservable } from 'dexie-react-hooks'
 import Folha from './Folha.jsx'
 import { db } from '../lib/db.js'
 import { useDados } from '../dados.jsx'
+import { IconeCelular, IconeNuvem, IconeAlerta, IconeSemInternet, IconeAtualizar, IconeRelogio, Ic } from './Icones.jsx'
 import { alteracoesPendentes, dadosLocais, entrar, apagarAparelhoEEntrar, sair, sincronizarAgora, textoSincronizacao, traduzirAlerta, textosDaInteracao } from '../lib/nuvem.js'
 
 export function useNuvem() {
@@ -105,9 +106,12 @@ export function BotaoEntrar({ rotulo = 'Entrar na minha conta', classe = 'botao 
   )
 }
 
+const ICONE_STATUS = { celular: IconeCelular, nuvem: IconeNuvem, alerta: IconeAlerta, 'sem-internet': IconeSemInternet, atualizar: IconeAtualizar }
+const IconeStatus = ({ status }) => <Ic i={ICONE_STATUS[status.icone] || IconeNuvem} />
+
 export function SeloSincronizacao() {
   const { status } = useNuvem()
-  return <span className={`selo-sync selo-${status.tipo}`} title={status.texto}>{status.icone} <span>{status.texto}</span></span>
+  return <span className={`selo-sync selo-${status.tipo}`} title={status.texto}><IconeStatus status={status} /><span>{status.texto}</span></span>
 }
 
 // Seção "Conta e sincronização" em Ajustes
@@ -119,7 +123,7 @@ export function PainelConta() {
   return (
     <section className="painel">
       <h3>Conta e sincronização</h3>
-      <span className={`selo-sync selo-${status.tipo}`}>{status.icone} {status.texto}</span>
+      <span className={`selo-sync selo-${status.tipo}`}><IconeStatus status={status} />{status.texto}</span>
       {!logado && (
         <>
           <p className="dica">Entre com seu e-mail para usar o Mukirana em mais de um aparelho (celular e computador) com os dados sincronizados. Sem senha: você recebe um código por e-mail.</p>
@@ -130,7 +134,7 @@ export function PainelConta() {
         <>
           <p className="discreto">Conectado como <strong>{usuario.email || usuario.name || usuario.userId}</strong></p>
           {licenca?.type === 'eval' && (
-            <p className="dica">⏳ Conta em avaliação{licenca.evalDaysLeft != null ? `: ${licenca.evalDaysLeft} dia(s) restante(s)` : ''}. Depois disso a sincronização para até a conta ser liberada no painel do Dexie Cloud.</p>
+            <p className="dica"><Ic i={IconeRelogio} /> Conta em avaliação{licenca.evalDaysLeft != null ? `: ${licenca.evalDaysLeft} dia(s) restante(s)` : ''}. Depois disso a sincronização para até a conta ser liberada no painel do Dexie Cloud.</p>
           )}
           <div className="linha-botoes">
             <button className="botao secundario cheio" onClick={() => { sincronizarAgora(); avisar('Sincronizando…') }}>Sincronizar agora</button>

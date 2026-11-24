@@ -8,8 +8,8 @@ import { contasDoMes, modeloDoMes, pularMes } from '../lib/recorrentes.js'
 
 const SITUACAO = {
   pendente: { rotulo: 'a lançar', classe: '' },
-  atrasada: { rotulo: '⚠️ venceu', classe: 'saida' },
-  lancada: { rotulo: '✅ lançada', classe: 'entrada' },
+  atrasada: { rotulo: 'venceu', classe: 'saida' },
+  lancada: { rotulo: 'lançada', classe: 'entrada' },
   pulada: { rotulo: 'pulada este mês', classe: 'discreto' },
 }
 
@@ -53,7 +53,7 @@ export default function ContasDoMes({ mes, irPara }) {
       {lista.map((x) => {
         const r = x.recorrente
         const cat = categoriaPorId.get(r.categoriaId)
-        const onde = r.cartaoId ? `💳 ${cartaoPorId.get(r.cartaoId)?.nome ?? ''}` : contaPorId.get(r.contaId)?.nome ?? ''
+        const onde = r.cartaoId ? `Cartão ${cartaoPorId.get(r.cartaoId)?.nome ?? ''}` : contaPorId.get(r.contaId)?.nome ?? ''
         const s = SITUACAO[x.situacao]
         const valor = x.lancamento ? x.lancamento.valor : r.valor
         return (

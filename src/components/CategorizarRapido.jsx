@@ -39,9 +39,9 @@ export default function CategorizarRapido({ aoFechar }) {
         <button role="tab" aria-selected={soOutros} className={`aba ${soOutros ? 'ativa' : ''}`} onClick={() => { setSoOutros(true); setLimite(POR_PAGINA) }}>Sem categoria ({totalOutros})</button>
         <button role="tab" aria-selected={!soOutros} className={`aba ${!soOutros ? 'ativa' : ''}`} onClick={() => { setSoOutros(false); setLimite(POR_PAGINA) }}>Todas as lojas</button>
       </div>
-      <input className="busca" type="search" value={busca} placeholder="🔍 Buscar loja ou pessoa" aria-label="Buscar loja ou pessoa" onChange={(e) => { setBusca(e.target.value); setLimite(POR_PAGINA) }} />
+      <input className="busca" type="search" value={busca} placeholder="Buscar loja ou pessoa" aria-label="Buscar loja ou pessoa" onChange={(e) => { setBusca(e.target.value); setLimite(POR_PAGINA) }} />
 
-      {grupos.length === 0 && <p className="vazio">{soOutros && !busca ? 'Tudo categorizado! 🎉' : 'Nada encontrado.'}</p>}
+      {grupos.length === 0 && <p className="vazio">{soOutros && !busca ? 'Tudo categorizado.' : 'Nada encontrado.'}</p>}
       <div className="lista-categorizar">
         {grupos.slice(0, limite).map((g) => {
           const k = `${g.tipo}:${g.chave}`

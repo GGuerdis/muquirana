@@ -7,8 +7,9 @@ import { useDados } from '../dados.jsx'
 import { db } from '../lib/db.js'
 import { abrirEspaco, criarEspaco, convidar, removerMembro, mudarPapel, excluirEspaco, sairDoEspaco, renomearEspaco, PAPEIS, papelDe } from '../lib/espacos.js'
 import { BotaoEntrar } from './Nuvem.jsx'
+import { IconePessoa, IconeInicio, IconeEnvelope, Ic } from './Icones.jsx'
 
-const nomeDoEspaco = (e) => (e ? `🏠 ${e.name}` : '👤 Pessoal')
+const nomeDoEspaco = (e) => (e ? e.name : 'Pessoal')
 
 // Botão no topo do Início: mostra o espaço aberto e troca
 export function SeletorEspaco() {
@@ -36,11 +37,11 @@ export function SeletorEspaco() {
           <p className="dica">Cada espaço tem as próprias contas, cartões, categorias e lançamentos. O Pessoal é só seu; os outros você divide com quem convidar.</p>
           <div className="lista-espacos">
             <button className={`linha-ajuste ${!espaco ? 'ativa' : ''}`} onClick={async () => { await abrirEspaco(null); setAberto(false) }}>
-              <span>👤 Pessoal</span><span className="discreto">{!espaco ? 'aberto' : ''}</span>
+              <span className="com-marca"><Ic i={IconePessoa} />Pessoal</span><span className="discreto">{!espaco ? 'aberto' : ''}</span>
             </button>
             {espacos.map((e) => (
               <button key={e.realmId} className={`linha-ajuste ${espaco?.realmId === e.realmId ? 'ativa' : ''}`} onClick={async () => { await abrirEspaco(e.realmId); setAberto(false) }}>
-                <span>🏠 {e.name}<small> · {e.souDono ? 'criado por você' : 'compartilhado com você'} · {e.membros.length + 1} pessoa(s)</small></span>
+                <span className="com-marca"><Ic i={IconeInicio} /><span>{e.name}<small> · {e.souDono ? 'criado por você' : 'compartilhado com você'} · {e.membros.length + 1} pessoa(s)</small></span></span>
                 <span className="discreto">{espaco?.realmId === e.realmId ? 'aberto' : ''}</span>
               </button>
             ))}
@@ -69,7 +70,7 @@ export function ConvitesRecebidos() {
   if (!pendentes.length) return null
   return (
     <section className="painel convite">
-      <h3>📩 Convite para espaço compartilhado</h3>
+      <h3 className="com-marca"><Ic i={IconeEnvelope} />Convite para espaço compartilhado</h3>
       {pendentes.map((c) => (
         <div key={c.id} className="bloco">
           <p><strong>{c.invitedBy?.name || c.invitedBy?.email || 'Alguém'}</strong> te convidou para o espaço <strong>{c.realm?.name || 'compartilhado'}</strong> ({PAPEIS[papelDe(c)]}).</p>
@@ -123,10 +124,10 @@ export function PainelEspaco() {
       <p className="dica">{dono ? 'Você criou este espaço.' : 'Este espaço foi compartilhado com você.'} Quem participa vê e mexe (conforme a permissão) em tudo deste espaço. O seu espaço Pessoal continua só seu.</p>
 
       <span className="rotulo">Pessoas</span>
-      <div className="linha-pagamento"><span>👤 {dono ? `${usuario?.email || 'Você'} (você)` : 'Quem criou'}</span><span className="discreto">dono</span></div>
+      <div className="linha-pagamento"><span className="com-marca"><Ic i={IconePessoa} />{dono ? `${usuario?.email || 'Você'} (você)` : 'Quem criou'}</span><span className="discreto">dono</span></div>
       {espaco.membros.map((m) => (
         <div key={m.id} className="linha-pagamento">
-          <span className="quebra">👤 {m.name && m.name !== m.email ? `${m.name} · ` : ''}{m.email}{m.accepted ? '' : m.rejected ? ' · recusou' : ' · convite pendente'}</span>
+          <span className="quebra"><Ic i={IconePessoa} /> {m.name && m.name !== m.email ? `${m.name} · ` : ''}{m.email}{m.accepted ? '' : m.rejected ? ' · recusou' : ' · convite pendente'}</span>
           {dono ? (
             <span className="fixa-botoes">
               <select className="seletor mini" value={papelDe(m)} onChange={(e) => mudarPapel(m.id, e.target.value)} aria-label="Permissão">

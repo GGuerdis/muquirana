@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useDados } from '../dados.jsx'
 import { hoje } from '../lib/datas.js'
 import { lembreteBackup, fazerBackup, adiarBackup } from '../lib/backupArquivo.js'
+import { IconeSalvar } from './Icones.jsx'
 
 export default function LembreteBackup() {
   const { config, lancamentos, usuario, espacoAtual, avisar } = useDados()
@@ -24,7 +25,7 @@ export default function LembreteBackup() {
 
   return (
     <section className="painel lembrete-backup">
-      <span className="lembrete-icone" aria-hidden="true">💾</span>
+      <span className="lembrete-icone" aria-hidden="true"><IconeSalvar /></span>
       <div className="lembrete-textos">
         <strong>{l.nunca ? 'Você ainda não fez nenhum backup' : `Faz ${l.dias} dias desde o último backup`}</strong>
         <span className="dica">Guarde uma cópia do seu histórico no Drive ou no e-mail.</span>

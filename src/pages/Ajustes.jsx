@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina } from '../components/Pecas.jsx'
+import { CabecaPagina, MarcaConta, MarcaCartao, IconeCategoria } from '../components/Pecas.jsx'
 import { FormConta, FormCartao, FormCategoria, FormRecorrente } from '../components/Formularios.jsx'
 import { Abas } from '../components/Campos.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
@@ -17,7 +17,7 @@ import { PainelEspaco } from '../components/Espacos.jsx'
 import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
-import { IconeNuvem, IconeCartao, IconeEtiqueta, IconeArquivo } from '../components/Icones.jsx'
+import { IconeNuvem, IconeCartao, IconeEtiqueta, IconeArquivo, IconeCalendario, IconeImportar, Ic } from '../components/Icones.jsx'
 
 const contar = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
 
@@ -92,7 +92,7 @@ export default function Ajustes({ irPara }) {
         </div>
         {contas.map((c) => (
           <button key={c.id} className="linha-ajuste" onClick={() => setEditando({ tipo: 'conta', item: c })}>
-            <span>{c.emoji} {c.nome}</span>
+            <span className="com-marca"><MarcaConta conta={c} />{c.nome}</span>
             <span className="discreto">{formatar(saldoConta(c, lancamentos))} ›</span>
           </button>
         ))}
@@ -106,7 +106,7 @@ export default function Ajustes({ irPara }) {
         {cartoes.length === 0 && <p className="vazio">Nenhum cartão ainda.</p>}
         {cartoes.map((c) => (
           <button key={c.id} className="linha-ajuste" onClick={() => setEditando({ tipo: 'cartao', item: c })}>
-            <span>💳 {c.nome}</span>
+            <span className="com-marca"><MarcaCartao />{c.nome}</span>
             <span className="discreto">fecha {c.diaFechamento} · vence {c.diaVencimento} ›</span>
           </button>
         ))}
@@ -120,7 +120,7 @@ export default function Ajustes({ irPara }) {
         {recorrentes.length === 0 && <p className="vazio">Nenhuma conta fixa ainda.</p>}
         {[...recorrentes].sort((a, b) => a.dia - b.dia).map((r) => (
           <button key={r.id} className="linha-ajuste" onClick={() => setEditando({ tipo: 'recorrente', item: r })}>
-            <span className="quebra">{categoriaPorId.get(r.categoriaId)?.emoji || '📦'} {r.descricao}<small> · dia {r.dia} · {r.cartaoId != null ? `💳 ${cartaoPorId.get(r.cartaoId)?.nome ?? ''}` : contaPorId.get(r.contaId)?.nome ?? ''}{r.fim ? ` · até ${r.fim.split('-').reverse().join('/')}` : ''}</small></span>
+            <span className="quebra com-icone"><IconeCategoria categoria={categoriaPorId.get(r.categoriaId)} pequeno /><span>{r.descricao}<small> · dia {r.dia} · {r.cartaoId != null ? `Cartão ${cartaoPorId.get(r.cartaoId)?.nome ?? ''}` : contaPorId.get(r.contaId)?.nome ?? ''}{r.fim ? ` · até ${r.fim.split('-').reverse().join('/')}` : ''}</small></span></span>
             <span className={r.tipo === 'receita' ? 'entrada' : 'discreto'}>{r.tipo === 'receita' ? '+' : ''}{formatar(r.valor)} ›</span>
           </button>
         ))}
@@ -133,7 +133,7 @@ export default function Ajustes({ irPara }) {
           const o = orcamentos.find((x) => x.categoriaId === c.id)
           return (
             <button key={c.id} className="linha-ajuste" onClick={() => setEditando({ tipo: 'orcamento', item: c })}>
-              <span>{c.emoji} {c.nome}</span>
+              <span className="com-icone"><IconeCategoria categoria={c} pequeno />{c.nome}</span>
               <span className={o ? '' : 'discreto'}>{o ? formatar(o.limite) : 'sem limite'} ›</span>
             </button>
           )
@@ -151,7 +151,7 @@ export default function Ajustes({ irPara }) {
         <div className="lista-categorias">
           {categorias.filter((c) => c.tipo === tipoCat).map((c) => (
             <button key={c.id} className="chip" onClick={() => setEditando({ tipo: 'categoria', item: c })}>
-              <span className="chip-emoji">{c.emoji}</span>{c.nome}
+              <IconeCategoria categoria={c} pequeno />{c.nome}
             </button>
           ))}
         </div>
@@ -189,13 +189,13 @@ export default function Ajustes({ irPara }) {
           (e dois dias antes das faturas). Nada vai para a internet. No iPhone, abra o arquivo e toque em "Adicionar tudo". No Android,
           abra com o Google Agenda (ou importe em calendar.google.com → Configurações → Importar). Se mudar as contas fixas, gere de novo.
         </p>
-        <button className="botao secundario cheio" onClick={exportarAgenda}>📅 Gerar lembretes para a agenda</button>
+        <button className="botao secundario cheio" onClick={exportarAgenda}><Ic i={IconeCalendario} /> Gerar lembretes para a agenda</button>
       </section>
 
       <section className="painel">
         <h3>Importar extrato do banco</h3>
         <p className="dica">Traga as movimentações do Santander, Inter ou outro banco a partir de um arquivo OFX, sem digitar.</p>
-        <button className="botao secundario cheio" onClick={() => setImportando(true)}>⬇ Importar extrato (OFX)</button>
+        <button className="botao secundario cheio" onClick={() => setImportando(true)}><Ic i={IconeImportar} /> Importar extrato (OFX)</button>
       </section>
 
       <section className="painel">

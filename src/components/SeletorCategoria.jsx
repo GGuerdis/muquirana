@@ -48,8 +48,8 @@ export default function SeletorCategoria({ tipo, valor, aoMudar, opcaoVazia = nu
     <select className={className} aria-label={rotulo} value={valor ?? ''} onChange={(e) => (e.target.value === NOVA ? setCriando(true) : aoMudar(e.target.value || null))}>
       {opcaoVazia !== null && <option value="">{opcaoVazia}</option>}
       {opcaoVazia === null && valor == null && <option value="">Escolha…</option>}
-      {lista.map((c) => <option key={c.id} value={c.id}>{prefixo}{c.emoji} {c.nome}</option>)}
-      <option value={NOVA}>➕ Nova categoria…</option>
+      {lista.map((c) => <option key={c.id} value={c.id}>{prefixo}{c.nome}</option>)}
+      <option value={NOVA}>+ Nova categoria…</option>
     </select>
   )
 }

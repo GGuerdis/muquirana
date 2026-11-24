@@ -71,7 +71,7 @@ export default function BoasVindas() {
           <h2>Quanto tem em cada conta hoje?</h2>
           <p className="discreto">Abra o app do banco e confira. Se não souber agora, deixe zerado e ajuste depois.</p>
           {contas.map((c) => (
-            <CampoValor key={c.id} rotulo={`${c.emoji} ${c.nome}`} valor={saldos[c.id] ?? 0} aoMudar={(v) => setSaldos({ ...saldos, [c.id]: v })} />
+            <CampoValor key={c.id} rotulo={c.nome} valor={saldos[c.id] ?? 0} aoMudar={(v) => setSaldos({ ...saldos, [c.id]: v })} />
           ))}
           <div className="linha-botoes">
             <button className="botao secundario" onClick={() => setPasso(0)}>Voltar</button>

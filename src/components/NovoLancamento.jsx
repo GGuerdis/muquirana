@@ -1,7 +1,8 @@
 // Formulário de lançamento rápido (novo ou edição)
 import { useRef, useState } from 'react'
 import Folha from './Folha.jsx'
-import { IconeCategoria } from './Pecas.jsx'
+import { IconeCategoria, MarcaConta, MarcaCartao } from './Pecas.jsx'
+import { IconeCalendario, IconeTesoura, Ic } from './Icones.jsx'
 import { Abas, CampoValor, Chips, Campo } from './Campos.jsx'
 import { useDados } from '../dados.jsx'
 import { hoje, ontem, dataCurta, dataValida, nomeMes, mesDe, somarMesesData } from '../lib/datas.js'
@@ -90,8 +91,8 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
 
   const cats = categorias.filter((c) => c.tipo === f.tipo)
   const opcoesOrigem = [
-    ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, emoji: c.emoji })),
-    ...(f.tipo === 'despesa' ? cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' })) : []),
+    ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, marca: <MarcaConta conta={c} /> })),
+    ...(f.tipo === 'despesa' ? cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, marca: <MarcaCartao /> })) : []),
   ]
 
   async function salvar() {
@@ -229,7 +230,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       {f.tipo === 'transferencia' && (
         <div className="bloco">
           <span className="rotulo">Foi para</span>
-          <Chips rolavel opcoes={contas.filter((c) => `conta:${c.id}` !== f.origem).map((c) => ({ valor: c.id, rotulo: c.nome, emoji: c.emoji }))} valor={f.contaDestinoId} aoMudar={mudar('contaDestinoId')} />
+          <Chips rolavel opcoes={contas.filter((c) => `conta:${c.id}` !== f.origem).map((c) => ({ valor: c.id, rotulo: c.nome, marca: <MarcaConta conta={c} /> }))} valor={f.contaDestinoId} aoMudar={mudar('contaDestinoId')} />
         </div>
       )}
 
@@ -252,7 +253,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
           <button type="button" className={`chip ${f.data === hoje() ? 'ativo' : ''}`} onClick={() => mudar('data')(hoje())}>Hoje</button>
           <button type="button" className={`chip ${f.data === ontem() ? 'ativo' : ''}`} onClick={() => mudar('data')(ontem())}>Ontem</button>
           <label className={`chip chip-data ${outraData ? 'ativo' : ''}`}>
-            📅 {outraData ? dataCurta(f.data) : 'Outra'}
+            <Ic i={IconeCalendario} /> {outraData ? dataCurta(f.data) : 'Outra'}
             <input type="date" value={f.data} onChange={(e) => e.target.value && mudar('data')(e.target.value)} aria-label="Escolher data" />
           </label>
         </div>
@@ -265,7 +266,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       {original && podeDividir(original) && (
         divisao ? (
           <div className="painel dividir">
-            <strong>✂️ Dividir em dois lançamentos</strong>
+            <strong className="com-marca"><Ic i={IconeTesoura} />Dividir em dois lançamentos</strong>
             <span className="dica">Ex.: um pagamento que cobriu dois meses. Este fica com o resto; a outra parte vai para a data que você escolher.</span>
             <CampoValor rotulo="Valor da outra parte" valor={divisao.valor} aoMudar={(v) => setDivisao((d) => ({ ...d, valor: v }))} />
             <Campo rotulo="Data da outra parte">
@@ -280,7 +281,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
             </div>
           </div>
         ) : (
-          <button type="button" className="link" onClick={() => setDivisao({ valor: Math.floor(original.valor / 2), data: somarMesesData(original.data, -1) })}>✂️ Dividir em dois lançamentos (ex.: pagou dois meses juntos)</button>
+          <button type="button" className="link" onClick={() => setDivisao({ valor: Math.floor(original.valor / 2), data: somarMesesData(original.data, -1) })}><Ic i={IconeTesoura} /> Dividir em dois lançamentos (ex.: pagou dois meses juntos)</button>
         )
       )}
     </Folha>

@@ -20,6 +20,8 @@ import { extrairLinhasPdf } from '../lib/pdfTexto.js'
 import { lerExtratoSantander, juntarExtratos } from '../lib/santander.js'
 import { reconhecerInter, lerExtratoInter } from '../lib/inter.js'
 import AvisoNavegador from './AvisoNavegador.jsx'
+import { MarcaConta, MarcaCartao } from './Pecas.jsx'
+import { IconeAlerta, IconeOk, IconeRelogio, IconeArquivo, Ic } from './Icones.jsx'
 import AvisoVersao, { useVersaoNova } from './AvisoVersao.jsx'
 
 const ACOES_CONTA = [
@@ -264,7 +266,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
       })
       if (extrato.titular && (!config.titular || extrato.titular.length > config.titular.length)) await salvarConfig('titular', extrato.titular)
       let mensagem = `${n} lançamento(s) importado(s).`
-      if (usuario?.isLoggedIn) mensagem += ' Espere o topo mostrar ☁️ Sincronizado antes de fechar o app.'
+      if (usuario?.isLoggedIn) mensagem += ' Espere o topo mostrar "Sincronizado" antes de fechar o app.'
       if (orcamentos.length) {
         const aviso = avisoDeOrcamento({ meses: [...new Set(aGravar.map((i) => mesDe(i.dataLancamento)))].slice(-3), orcamentos, antes: lancamentos, depois: await db.lancamentos.toArray() })
         if (aviso) mensagem += ' ' + textoAviso(aviso, categoriaPorId.get(aviso.categoriaId)?.nome || '')
@@ -308,8 +310,8 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           <label key="investimento" className="campo">
             <span className="rotulo">{grupos.investimento} aplicação(ões)/resgate(s) de investimento: transferir para</span>
             <select className="seletor" value={v} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaInvestimentos: e.target.value || null })); setAjustes({}) }}>
-              {!contas.some((c) => /invest/i.test(c.nome)) && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta "Investimentos {contaPorId.get(dest.id)?.nome}"</option>}
-              {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+              {!contas.some((c) => /invest/i.test(c.nome)) && <option value={NOVA_CONTA_INVESTIMENTOS}>+ Nova conta "Investimentos {contaPorId.get(dest.id)?.nome}"</option>}
+              {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               <option value="">Não: lançar como gasto/receita</option>
             </select>
           </label>
@@ -325,7 +327,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           <label key="pixProprio" className="campo">
             <span className="rotulo">{grupos.pixProprio} PIX/transferência(s) com o seu nome, sem o banco no extrato: transferir para</span>
             <select className="seletor" value={v} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPixProprio: e.target.value || null })); setAjustes({}) }}>
-              {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+              {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               <option value="">Não: lançar como gasto/receita</option>
             </select>
           </label>
@@ -351,9 +353,9 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
                   : `${g.n} PIX com a conta ${descreverDestino(chave)}: é sua? Transferir para`}
               </span>
               <select className="seletor" value={escolhida} onChange={(e) => { setRegrasImp((r) => ({ ...r, contaPorPix: { ...r.contaPorPix, [chave]: e.target.value || null } })); setAjustes({}) }}>
-                {nomeNova && <option value={escolhida}>🏦 Nova conta "{nomeNova}"</option>}
-                {!nomeNova && banco && !temContaDoBanco && g.proprio && <option value={novaConta(banco)}>🏦 Nova conta "{banco}"</option>}
-                {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                {nomeNova && <option value={escolhida}>+ Nova conta "{nomeNova}"</option>}
+                {!nomeNova && banco && !temContaDoBanco && g.proprio && <option value={novaConta(banco)}>+ Nova conta "{banco}"</option>}
+                {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 <option value="">{g.proprio ? 'Não: lançar como gasto' : 'Não é minha: lançar como gasto/receita'}</option>
               </select>
             </label>
@@ -381,8 +383,8 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           <label key={ident} className="campo">
             <span className="rotulo">{g.n} pagamento(s) "{ident}": fatura de qual cartão?</span>
             <select className="seletor" value={valor} onChange={(e) => { setRegrasImp((r) => ({ ...r, cartaoPorPagamento: { ...r.cartaoPorPagamento, [ident]: e.target.value || null } })); setAjustes({}) }}>
-              {cartoes.map((c) => <option key={c.id} value={c.id}>💳 {c.nome}</option>)}
-              {nomesCartaoNovo(valor).map((n) => <option key={n} value={novoCartao(n)}>🆕 Novo cartão "{n}"</option>)}
+              {cartoes.map((c) => <option key={c.id} value={c.id}>Cartão {c.nome}</option>)}
+              {nomesCartaoNovo(valor).map((n) => <option key={n} value={novoCartao(n)}>+ Novo cartão "{n}"</option>)}
               <option value="">Não é fatura de cartão: lançar como gasto</option>
             </select>
             {nomeNovo && <span className="dica">O cartão "{nomeNovo}" será criado com vencimento no dia {dias.diaVencimento} e fechamento no dia {dias.diaFechamento} (estimados pelos pagamentos). Confira depois em Cartões.</span>}
@@ -411,7 +413,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
 
       <AvisoNavegador forte />
       <AvisoVersao nova={versaoNova} texto="Este aparelho está com uma versão antiga do Mukirana." />
-      {lendo && <p className="conferencia">⏳ Lendo PDF {lendo.atual} de {lendo.total}…</p>}
+      {lendo && <p className="conferencia"><Ic i={IconeRelogio} /> Lendo PDF {lendo.atual} de {lendo.total}…</p>}
 
       {!extrato && !lendo && (
         <div className="bloco">
@@ -430,7 +432,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
         <>
           <div className="painel">
             <div className="painel-titulo">
-              <strong className="quebra">📄 {nomeArquivo}</strong>
+              <strong className="quebra com-marca"><Ic i={IconeArquivo} />{nomeArquivo}</strong>
               <button className="link" onClick={() => arquivo.current?.click()}>Trocar</button>
             </div>
             <span className="discreto">
@@ -439,7 +441,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
               {nomeDoBanco(extrato.banco) ? ` · ${nomeDoBanco(extrato.banco)}` : ''}
             </span>
             {extrato.problemas?.length > 0 && (
-              <span className="dica">⚠️ {extrato.problemas.length} linha(s) não puderam ser lidas e ficaram de fora: {extrato.problemas.map((p) => `${p.descricao} (${p.motivo})`).join('; ')}</span>
+              <span className="dica"><Ic i={IconeAlerta} className="atencao" /> {extrato.problemas.length} linha(s) não puderam ser lidas e ficaram de fora: {extrato.problemas.map((p) => `${p.descricao} (${p.motivo})`).join('; ')}</span>
             )}
           </div>
 
@@ -447,12 +449,12 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
             <div className={`conferencia ${extrato.conferencia.ok ? 'ok' : 'diferente'}`}>
               {extrato.conferencia.ok ? (
                 <>
-                  <strong>✅ {extrato.arquivos.length} extrato(s) conferido(s) com o banco</strong>
+                  <strong><Ic i={IconeOk} className="bom" /> {extrato.arquivos.length} extrato(s) conferido(s) com o banco</strong>
                   <span>{extrato.arquivos.reduce((s, a) => s + a.saldosConferidos, 0)} saldos impressos pelo banco batem com a leitura, e os meses emendam sem faltar nada.</span>
                 </>
               ) : (
                 <>
-                  <strong>⚠️ A leitura não bateu com o banco. Nada será importado.</strong>
+                  <strong><Ic i={IconeAlerta} className="atencao" /> A leitura não bateu com o banco. Nada será importado.</strong>
                   {extrato.conferencia.erros.slice(0, 8).map((e, i) => <span key={i} className="dica">• {e}</span>)}
                   {extrato.conferencia.erros.length > 8 && <span className="dica">… e mais {extrato.conferencia.erros.length - 8}.</span>}
                 </>
@@ -463,11 +465,11 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           <div className="bloco">
             <span className="rotulo">Importar para</span>
             <Chips rolavel valor={destino} aoMudar={mudarDestino} opcoes={[
-              ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, emoji: c.emoji })),
-              ...(extrato.origem?.startsWith('pdf-') ? [] : cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' }))),
+              ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, marca: <MarcaConta conta={c} /> })),
+              ...(extrato.origem?.startsWith('pdf-') ? [] : cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, marca: <MarcaCartao /> }))),
             ]} />
-            {extrato.tipo === 'cartao' && dest?.tipo === 'conta' && <span className="dica">⚠️ Este arquivo parece ser de cartão de crédito.</span>}
-            {extrato.tipo === 'conta' && dest?.tipo === 'cartao' && <span className="dica">⚠️ Este arquivo parece ser de conta, não de cartão.</span>}
+            {extrato.tipo === 'cartao' && dest?.tipo === 'conta' && <span className="dica"><Ic i={IconeAlerta} className="atencao" /> Este arquivo parece ser de cartão de crédito.</span>}
+            {extrato.tipo === 'conta' && dest?.tipo === 'cartao' && <span className="dica"><Ic i={IconeAlerta} className="atencao" /> Este arquivo parece ser de conta, não de cartão.</span>}
           </div>
 
           {dest?.tipo === 'cartao' && (
@@ -498,7 +500,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           {dest?.tipo === 'conta' && regrasLinhas.some((r) => !r.pergunta) && (
             <details className="painel regras-imp decididas">
               <summary>
-                <strong>✅ O app já classificou {regrasLinhas.filter((r) => !r.pergunta).reduce((s, r) => s + r.n, 0)} linha(s) sozinho</strong>
+                <strong><Ic i={IconeOk} className="bom" /> O app já classificou {regrasLinhas.filter((r) => !r.pergunta).reduce((s, r) => s + r.n, 0)} linha(s) sozinho</strong>
                 <span className="discreto"> · toque para ver ou mudar</span>
               </summary>
               <ul className="lista-simples resumo-decidido">
@@ -513,16 +515,16 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
 
           {previa && (
             <div className="resumo-importacao">
-              <span>🆕 {previa.resumo.novos} novas</span>
-              {previa.resumo.duplicados > 0 && <span>👯 {previa.resumo.duplicados} parecem já lançadas</span>}
-              {previa.resumo.importados > 0 && <span>✅ {previa.resumo.importados} já importadas</span>}
-              {previa.resumo.creditos > 0 && <span>↩️ {previa.resumo.creditos} créditos no cartão</span>}
+              <span>{previa.resumo.novos} novas</span>
+              {previa.resumo.duplicados > 0 && <span>{previa.resumo.duplicados} parecem já lançadas</span>}
+              {previa.resumo.importados > 0 && <span>{previa.resumo.importados} já importadas</span>}
+              {previa.resumo.creditos > 0 && <span>{previa.resumo.creditos} créditos no cartão</span>}
             </div>
           )}
 
           {conferencia && !bloqueado && (
             <div className={`conferencia ${conferencia.diferenca === 0 ? 'ok' : 'diferente'}`}>
-              <strong>{conferencia.diferenca === 0 ? '✅ O saldo vai bater com o banco' : '⚠️ O saldo não vai bater com o banco'}</strong>
+              <strong>{conferencia.diferenca === 0 ? <><Ic i={IconeOk} className="bom" /> O saldo vai bater com o banco</> : <><Ic i={IconeAlerta} className="atencao" /> O saldo não vai bater com o banco</>}</strong>
               <span>Banco em {conferencia.data.split('-').reverse().join('/')}: {formatar(conferencia.noExtrato)} · App: {formatar(conferencia.noApp)}</span>
               {conferencia.diferenca !== 0 && <span className="dica">Diferença de {formatar(Math.abs(conferencia.diferenca))}. Confira as linhas ignoradas, lançamentos manuais ou o saldo inicial da conta.</span>}
               {saldoDiferente && (
@@ -567,21 +569,21 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
                     </select>
                     {i.acao === 'lancar' && (
                       <select className="seletor" aria-label="Categoria" value={i.categoriaId ?? ''} onChange={(e) => mudarItem(i, { categoriaId: e.target.value || null, categoriaEscolhida: true })}>
-                        {categoriasDo(i.tipo).map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                        {categoriasDo(i.tipo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                       </select>
                     )}
                     {i.acao === 'transferencia' && (
                       <select className="seletor" aria-label={i.entrada ? 'Veio da conta' : 'Foi para a conta'} value={i.contaOutraId ?? ''} onChange={(e) => mudarItem(i, { contaOutraId: e.target.value || null })}>
                         <option value="">{i.entrada ? 'Veio de qual conta?' : 'Foi para qual conta?'}</option>
-                        {i.contaOutraId === NOVA_CONTA_INVESTIMENTOS && <option value={NOVA_CONTA_INVESTIMENTOS}>📈 Nova conta de investimentos</option>}
-                        {nomeDaNovaConta(i.contaOutraId) && <option value={i.contaOutraId}>🏦 Nova conta "{nomeDaNovaConta(i.contaOutraId)}"</option>}
-                        {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nome}</option>)}
+                        {i.contaOutraId === NOVA_CONTA_INVESTIMENTOS && <option value={NOVA_CONTA_INVESTIMENTOS}>+ Nova conta de investimentos</option>}
+                        {nomeDaNovaConta(i.contaOutraId) && <option value={i.contaOutraId}>+ Nova conta "{nomeDaNovaConta(i.contaOutraId)}"</option>}
+                        {outrasContas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                       </select>
                     )}
                     {i.acao === 'fatura' && (
                       <select className="seletor" aria-label="Cartão" value={i.cartaoPagoId ?? ''} onChange={(e) => mudarItem(i, { cartaoPagoId: e.target.value || null })}>
-                        {cartoes.map((c) => <option key={c.id} value={c.id}>💳 {c.nome}</option>)}
-                        {nomesCartaoNovo(i.cartaoPagoId).map((n) => <option key={n} value={novoCartao(n)}>🆕 Novo cartão "{n}"</option>)}
+                        {cartoes.map((c) => <option key={c.id} value={c.id}>Cartão {c.nome}</option>)}
+                        {nomesCartaoNovo(i.cartaoPagoId).map((n) => <option key={n} value={novoCartao(n)}>+ Novo cartão "{n}"</option>)}
                       </select>
                     )}
                   </div>

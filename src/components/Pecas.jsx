@@ -2,22 +2,29 @@
 import { useDados } from '../dados.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { nomeMes, somarMeses, mesAtual, dataCurta } from '../lib/datas.js'
-import { tomDaCategoria, desenhoDaCategoria } from '../lib/cores.js'
-import { DESENHOS_CATEGORIA, IconeEngrenagem, IconeVoltar } from './Icones.jsx'
+import { tomDaCategoria, desenhoParaCategoria, corDaConta } from '../lib/cores.js'
+import { DESENHOS_CATEGORIA, IconeEngrenagem, IconeVoltar, IconeCartao, Ic } from './Icones.jsx'
 
-// Ícone da categoria: losango HUD na cor da categoria, com o desenho dela (ou o emoji, se for categoria sua).
+// Ícone da categoria: losango HUD na cor da categoria, com o desenho dela (sempre um desenho de traço, nunca emoji).
 // `desenho` força um desenho (transferência, fatura...); sem categoria e sem desenho, fica neutro.
-export function IconeCategoria({ categoria, emoji, desenho, pequeno = false }) {
+export function IconeCategoria({ categoria, desenho, pequeno = false }) {
   const tom = categoria ? tomDaCategoria(categoria.nome) : null
-  const chave = desenho ?? (categoria ? desenhoDaCategoria(categoria.nome) : null)
-  const traco = chave && DESENHOS_CATEGORIA[chave]
+  const chave = desenho ?? desenhoParaCategoria(categoria) ?? 'outros'
+  const traco = DESENHOS_CATEGORIA[chave] ?? DESENHOS_CATEGORIA.outros
   return (
     <span className={`icone-cat ${pequeno ? 'pequeno' : ''} ${tom == null ? 'neutro' : ''}`} style={tom == null ? undefined : { '--tom': tom }} aria-hidden="true">
-      {traco
-        ? <svg viewBox="0 0 24 24">{traco}</svg>
-        : <span className="icone-cat-emoji">{emoji ?? categoria?.emoji ?? '📦'}</span>}
+      <svg viewBox="0 0 24 24">{traco}</svg>
     </span>
   )
+}
+
+// Bolinha na cor da conta (ao lado do nome, em blocos e botões)
+export function MarcaConta({ conta }) {
+  return <span className="marca-conta" style={{ '--cor-conta': corDaConta(conta) }} aria-hidden="true" />
+}
+// Marca de cartão de crédito (mesmo lugar da bolinha da conta)
+export function MarcaCartao() {
+  return <Ic i={IconeCartao} className="marca-cartao" />
 }
 
 // Cabeçalho igual em todas as telas: título à esquerda, engrenagem (ou voltar) à direita,
@@ -69,7 +76,7 @@ export function ItemLancamento({ l, mostrarData = false }) {
     onde = contaPorId.get(l.contaId)?.nome ?? ''
     classe = 'neutro'
   } else {
-    onde = l.cartaoId ? `💳 ${cartaoPorId.get(l.cartaoId)?.nome ?? ''}` : contaPorId.get(l.contaId)?.nome ?? ''
+    onde = l.cartaoId ? `Cartão ${cartaoPorId.get(l.cartaoId)?.nome ?? ''}` : contaPorId.get(l.contaId)?.nome ?? ''
     if (l.descricao && cat) onde = `${cat.nome} · ${onde}`
   }
   if (l.totalParcelas) titulo += ` (${l.parcela}/${l.totalParcelas})`
@@ -99,11 +106,11 @@ export function BarrasCategorias({ categorias, limite = 6 }) {
   return (
     <ul className="barras">
       {linhas.map((c) => {
-        const cat = c.categoriaId === 'outros' ? { emoji: '➕', nome: 'Demais categorias' } : categoriaPorId.get(c.categoriaId) || { emoji: '📦', nome: 'Sem categoria' }
+        const cat = c.categoriaId === 'outros' ? { nome: 'Demais categorias' } : categoriaPorId.get(c.categoriaId) || { nome: 'Sem categoria' }
         const pct = Math.round((c.valor / total) * 100)
         return (
           <li key={c.categoriaId} className="barra-linha" title={`${cat.nome}: ${formatar(c.valor)} (${pct}%)`}>
-            <IconeCategoria categoria={c.categoriaId === 'outros' ? null : cat} desenho={c.categoriaId === 'outros' ? 'mais' : undefined} emoji={cat.emoji} pequeno />
+            <IconeCategoria categoria={c.categoriaId === 'outros' ? null : cat} desenho={c.categoriaId === 'outros' ? 'mais' : undefined} pequeno />
             <div className="barra-corpo">
               <div className="barra-topo">
                 <span>{cat.nome}</span>
@@ -120,11 +127,11 @@ export function BarrasCategorias({ categorias, limite = 6 }) {
 
 // Cartão "Entrou / Saiu" com a barra de proporção e o que sobrou (Início e Histórico)
 // Um bloco do painel: título pequeno, número e uma linha opcional embaixo
-export function Bloco({ rotulo, valor, extra, tom, emoji, largo = false, estimada = false, titulo, aoTocar }) {
+export function Bloco({ rotulo, valor, extra, tom, marca, largo = false, estimada = false, titulo, aoTocar }) {
   const Tag = aoTocar ? 'button' : 'div'
   return (
     <Tag className={`bloco ${largo ? 'largo' : ''} ${estimada ? 'estimada' : ''} ${aoTocar ? 'tocavel' : ''}`} title={titulo} onClick={aoTocar}>
-      <span className="bloco-rot">{emoji && <span className="bloco-emoji">{emoji}</span>}{rotulo}</span>
+      <span className="bloco-rot">{marca}{rotulo}</span>
       <strong className={tom || ''}>{valor}</strong>
       {extra && <small>{extra}</small>}
     </Tag>
