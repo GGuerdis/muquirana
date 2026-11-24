@@ -18,6 +18,7 @@ import { faturaAtual, faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprenderComImportacao, gruposParaCategorizar } from '../lib/categorizar.js'
 import { extrairLinhasPdf } from '../lib/pdfTexto.js'
 import { lerExtratoSantander, juntarExtratos } from '../lib/santander.js'
+import { reconhecerInter, lerExtratoInter } from '../lib/inter.js'
 import AvisoNavegador from './AvisoNavegador.jsx'
 import AvisoVersao, { useVersaoNova } from './AvisoVersao.jsx'
 
@@ -80,7 +81,8 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
   function regrasPadrao(ex, destinoTexto) {
     const destId = destinoTexto?.split(':')[1]
     const contaInvest = contas.find((c) => /invest/i.test(c.nome))
-    const inter = contas.find((c) => normalizar(c.nome).includes('INTER') && c.id !== destId)
+    // PIX com o seu nome vai, por padrão, para a outra conta principal (importando o Santander → Inter; o Inter → Santander)
+    const inter = contas.find((c) => normalizar(c.nome).includes('INTER') && c.id !== destId) || contas.find((c) => normalizar(c.nome).includes('SANTANDER') && c.id !== destId)
     // O que você respondeu nas importações anteriores (neste aparelho). Conta/cartão "novo" que já foi criado
     // é achado pelo nome; escolha que aponta para algo que não existe mais é esquecida.
     const lemb = config.lembrarImportacao || {}
@@ -107,7 +109,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
       cartaoPorPagamento: limpo(lemb.cartaoPorPagamento, cartao),
       contaPorPix: limpo(config.destinosPix?.conta, conta),
       gastoPorPix: Object.fromEntries(Object.entries(config.destinosPix?.gasto || {}).filter(([, v]) => v === null || categoriaExiste(v))),
-      historico: ex.origem === 'pdf-santander',
+      historico: ex.origem?.startsWith('pdf-'),
     }
   }
 
@@ -125,12 +127,14 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           setLendo({ atual: i + 1, total: lista.length })
           const linhas = await extrairLinhasPdf(new Uint8Array(await lista[i].arrayBuffer()))
           try {
-            lidos.push(lerExtratoSantander(linhas))
+            lidos.push(reconhecerInter(linhas) ? lerExtratoInter(linhas) : lerExtratoSantander(linhas))
           } catch (err) {
             throw new Error(`${lista[i].name}: ${err.message}`)
           }
         }
-        ex = juntarExtratos(lidos)
+        const bancos = new Set(lidos.map((x) => x.banco || '033'))
+        if (bancos.size > 1) throw new Error('Os PDFs são de bancos diferentes. Importe um banco de cada vez.')
+        ex = juntarExtratos(lidos, { banco: [...bancos][0] })
       } else if (lista.length === 1 && !ehPdf(lista[0])) {
         ex = lerOFX(decodificarArquivo(await lista[0].arrayBuffer()))
       } else {
@@ -414,6 +418,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
           <p>Escolha o extrato exportado do banco:</p>
           <ul className="dica lista-simples">
             <li><strong>PDF do Santander</strong> (extrato mensal ou de período): pode escolher vários de uma vez, por exemplo todos os meses desde 2024.</li>
+            <li><strong>PDF do Inter</strong> (extrato da conta, gerado no app do Inter): pode escolher vários de uma vez, por exemplo um por ano.</li>
             <li><strong>OFX</strong> de qualquer banco.</li>
           </ul>
           <p className="dica">O arquivo é lido só neste aparelho. Antes de gravar, o app confere tudo com os saldos do banco e mostra uma prévia.</p>
@@ -459,7 +464,7 @@ export default function ImportarExtrato({ aoFechar, aoImportar }) {
             <span className="rotulo">Importar para</span>
             <Chips rolavel valor={destino} aoMudar={mudarDestino} opcoes={[
               ...contas.map((c) => ({ valor: `conta:${c.id}`, rotulo: c.nome, emoji: c.emoji })),
-              ...(extrato.origem === 'pdf-santander' ? [] : cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' }))),
+              ...(extrato.origem?.startsWith('pdf-') ? [] : cartoes.map((c) => ({ valor: `cartao:${c.id}`, rotulo: c.nome, emoji: '💳' }))),
             ]} />
             {extrato.tipo === 'cartao' && dest?.tipo === 'conta' && <span className="dica">⚠️ Este arquivo parece ser de cartão de crédito.</span>}
             {extrato.tipo === 'conta' && dest?.tipo === 'cartao' && <span className="dica">⚠️ Este arquivo parece ser de conta, não de cartão.</span>}

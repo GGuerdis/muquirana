@@ -336,8 +336,9 @@ export function lerExtratoSantander(linhas) {
  * Lançamentos repetidos entre arquivos entram uma vez só.
  * Cada lançamento ganha uma "chave" estável (data + valor + ordem), igual em qualquer formato,
  * para a importação não duplicar nada, nem se o mesmo período for importado de novo.
+ * Serve para qualquer banco cujo leitor devolva o mesmo formato (Santander, Inter): `banco` é o código do banco.
  */
-export function juntarExtratos(lidos) {
+export function juntarExtratos(lidos, { banco = '033' } = {}) {
   const erros = []
   const contas = [...new Set(lidos.map((e) => e.conta).filter(Boolean))]
   if (contas.length > 1) erros.push('Os PDFs são de contas diferentes. Importe uma conta de cada vez.')
@@ -360,7 +361,7 @@ export function juntarExtratos(lidos) {
     const comChave = chaveDe(e.transacoes)
     if (anterior) {
       if (e.inicio > somarDias(anterior.fim, 1)) erros.push(`Falta extrato entre ${anterior.fim.split('-').reverse().join('/')} e ${e.inicio.split('-').reverse().join('/')}.`)
-      if (e.inicio === somarDias(anterior.fim, 1) && e.saldoInicial !== anterior.saldoFinal) {
+      if (e.inicio === somarDias(anterior.fim, 1) && e.saldoInicial !== null && anterior.saldoFinal !== null && e.saldoInicial !== anterior.saldoFinal) {
         erros.push(`${e.nome}: começa com ${fmt(e.saldoInicial)}, mas ${anterior.nome} terminou com ${fmt(anterior.saldoFinal)}.`)
       }
       if (e.inicio <= anterior.fim) {
@@ -386,14 +387,14 @@ export function juntarExtratos(lidos) {
   const primeiro = ordenados[0], ultimo = anterior
   return {
     tipo: 'conta',
-    origem: 'pdf-santander',
-    banco: '033',
+    origem: banco === '077' ? 'pdf-inter' : 'pdf-santander',
+    banco,
     conta: contas[0] || null,
     titular: lidos.map((e) => e.titular).filter(Boolean).sort((a, b) => b.length - a.length)[0] || null,
     inicio: primeiro?.inicio ?? null,
     fim: ultimo?.fim ?? null,
-    saldoInicial: primeiro ? { valor: primeiro.saldoInicial, data: somarDias(primeiro.inicio, -1) } : null,
-    saldo: ultimo ? { valor: ultimo.saldoFinal, data: ultimo.fim } : null,
+    saldoInicial: primeiro && primeiro.saldoInicial !== null ? { valor: primeiro.saldoInicial, data: somarDias(primeiro.inicio, -1) } : null,
+    saldo: ultimo && ultimo.saldoFinal !== null ? { valor: ultimo.saldoFinal, data: ultimo.fim } : null,
     transacoes,
     problemas: [],
     arquivos: ordenados.map((e) => ({ nome: e.nome, formato: e.formato, inicio: e.inicio, fim: e.fim, lancamentos: e.transacoes.length, saldosConferidos: e.conferencia.saldosConferidos, ok: e.conferencia.ok })),

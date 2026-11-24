@@ -10,6 +10,8 @@ import { semControle } from './texto.js'
 export const normalizar = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
 
 export const NOVA_CONTA_INVESTIMENTOS = '__nova_investimentos__'
+// Até quantos dias o mesmo PIX entre suas contas pode aparecer em datas diferentes nos dois extratos
+export const DIAS_TRANSFERENCIA = 4
 // Conta que ainda não existe e é criada junto com a importação (ex.: "Caixa" para PIX que você fez para a sua conta na Caixa)
 const PREFIXO_NOVA_CONTA = '__nova_conta__:'
 export const novaConta = (nome) => `${PREFIXO_NOVA_CONTA}${nome}`
@@ -65,7 +67,7 @@ export function detectarParcela(descricao) {
 export const identidade = (descricao) => normalizar(descricao).replace(/[^A-Z ]+/g, ' ').replace(/\s+/g, ' ').trim()
 
 const PARECE_PAGAMENTO_FATURA = /(PAGTO|PGTO|PAGAMENTO|PAG)\.?\s*(DE\s*)?(FATURA|CART)|FATURA\s*(DO\s*|DE\s*)?CART|CARTAO\s*(DE\s*)?CREDITO|FAT\.?\s*CARTAO|DEBITO AUT\.?\s*FAT/
-const PARECE_INVESTIMENTO = /\b(APLICACAO|APLIC|RESGATE|RESG)\.?\s+(EM\s+)?(CDB|RDB|LCI|LCA|LC|TESOURO|FUNDO|FUNDOS|POUPANCA|COE|DEBENTURE)/
+const PARECE_INVESTIMENTO = /\b(APLICACAO|APLIC|RESGATE|RESG)\.?\s+(EM\s+)?(CDB|RDB|LCI|LCA|LC|TESOURO|FUNDO|FUNDOS|POUPANCA|COE|DEBENTURE)|\b(DEBITO|CREDITO|COMPRA|VENDA|RESGATE)\s+(DE\s+)?TESOURO DIRETO\b/
 
 // Nome do titular para reconhecer PIX/TED para ele mesmo: as 3 primeiras palavras do nome, em ordem,
 // aceitando "da/de/do" entre elas (o banco corta o nome no fim: "Fulano De Tal Souza da")
@@ -128,6 +130,28 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
   const { saidas, entradas } = destino.tipo === 'conta' ? candidatosConta(destino.id, lancamentos) : { saidas: [], entradas: [] }
   const comprasCartao = cartaoDestino ? lancamentos.filter((l) => l.tipo === 'despesa' && l.cartaoId === cartaoDestino.id) : []
   const nomeTitular = chaveDoTitular(regras.titular)
+  // Primeiro movimento de cada conta no app: transferência com data anterior mudaria o saldo dela
+  // (o saldo inicial foi acertado a partir daquele ponto), então não entra como transferência.
+  const inicioDaConta = new Map()
+  for (const l of lancamentos) for (const id of [l.contaId, l.contaDestinoId]) if (id && (!inicioDaConta.has(id) || l.data < inicioDaConta.get(id))) inicioDaConta.set(id, l.data)
+  const antesDoInicio = (contaId, data) => !ehContaNova(contaId) && inicioDaConta.has(contaId) && data < inicioDaConta.get(contaId)
+  const nomeDaConta = (id) => contas.find((c) => c.id === id)?.nome || 'a outra conta'
+  // B) O mesmo PIX pode já estar na outra conta como gasto/receita comum (ex.: "Pix enviado Fulano" virou gasto no Santander).
+  // Aí a transferência não é criada de novo: aquele lançamento é que vira a transferência.
+  // Só vale para PIX/TED com o seu nome: nunca um PIX de mesmo valor para outra pessoa.
+  const ehPixProprio = (d) => !!nomeTitular && /\b(PIX|TED|DOC|TRANSF)/.test(normalizar(d)) && nomeTitular.test(soLetrasENumeros(normalizar(d)))
+  const espelhosUsados = new Set()
+  const espelho = (contaId, entrada, valor, data) => (ehContaNova(contaId) ? null : lancamentos
+    .filter((l) => !espelhosUsados.has(l.id) && l.contaId === contaId && !l.cartaoId && !l.grupoParcelaId && l.valor === valor
+      && l.tipo === (entrada ? 'despesa' : 'receita') && diasEntre(l.data, data) <= DIAS_TRANSFERENCIA && ehPixProprio(l.descricao))
+    .sort((a, b) => diasEntre(a.data, data) - diasEntre(b.data, data))[0] || null)
+  const transferirPara = (item, contaId, motivo, extra = {}) => {
+    const e = extra.gastoCategoriaId ? null : espelho(contaId, item.entrada, item.valor, item.data)
+    if (!e) return { ...item, ...extra, acao: 'transferencia', contaOutraId: contaId, motivo }
+    espelhosUsados.add(e.id)
+    return { ...item, ...extra, acao: 'transferencia', contaOutraId: contaId, converterId: e.id, converterConta: contaId,
+      motivo: `Já estava em ${nomeDaConta(contaId)} como ${e.tipo === 'despesa' ? 'gasto' : 'receita'} (${e.data.split('-').reverse().join('/')}): vira esta transferência, sem repetir` }
+  }
 
   const itens = extrato.transacoes.map((t) => {
     const entrada = t.valor > 0
@@ -190,9 +214,10 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
       return item
     }
 
-    // Conta: procura um lançamento manual igual (mesmo valor e direção, até 2 dias de diferença)
+    // Conta: procura um lançamento igual (mesmo valor e direção, até 2 dias de diferença). Transferência entre
+    // suas contas pode ter até 4 dias: o PIX da sexta pode aparecer na segunda no extrato da outra conta.
     const dup = (entrada ? entradas : saidas)
-      .filter((l) => !usados.has(l.id) && l.valor === valor && diasEntre(l.data, t.data) <= 2)
+      .filter((l) => !usados.has(l.id) && l.valor === valor && diasEntre(l.data, t.data) <= (l.tipo === 'transferencia' ? DIAS_TRANSFERENCIA : 2))
       .sort((a, b) => diasEntre(a.data, t.data) - diasEntre(b.data, t.data))[0]
     if (dup) {
       usados.add(dup.id)
@@ -212,8 +237,8 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
     if (nomeTitular && nomeTitular.test(soLetrasENumeros(desc)) && /\b(PIX|TED|DOC|TRANSF)/.test(desc)) {
       item.grupo = 'pixProprio'
       const chaveConta = chaveDoDestino(t.destino)
-      if (chaveConta && !entrada) {
-        // o extrato diz para qual banco/conta foi
+      if (chaveConta) {
+        // o extrato diz para qual banco/conta foi (ou de qual veio)
         item.contaBancaria = chaveConta
         item.bancoDestino = t.destino.banco ?? null
         const escolhida = regras.contaPorPix?.[chaveConta]
@@ -227,13 +252,15 @@ export function prepararImportacao({ extrato, destino, faturaCartao = null, dado
           else sugerida = regras.contaPixProprio ?? null
         }
         if (sugerida && sugerida !== destino.id) {
-          const gasto = regras.gastoPorPix?.[chaveConta] ?? null
-          return { ...item, acao: 'transferencia', contaOutraId: sugerida, gastoCategoriaId: gasto, motivo: `Transferência para você mesmo${banco ? ` (${banco})` : ''}${gasto ? ', usada lá para pagar algo' : ''}` }
+          if (antesDoInicio(sugerida, t.data)) return { ...item, motivo: `Com o seu nome, mas antes de ${nomeDaConta(sugerida)} começar no app: entra como ${entrada ? 'entrada' : 'saída'}` }
+          const gasto = entrada ? null : regras.gastoPorPix?.[chaveConta] ?? null
+          return transferirPara(item, sugerida, `Transferência ${entrada ? 'de' : 'para'} você mesmo${banco ? ` (${banco})` : ''}${gasto ? ', usada lá para pagar algo' : ''}`, { gastoCategoriaId: gasto })
         }
         return item
       }
       if (regras.contaPixProprio && regras.contaPixProprio !== destino.id) {
-        return { ...item, acao: 'transferencia', contaOutraId: regras.contaPixProprio, motivo: 'Transferência para você mesmo' }
+        if (antesDoInicio(regras.contaPixProprio, t.data)) return { ...item, motivo: `Com o seu nome, mas antes de ${nomeDaConta(regras.contaPixProprio)} começar no app: entra como ${entrada ? 'entrada' : 'saída'}` }
+        return transferirPara(item, regras.contaPixProprio, 'Transferência para você mesmo')
       }
       return item
     }
@@ -315,6 +342,9 @@ export function problemaDoItem(item, destino) {
 }
 
 const itensParaGravar = (itens) => itens.filter((i) => i.acao !== 'ignorar' && i.situacao !== 'importado')
+// A linha vai transformar um lançamento que já existe na outra conta (em vez de criar um novo)?
+// Só se continua sendo transferência com a mesma conta (a pessoa pode ter mudado na prévia).
+const converte = (i) => i.acao === 'transferencia' && !!i.converterId && i.contaOutraId === i.converterConta && !i.gastoCategoriaId
 
 /**
  * Grava a importação: tudo ou nada. Se qualquer linha falhar, nenhuma é gravada.
@@ -365,6 +395,7 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
 
     const registros = []
     const pagamentos = []
+    const conversoes = []
     for (const i of gravar) {
       try {
         if (i.acao === 'fatura') { pagamentos.push(i); continue }
@@ -376,6 +407,7 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
         } else if (i.acao === 'transferencia') {
           const [origem, destinoT] = i.entrada ? [outra(i.contaOutraId), destino.id] : [destino.id, outra(i.contaOutraId)]
           form = { tipo: 'transferencia', valor: i.valor, descricao: i.descricao, contaId: origem, contaDestinoId: destinoT, cartaoId: null, data: i.data, parcelas: 1, idExterno: i.idExterno }
+          if (converte(i)) { conversoes.push({ i, contaId: origem, contaDestinoId: destinoT }); continue }
         }
         registros.push(...registrosParaImportar(form, refs))
         if (comGasto(i)) {
@@ -387,6 +419,12 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
       }
     }
     if (registros.length) await db.lancamentos.bulkAdd(registros)
+    for (const { i, contaId, contaDestinoId } of conversoes) {
+      const l = await db.lancamentos.get(i.converterId)
+      const tipoEsperado = i.entrada ? 'despesa' : 'receita'
+      if (!l || l.valor !== i.valor || l.tipo !== tipoEsperado || l.contaId !== i.converterConta) throw new Error(`Linha ${i.posicao} (${i.descricao}): o lançamento da outra conta mudou. Abra a importação de novo.`)
+      await db.lancamentos.update(l.id, { tipo: 'transferencia', contaId, contaDestinoId, categoriaId: null, cartaoId: null })
+    }
     for (const i of pagamentos) {
       try {
         await pagarFatura({ cartaoId: cartaoReal(i.cartaoPagoId), fatura: i.faturaPaga, contaId: destino.id, valor: i.valor, data: i.data, idExterno: i.idExterno, permitirSemCompras: i.faturaSemCompras })
@@ -394,7 +432,7 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
         throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
       }
     }
-    return registros.length + pagamentos.length
+    return registros.length + pagamentos.length + conversoes.length
   })
 }
 
