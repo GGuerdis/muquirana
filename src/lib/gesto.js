@@ -1,6 +1,6 @@
-// Trocar de tela arrastando o dedo para o lado (na ordem da barra de baixo).
+// Trocar de tela arrastando o dedo para o lado (Início → Lançamentos → Histórico → Cartões).
 // Arrastar para a ESQUERDA vai para a próxima aba; para a DIREITA, volta.
-// Ajustes fica fora do gesto: só abre pela engrenagem (e lá o gesto não troca de tela).
+// As outras telas (Ajustes e as do menu do sol) ficam fora do gesto: abrem só pelo menu.
 
 export const ABAS_GESTO = ['inicio', 'lancamentos', 'historico', 'cartoes']
 // Ordem das telas só para o lado da animação ao trocar (Ajustes entra pela direita)
@@ -33,7 +33,7 @@ export function direcaoDoArrasto({ dx, dy, ms, inicioX, largura }) {
   return dx < 0 ? 1 : -1
 }
 
-// A aba vizinha na direção pedida, ou null (já está na ponta, ou a tela não faz parte da barra)
+// A aba vizinha na direção pedida, ou null (já está na ponta, ou a tela não faz parte do gesto)
 export function abaVizinha(atual, direcao) {
   const i = ABAS_GESTO.indexOf(atual)
   if (i < 0 || !direcao) return null
@@ -48,12 +48,3 @@ export function ladoDaEntrada(de, para) {
   return b > a ? 1 : -1
 }
 
-// Onde fica o marcador da barra de baixo entre a tela atual (de) e a vizinha (para), com p de 0 a 1.
-// de/para: centro do item na barra, ou null quando a tela não está na barra (ex.: Ajustes) — aí ele some/aparece.
-export function posicaoIndicador(de, para, p) {
-  const f = Math.min(1, Math.max(0, Number(p) || 0))
-  if (de && para) return { x: de.x + (para.x - de.x) * f, y: de.y + (para.y - de.y) * f, opacidade: 1 }
-  if (de) return { x: de.x, y: de.y, opacidade: 1 - f }
-  if (para) return { x: para.x, y: para.y, opacidade: f }
-  return { x: null, y: null, opacidade: 0 }
-}

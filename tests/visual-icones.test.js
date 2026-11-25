@@ -131,11 +131,6 @@ describe('estilo', () => {
     expect(css).toMatch(/--link: #a3400a/)
     expect(css).toMatch(/--link: #ffb35c/)
   })
-  it('nomes da barra de baixo sem caixa-alta e em tamanho legível', () => {
-    const regra = [...css.matchAll(/\.nav-item \{([^}]*)\}/g)].pop()[1]
-    expect(regra).toMatch(/text-transform: none/)
-    expect(Number(regra.match(/font-size: ([\d.]+)rem/)[1])).toBeGreaterThanOrEqual(0.7)
-  })
 })
 
 describe('ajustes depois dos prints do celular', () => {
@@ -161,9 +156,9 @@ describe('ajustes depois dos prints do celular', () => {
   })
 })
 
-describe('botão + com cara de sol', () => {
+describe('sol do menu com cara de sol', () => {
   const css = readFileSync(new URL('estilos.css', SRC), 'utf8')
-  const regra = [...css.matchAll(/\.botao-novo::before \{([^}]*)\}/g)].map((m) => m[1])
+  const regra = [...css.matchAll(/\.botao-sol::before \{([^}]*)\}/g)].map((m) => m[1])
   const base = regra.find((r) => r.includes('background')) ?? ''
   const mascara = base.match(/[^-]mask: ([^;]*);/)?.[1] ?? ''
   it('usa o mesmo degradê dos sóis, inteiro em cima e listrado embaixo', () => {
@@ -178,6 +173,6 @@ describe('botão + com cara de sol', () => {
     const periodo = mascara.match(/transparent \d+px (\d+)px\)$/)?.[1]
     const quadro = css.match(/@keyframes sol-botao-listras \{(.*)\}/)?.[1] ?? ''
     expect(quadro).toMatch(new RegExp(`to \\{[^}]*[^-]mask-position: 0 0, 0 ${periodo}px;`)) // anda um período inteiro: sem pulo
-    expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.botao-novo::before \{ animation: sol-botao-listras [\d.]+s linear infinite; \}/)
+    expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.botao-sol::before \{ animation: sol-botao-listras [\d.]+s linear infinite; \}/)
   })
 })

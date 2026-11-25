@@ -3,16 +3,14 @@
 // - ao soltar, a tela atual desliza para fora e a nova entra pelo outro lado;
 // - se desistir, ela volta ao lugar com um leve quique;
 // - enquanto o arrasto é lateral, a rolagem vertical fica travada (a tela não treme);
-// - o marcador da barra de baixo desliza junto com o dedo e o item novo acende assim que solta.
 import { useEffect, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { direcaoDoArrasto, abaVizinha, ehLateral, ignorarAlvo, BORDA } from '../lib/gesto.js'
-import { indicadorEntre, marcarItemAtivo } from './useIndicadorNav.js'
 
 const SAIDA_MS = 170
 const elastico = (dx) => Math.sign(dx) * Math.pow(Math.abs(dx), 0.72)
 
-export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
+export function useArrastoTelas({ aba, irPara, alvoRef, ativo }) {
   const abaRef = useRef(aba)
   const irRef = useRef(irPara)
   abaRef.current = aba
@@ -23,11 +21,9 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
     let ini = null
     let lateral = false
     let dxAtual = 0
-    let dxDedo = 0
     let quadro = 0
     let animando = false
     const tela = () => alvoRef.current
-    const nav = () => navRef?.current
     const largura = () => window.innerWidth || 390
 
     const pintar = () => {
@@ -36,8 +32,6 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
       if (!m) return
       m.style.transform = `translate3d(${dxAtual}px, 0, 0)`
       m.style.opacity = String(1 - Math.min(Math.abs(dxAtual) / (largura() * 1.8), 0.3))
-      const vizinha = abaVizinha(abaRef.current, dxDedo < 0 ? 1 : -1)
-      if (vizinha) indicadorEntre(nav(), abaRef.current, vizinha, Math.abs(dxDedo) / largura())
     }
     const limpar = (m) => {
       m.style.transition = ''
@@ -48,7 +42,6 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
     const voltarAoLugar = () => {
       const m = tela()
       if (!m) return
-      indicadorEntre(nav(), abaRef.current, null, 0, true)
       if (!dxAtual) return limpar(m)
       m.style.transition = 'transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.32s ease'
       m.style.transform = 'translate3d(0, 0, 0)'
@@ -64,7 +57,6 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
       ini = { x: t.clientX, y: t.clientY, t: performance.now() }
       lateral = false
       dxAtual = 0
-      dxDedo = 0
     }
     const move = (e) => {
       if (!ini) return
@@ -79,7 +71,6 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
         if (m) { m.style.transition = 'none'; m.style.willChange = 'transform, opacity' }
       }
       if (e.cancelable) e.preventDefault() // trava a rolagem vertical durante o arrasto lateral
-      dxDedo = dx
       dxAtual = abaVizinha(abaRef.current, dx < 0 ? 1 : -1) ? dx : elastico(dx)
       if (!quadro) quadro = requestAnimationFrame(pintar)
     }
@@ -94,8 +85,6 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
       if (!proxima || !m) { voltarAoLugar(); return }
       // sai deslizando para o lado do gesto e a próxima tela entra pelo outro lado
       animando = true
-      indicadorEntre(nav(), abaRef.current, proxima, 1, true)
-      marcarItemAtivo(nav(), proxima)
       m.style.transition = `transform ${SAIDA_MS}ms cubic-bezier(0.4, 0, 1, 1), opacity ${SAIDA_MS}ms ease-in`
       m.style.transform = `translate3d(${dir > 0 ? -largura() : largura()}px, 0, 0)`
       m.style.opacity = '0'
@@ -119,5 +108,5 @@ export function useArrastoTelas({ aba, irPara, alvoRef, navRef, ativo }) {
       document.removeEventListener('touchcancel', cancela)
       if (quadro) cancelAnimationFrame(quadro)
     }
-  }, [ativo, alvoRef, navRef])
+  }, [ativo, alvoRef])
 }

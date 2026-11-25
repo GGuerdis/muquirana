@@ -3,12 +3,12 @@ import { useDados } from '../dados.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { nomeMes, somarMeses, mesAtual, dataCurta } from '../lib/datas.js'
 import { tomDaCategoria, desenhoParaCategoria, corDaConta } from '../lib/cores.js'
-import { DESENHOS_CATEGORIA, IconeEngrenagem, IconeVoltar, IconeCartao, Ic } from './Icones.jsx'
+import { DESENHOS_CATEGORIA, IconeVoltar, IconeCartao, Ic } from './Icones.jsx'
 
 // Ícone da categoria: losango HUD na cor da categoria, com o desenho dela (sempre um desenho de traço, nunca emoji).
 // `desenho` força um desenho (transferência, fatura...); sem categoria e sem desenho, fica neutro.
-export function IconeCategoria({ categoria, desenho, pequeno = false }) {
-  const tom = categoria ? tomDaCategoria(categoria.nome) : null
+export function IconeCategoria({ categoria, desenho, tom: tomFixo = null, pequeno = false }) {
+  const tom = tomFixo ?? (categoria ? tomDaCategoria(categoria.nome) : null)
   const chave = desenho ?? desenhoParaCategoria(categoria) ?? 'outros'
   const traco = DESENHOS_CATEGORIA[chave] ?? DESENHOS_CATEGORIA.outros
   return (
@@ -35,9 +35,7 @@ export function CabecaPagina({ titulo, irPara, voltar = false, acoes, extra }) {
       <header className="cabeca">
         <h1 className="titulo-pagina">{titulo}</h1>
         {extra && <span className="cabeca-extra">{extra}</span>}
-        {irPara && (voltar
-          ? <button className="botao-redondo" onClick={() => irPara('inicio')} aria-label="Voltar ao início"><IconeVoltar /></button>
-          : <button className="botao-redondo" onClick={() => irPara('ajustes')} aria-label="Ajustes"><IconeEngrenagem /></button>)}
+        {irPara && voltar && <button className="botao-redondo" onClick={() => irPara('inicio')} aria-label="Voltar ao início"><IconeVoltar /></button>}
       </header>
       {acoes && <div className="acoes-pagina">{acoes}</div>}
     </>

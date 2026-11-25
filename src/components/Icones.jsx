@@ -60,6 +60,12 @@ export const DESENHOS_CATEGORIA = {
   roupa: <><path d="M9 3.5 4 6l1.5 4.5L7 10v10.5h10V10l1.5.5L20 6l-5-2.5a3 3 0 0 1-6 0z" /></>,
   beleza: <><circle cx="6" cy="6.5" r="2.5" /><circle cx="6" cy="17.5" r="2.5" /><path d="M8.2 7.8 20 18M8.2 16.2 20 6" /></>, // tesoura (salão, barbearia)
   banco: <><path d="m3 9 9-5.5L21 9" /><path d="M5 9.5v8M9.7 9.5v8M14.3 9.5v8M19 9.5v8M3.5 20.5h17" /></>,
+  // telas do menu do sol
+  lista: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>,
+  historico: <><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 6-6" /></>,
+  meta: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" /></>,
+  previsao: <><path d="M3 16l5-5 4 3 7-8" /><path d="M15 6h4v4" /><path d="M3 21h18" strokeDasharray="2 3" /></>,
+  ajustes: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M2.5 12h3M18.5 12h3M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" /></>,
 }
 // Desenhos que a pessoa pode escolher para uma categoria nova (na ordem do formulário)
 export const DESENHOS_ESCOLHA = ['outros', 'alimentacao', 'mercado', 'moradia', 'predio', 'contas', 'transporte', 'viagem', 'saude', 'academia', 'beleza',

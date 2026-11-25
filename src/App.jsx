@@ -14,18 +14,10 @@ import { mesAtual } from './lib/datas.js'
 import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
 import { juntarRepetidos } from './lib/repetidos.js'
-import { IconeInicio, IconeLista, IconeGrafico, IconeCartao } from './components/Icones.jsx'
+import MenuSol from './components/MenuSol.jsx'
 import { useArrastoTelas } from './components/useArrastoTelas.js'
-import { useIndicadorNav } from './components/useIndicadorNav.js'
 import { ladoDaEntrada } from './lib/gesto.js'
-
-const ABAS = [
-  { id: 'inicio', rotulo: 'Início', icone: <IconeInicio /> },
-  { id: 'lancamentos', rotulo: 'Lançamentos', icone: <IconeLista /> },
-  { id: 'novo' },
-  { id: 'historico', rotulo: 'Histórico', icone: <IconeGrafico /> },
-  { id: 'cartoes', rotulo: 'Cartões', icone: <IconeCartao /> },
-]
+import { telaExiste } from './lib/telas.js'
 
 export default function App({ migrou = null }) {
   const [lancAberto, setLancAberto] = useState(null) // null | 'novo' | lançamento | { modelo }
@@ -94,22 +86,21 @@ function Telas() {
   useEffect(() => {
     if (!config.boasVindas && logado && contas.length > 0) salvarConfig('boasVindas', true)
   }, [config.boasVindas, logado, contas.length])
-  const [aba, setAba] = useState(() => (import.meta.env.DEV && new URLSearchParams(location.search).get('aba')) || 'inicio')
+  const [aba, setAba] = useState(() => { const pedida = import.meta.env.DEV && new URLSearchParams(location.search).get('aba'); return pedida && telaExiste(pedida) ? pedida : 'inicio' })
   const [mes, setMes] = useState(mesAtual())
   // De que lado a tela nova entra (anima a troca); arrastar o dedo para o lado também troca de tela
   const [entrada, setEntrada] = useState({ lado: 0, deslizou: false })
   // Filtro pedido ao abrir Lançamentos (ex.: tocou no bloco "Saiu" ou numa conta no Início)
   const [filtroLanc, setFiltroLanc] = useState(null)
   const mainRef = useRef(null)
-  const navRef = useRef(null)
   const irPara = (id, extra = {}) => {
     setEntrada({ lado: ladoDaEntrada(aba, id), deslizou: !!extra.deslizou })
     setFiltroLanc(extra.filtro || null)
     setAba(id)
     window.scrollTo(0, 0)
   }
-  useArrastoTelas({ aba, irPara, alvoRef: mainRef, navRef, ativo: !!config.boasVindas })
-  useIndicadorNav(navRef, config.boasVindas ? aba : null)
+  useArrastoTelas({ aba, irPara, alvoRef: mainRef, ativo: !!config.boasVindas })
+  const novoLancamento = () => (podeEditar ? abrirLancamento() : avisar('Neste espaço você só pode ver: peça a quem criou para liberar a edição.'))
 
   if (!config.boasVindas) return <><Cenario /><BoasVindas /></>
 
@@ -128,19 +119,7 @@ function Telas() {
           {aba === 'ajustes' && <Ajustes irPara={irPara} />}
         </div>
       </main>
-      <nav className="barra-nav" ref={navRef}>
-        <span className="nav-indicador" aria-hidden="true" />
-        {ABAS.map((a) =>
-          a.id === 'novo' ? (
-            <button key="novo" className="botao-novo" onClick={() => (podeEditar ? abrirLancamento() : avisar('Neste espaço você só pode ver: peça a quem criou para liberar a edição.'))} aria-label="Novo lançamento">+</button>
-          ) : (
-            <button key={a.id} data-aba={a.id} className={`nav-item ${aba === a.id ? 'ativo' : ''}`} onClick={() => irPara(a.id)} aria-current={aba === a.id ? 'page' : undefined}>
-              <span className="nav-icone">{a.icone}</span>
-              <span>{a.rotulo}</span>
-            </button>
-          ),
-        )}
-      </nav>
+      <MenuSol aba={aba} irPara={irPara} novoLancamento={novoLancamento} />
     </>
   )
 }
