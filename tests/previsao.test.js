@@ -89,3 +89,15 @@ describe('previsão', () => {
     expect(p.fimDosMeses[0].saldo).toBe(inicio.previsto)
   })
 })
+
+describe('dia mais apertado no meio do período', () => {
+  it('acha o ponto mais baixo mesmo quando o saldo volta a subir depois', () => {
+    const lancamentos = [
+      L({ tipo: 'despesa', contaId: 'a', valor: 120000, data: '2026-12-02' }),
+      L({ tipo: 'receita', contaId: 'a', valor: 300000, data: '2026-12-05' }),
+    ]
+    const p = previsaoSaldo({ contas, cartoes: [], recorrentes: [], lancamentos, meses: 2, dia: HOJE })
+    expect(p.menor).toEqual({ data: '2026-12-02', saldo: 30000 })
+    expect(p.saldoFinal).toBe(330000)
+  })
+})
