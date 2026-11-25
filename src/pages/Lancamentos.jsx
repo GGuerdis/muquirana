@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina, SeletorMes, ItemLancamento, Bloco, MarcaConta } from '../components/Pecas.jsx'
+import { CabecaPagina, SeletorMes, ItemLancamento, Bloco, MarcaConta, IconeCategoria } from '../components/Pecas.jsx'
 import { Chips } from '../components/Campos.jsx'
 import { IconeEtiqueta, IconeImportar, IconeMoeda } from '../components/Icones.jsx'
 import ImportarExtrato from '../components/ImportarExtrato.jsx'
@@ -25,6 +25,9 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
   // Só uma conta (veio de um toque no bloco da conta no Início)
   const [contaFiltro, setContaFiltro] = useState(filtroInicial?.contaId ?? null)
   const contaDoFiltro = contaFiltro != null ? contaPorId.get(contaFiltro) : null
+  // Só uma categoria (veio de um alerta de orçamento)
+  const [categoriaFiltro, setCategoriaFiltro] = useState(filtroInicial?.categoriaId ?? null)
+  const categoriaDoFiltro = categoriaFiltro != null ? categoriaPorId.get(categoriaFiltro) : null
   const [busca, setBusca] = useState('')
   const [importando, setImportando] = useState(false)
   const [categorizando, setCategorizando] = useState(false)
@@ -36,8 +39,9 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
     return lancamentos
       .filter((l) => mesDe(l.data) === mes)
       .filter((l) => contaFiltro == null || l.contaId === contaFiltro || l.contaDestinoId === contaFiltro)
+      .filter((l) => categoriaFiltro == null || l.categoriaId === categoriaFiltro)
       .filter((l) => !termo || normalizar(`${l.descricao || ''} ${categoriaPorId.get(l.categoriaId)?.nome || ''}`).includes(termo))
-  }, [lancamentos, mes, busca, categoriaPorId, contaFiltro])
+  }, [lancamentos, mes, busca, categoriaPorId, contaFiltro, categoriaFiltro])
 
   const dias = useMemo(() => {
     const lista = doMes
@@ -71,6 +75,11 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
       {contaDoFiltro && (
         <button className="filtro-ativo" onClick={() => setContaFiltro(null)} aria-label={`Tirar filtro da conta ${contaDoFiltro.nome}`}>
           Só <MarcaConta conta={contaDoFiltro} /> {contaDoFiltro.nome} <span aria-hidden="true">✕</span>
+        </button>
+      )}
+      {categoriaDoFiltro && (
+        <button className="filtro-ativo" onClick={() => setCategoriaFiltro(null)} aria-label={`Tirar filtro da categoria ${categoriaDoFiltro.nome}`}>
+          Só <IconeCategoria categoria={categoriaDoFiltro} pequeno /> {categoriaDoFiltro.nome} <span aria-hidden="true">✕</span>
         </button>
       )}
 

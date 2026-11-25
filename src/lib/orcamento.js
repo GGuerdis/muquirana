@@ -52,6 +52,19 @@ export function orcamentoDoMes(mes, orcamentos, lancamentos) {
 
 const GRAVIDADE = { ok: 0, alerta: 1, estourado: 2 }
 
+// Categorias que pedem atenção no mês (80% ou mais do limite), as estouradas primeiro
+export function alertasDoOrcamento(mes, orcamentos, lancamentos) {
+  return orcamentoDoMes(mes, orcamentos, lancamentos).itens
+    .filter((i) => i.situacao !== 'ok')
+    .sort((a, b) => GRAVIDADE[b.situacao] - GRAVIDADE[a.situacao])
+}
+
+// Texto curto de um alerta (sem valores quando eles estão escondidos)
+export function textoAlerta(i, ocultar = false) {
+  if (i.situacao === 'estourado') return ocultar ? `passou do limite (${i.porcentagem}%)` : `passou ${formatar(i.gasto - i.limite)} do limite`
+  return ocultar ? `${i.porcentagem}% usado` : `${i.porcentagem}% usado · restam ${formatar(i.restante)}`
+}
+
 /**
  * Depois de salvar um lançamento: alguma categoria mudou de faixa para pior?
  * Compara o antes e o depois nos meses informados. Retorna o aviso mais grave ou null.

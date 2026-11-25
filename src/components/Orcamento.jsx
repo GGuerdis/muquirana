@@ -6,14 +6,37 @@ import { IconeCategoria } from './Pecas.jsx'
 import { IconeAlerta, Ic } from './Icones.jsx'
 import { CampoValor } from './Campos.jsx'
 import { formatar } from '../lib/dinheiro.js'
-import { nomeMes } from '../lib/datas.js'
-import { orcamentoDoMes, definirOrcamento } from '../lib/orcamento.js'
+import { nomeMes, mesAtual } from '../lib/datas.js'
+import { orcamentoDoMes, definirOrcamento, alertasDoOrcamento, textoAlerta } from '../lib/orcamento.js'
 
 // Situação sempre com ícone + texto (nunca só cor)
 function textoSituacao(i) {
   if (i.situacao === 'estourado') return { icone: <Ic i={IconeAlerta} />, texto: `passou ${formatar(i.gasto - i.limite)}` }
   if (i.situacao === 'alerta') return { icone: <Ic i={IconeAlerta} />, texto: `${i.porcentagem}% · restam ${formatar(i.restante)}` }
   return { icone: '', texto: `restam ${formatar(i.restante)}` }
+}
+
+// Alerta no topo do Início: categorias do mês atual com 80% ou mais do orçamento (aparece mesmo no "Só o essencial")
+export function AlertasOrcamento({ irPara, ocultar = false }) {
+  const { orcamentos, lancamentos, categoriaPorId } = useDados()
+  const alertas = useMemo(() => alertasDoOrcamento(mesAtual(), orcamentos, lancamentos), [orcamentos, lancamentos])
+  if (!alertas.length) return null
+  const mais = alertas.length - 3
+  return (
+    <section className="painel alertas-orcamento" aria-label="Alertas de orçamento">
+      <h3 className="com-icone"><Ic i={IconeAlerta} className="atencao" /> Atenção ao orçamento de {nomeMes(mesAtual())}</h3>
+      {alertas.slice(0, 3).map((i) => {
+        const cat = categoriaPorId.get(i.categoriaId)
+        return (
+          <button key={i.categoriaId} className={`alerta-orc alerta-orc-${i.situacao}`} onClick={() => irPara('lancamentos', { filtro: { categoriaId: i.categoriaId } })}>
+            <IconeCategoria categoria={cat} pequeno />
+            <span><strong>{cat?.nome ?? 'Categoria'}</strong><small>{textoAlerta(i, ocultar)}</small></span>
+          </button>
+        )
+      })}
+      {mais > 0 && <small className="discreto">e mais {mais} {mais === 1 ? 'categoria' : 'categorias'} no orçamento abaixo</small>}
+    </section>
+  )
 }
 
 export function OrcamentoDoMes({ mes, irPara }) {

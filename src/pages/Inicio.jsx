@@ -13,7 +13,7 @@ import ContasDoMes from '../components/ContasDoMes.jsx'
 import LembreteBackup from '../components/LembreteBackup.jsx'
 import EscolherEssencial from '../components/EscolherEssencial.jsx'
 import { blocosVisiveis } from '../lib/inicio.js'
-import { OrcamentoDoMes } from '../components/Orcamento.jsx'
+import { OrcamentoDoMes, AlertasOrcamento } from '../components/Orcamento.jsx'
 import { SeloSincronizacao } from '../components/Nuvem.jsx'
 import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
 
@@ -90,6 +90,7 @@ export default function Inicio({ mes, setMes, irPara }) {
       </section>
 
       <ConvitesRecebidos />
+      <AlertasOrcamento irPara={irPara} ocultar={ocultar} />
       {ver.has('backup') && <LembreteBackup />}
 
       {ver.has('resumo') && <>
@@ -137,7 +138,7 @@ export default function Inicio({ mes, setMes, irPara }) {
           {recentes.length > 0 && <button className="link" onClick={() => irPara('lancamentos')}>Ver todos</button>}
         </div>
         {recentes.length ? recentes.map((l) => <ItemLancamento key={l.id} l={l} mostrarData />) : (
-          <p className="vazio">Toque no <strong>+</strong> para lançar seu primeiro gasto.</p>
+          <p className="vazio">Toque no sol para lançar seu primeiro gasto.</p>
         )}
       </section>}
 

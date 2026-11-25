@@ -861,3 +861,15 @@ button.bloco { font: inherit; cursor: pointer; position: relative; }
 /* janela (folha) aberta, como o Novo lançamento: o sol sai da frente do botão Salvar */
 body:has(.folha-fundo) .botao-sol { opacity: 0; scale: 0.6; pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) { .botao-sol { transition: bottom 0.38s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.2s ease, scale 0.2s ease; } }
+
+/* ---------- Alertas de orçamento (topo do Início) ---------- */
+.alertas-orcamento { gap: 6px; }
+.alertas-orcamento h3 { font-size: 0.95rem; }
+.alerta-orc { display: flex; align-items: center; gap: 10px; padding: 6px 0; text-align: left; color: var(--texto); }
+.alerta-orc + .alerta-orc { border-top: 1px solid var(--linha); }
+.alerta-orc span { display: flex; flex-direction: column; min-width: 0; }
+.alerta-orc small { color: var(--texto-2); font-size: 0.82rem; }
+.alerta-orc-estourado small { color: var(--perigo); font-weight: 600; }
+.filtro-ativo .icone-cat { width: 26px; height: 26px; }
+.filtro-ativo .icone-cat::before { inset: 4px; }
+.filtro-ativo .icone-cat svg { width: 13px; height: 13px; }
