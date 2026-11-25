@@ -900,3 +900,12 @@ body:has(.folha-fundo) .botao-sol { opacity: 0; scale: 0.6; pointer-events: none
 .linha-assinatura-acoes .discreto { color: var(--texto-3); }
 .linha-assinatura-valor { display: flex; flex-direction: column; align-items: flex-end; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .linha-assinatura-valor small { color: var(--texto-3); font-weight: 400; font-size: 0.72rem; }
+
+/* ---------- Importações feitas (Ajustes) ---------- */
+.linha-importacao { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 12px; padding: 10px 0; }
+.linha-importacao + .linha-importacao { border-top: 1px solid var(--linha); }
+.linha-importacao-textos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.linha-importacao-textos strong { font-weight: 600; }
+.linha-importacao-textos small { color: var(--texto-3); font-size: 0.78rem; }
+.confirmar-desfazer { flex-basis: 100%; background: var(--superficie-2); border-radius: 12px; padding: 12px; }
+.confirmar-desfazer p { margin: 0 0 10px; font-size: 0.88rem; }

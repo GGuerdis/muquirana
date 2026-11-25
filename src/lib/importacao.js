@@ -352,7 +352,10 @@ const converte = (i) => i.acao === 'transferencia' && !!i.converterId && i.conta
  * - Se alguma linha usa a "nova conta de investimentos", ela é criada junto.
  * Retorna quantos lançamentos foram criados.
  */
-export async function executarImportacao({ itens, destino, faturaCartao = null, saldoInicial = null, nomeContaInvestimentos = 'Investimentos' }) {
+// Identificador de uma importação (lote): tudo que ela cria ou muda leva esse id, para poder ser desfeito depois
+export const novoLote = (agora = Date.now()) => `imp-${agora}-${Math.random().toString(36).slice(2, 6)}`
+
+export async function executarImportacao({ itens, destino, faturaCartao = null, saldoInicial = null, nomeContaInvestimentos = 'Investimentos', lote = novoLote() }) {
   const gravar = itensParaGravar(itens)
   for (const i of gravar) {
     const p = problemaDoItem(i, destino)
@@ -368,7 +371,7 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
       const nova = i.contaOutraId === NOVA_CONTA_INVESTIMENTOS
         ? { nome: nomeContaInvestimentos, emoji: '📈', saldoInicial: 0 }
         : { nome: nomeDaNovaConta(i.contaOutraId).trim().slice(0, 40) || 'Outra conta', emoji: '🏦', saldoInicial: 0 }
-      criadas.set(i.contaOutraId, await db.contas.add(nova))
+      criadas.set(i.contaOutraId, await db.contas.add({ ...nova, loteImportacao: lote }))
     }
     const outra = (id) => (criadas.has(id) ? criadas.get(id) : id)
     // cartões novos pedidos na importação (dias estimados pelos pagamentos)
@@ -377,10 +380,13 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
       if (i.acao !== 'fatura' || !nomeDoNovoCartao(i.cartaoPagoId) || cartoesCriados.has(i.cartaoPagoId)) continue
       const datas = gravar.filter((x) => x.acao === 'fatura' && x.cartaoPagoId === i.cartaoPagoId).map((x) => x.data)
       const nome = nomeDoNovoCartao(i.cartaoPagoId).trim().slice(0, 40) || 'Cartão'
-      cartoesCriados.set(i.cartaoPagoId, await db.cartoes.add({ nome, limite: 0, ...diasEstimados(datas), contaPagamentoId: destino.id, criadoNaImportacao: true }))
+      cartoesCriados.set(i.cartaoPagoId, await db.cartoes.add({ nome, limite: 0, ...diasEstimados(datas), contaPagamentoId: destino.id, criadoNaImportacao: true, loteImportacao: lote }))
     }
     const cartaoReal = (id) => (cartoesCriados.has(id) ? cartoesCriados.get(id) : id)
-    if (saldoInicial != null) await db.contas.update(destino.id, { saldoInicial })
+    if (saldoInicial != null) {
+      const antes = (await db.contas.get(destino.id))?.saldoInicial ?? 0
+      await db.contas.update(destino.id, { saldoInicial, saldoInicialAntes: { lote, valor: antes } })
+    }
 
     const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
     const refs = { contas, cartoes, categorias }
@@ -418,16 +424,18 @@ export async function executarImportacao({ itens, destino, faturaCartao = null, 
         throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
       }
     }
-    if (registros.length) await db.lancamentos.bulkAdd(registros)
+    if (registros.length) await db.lancamentos.bulkAdd(registros.map((r) => ({ ...r, lote })))
     for (const { i, contaId, contaDestinoId } of conversoes) {
       const l = await db.lancamentos.get(i.converterId)
       const tipoEsperado = i.entrada ? 'despesa' : 'receita'
       if (!l || l.valor !== i.valor || l.tipo !== tipoEsperado || l.contaId !== i.converterConta) throw new Error(`Linha ${i.posicao} (${i.descricao}): o lançamento da outra conta mudou. Abra a importação de novo.`)
-      await db.lancamentos.update(l.id, { tipo: 'transferencia', contaId, contaDestinoId, categoriaId: null, cartaoId: null })
+      const antesDaImportacao = { lote, tipo: l.tipo, contaId: l.contaId ?? null, contaDestinoId: l.contaDestinoId ?? null, categoriaId: l.categoriaId ?? null, cartaoId: l.cartaoId ?? null }
+      await db.lancamentos.update(l.id, { tipo: 'transferencia', contaId, contaDestinoId, categoriaId: null, cartaoId: null, antesDaImportacao })
     }
     for (const i of pagamentos) {
       try {
         await pagarFatura({ cartaoId: cartaoReal(i.cartaoPagoId), fatura: i.faturaPaga, contaId: destino.id, valor: i.valor, data: i.data, idExterno: i.idExterno, permitirSemCompras: i.faturaSemCompras })
+        await db.lancamentos.where('idExterno').equals(i.idExterno).modify({ lote })
       } catch (e) {
         throw new Error(`Linha ${i.posicao} (${i.descricao}): ${e.message}`)
       }

@@ -18,6 +18,7 @@ import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
 import { IconeNuvem, IconeCartao, IconeEtiqueta, IconeArquivo, IconeCalendario, IconeImportar, Ic } from '../components/Icones.jsx'
+import Importacoes from '../components/Importacoes.jsx'
 
 const contar = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
 
@@ -197,6 +198,8 @@ export default function Ajustes({ irPara }) {
         <p className="dica">Traga as movimentações do Santander, Inter ou outro banco a partir de um arquivo OFX, sem digitar.</p>
         <button className="botao secundario cheio" onClick={() => setImportando(true)}><Ic i={IconeImportar} /> Importar extrato (OFX)</button>
       </section>
+
+      <Importacoes />
 
       <section className="painel">
         <h3>Backup</h3>
