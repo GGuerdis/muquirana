@@ -1,28 +1,124 @@
-// Relatórios: resumo para o Imposto de Renda, o fluxo do dinheiro no mês e os totais por etiqueta
+// Relatórios: gastos por categoria num período, resumo para o Imposto de Renda, o fluxo do dinheiro no mês e os totais por etiqueta
 import { useMemo, useState } from 'react'
 import { useDados } from '../dados.jsx'
-import { CabecaPagina, SeletorMes, ItemLancamento, MarcaConta, Bloco } from '../components/Pecas.jsx'
+import { CabecaPagina, SeletorMes, ItemLancamento, MarcaConta, Bloco, IconeCategoria } from '../components/Pecas.jsx'
 import { Abas, Chips } from '../components/Campos.jsx'
-import { useLargura, TabelaDados } from '../components/Graficos.jsx'
+import { useLargura, TabelaDados, GraficoBarras } from '../components/Graficos.jsx'
 import { formatar } from '../lib/dinheiro.js'
-import { mesAtual, dataCurta } from '../lib/datas.js'
+import { mesAtual, dataCurta, nomeMes, hoje as hojeTexto } from '../lib/datas.js'
 import { tomDaCategoria } from '../lib/cores.js'
-import { resumoIR, fluxoDoMes, desenhoFluxo } from '../lib/relatorios.js'
+import { resumoIR, fluxoDoMes, desenhoFluxo, PERIODOS_CATEGORIA, intervaloDoPeriodo, mesesNoIntervalo, totaisPorCategoria, detalheDaCategoria } from '../lib/relatorios.js'
 import { resumoPorEtiqueta } from '../lib/etiquetas.js'
 import { compararIds } from '../lib/ids.js'
 
-const VISTAS = [{ valor: 'ir', rotulo: 'IR' }, { valor: 'fluxo', rotulo: 'Fluxo' }, { valor: 'etiquetas', rotulo: 'Etiquetas' }]
+const VISTAS = [{ valor: 'categorias', rotulo: 'Categorias' }, { valor: 'ir', rotulo: 'IR' }, { valor: 'fluxo', rotulo: 'Fluxo' }, { valor: 'etiquetas', rotulo: 'Etiquetas' }]
 
 export default function Relatorios({ irPara }) {
-  const [vista, setVista] = useState('ir')
+  const [vista, setVista] = useState('categorias')
   return (
     <div className="pagina">
       <CabecaPagina titulo="Relatórios" irPara={irPara} />
       <Abas opcoes={VISTAS} valor={vista} aoMudar={setVista} />
+      {vista === 'categorias' && <PorCategoria />}
       {vista === 'ir' && <ImpostoDeRenda />}
       {vista === 'fluxo' && <Fluxo />}
       {vista === 'etiquetas' && <PorEtiqueta />}
     </div>
+  )
+}
+
+// ---------- Por categoria, num período ----------
+const TIPOS = [{ valor: 'despesa', rotulo: 'Gastos' }, { valor: 'receita', rotulo: 'Entradas' }]
+// "05/nov" no ano atual; "05/nov 25" em outro ano
+const rotuloData = (d) => `${dataCurta(d)}${d.slice(0, 4) === hojeTexto().slice(0, 4) ? '' : ` ${d.slice(2, 4)}`}`
+
+function PorCategoria() {
+  const { lancamentos, categoriaPorId } = useDados()
+  const [periodo, setPeriodo] = useState('mes')
+  const [datas, setDatas] = useState(() => ({ de: `${mesAtual()}-01`, ate: hojeTexto() }))
+  const [tipo, setTipo] = useState('despesa')
+  const [aberta, setAberta] = useState(undefined) // undefined = lista; null = "Sem categoria"
+  const intervalo = useMemo(() => intervaloDoPeriodo(periodo, datas), [periodo, datas])
+  const meses = mesesNoIntervalo(intervalo)
+  const t = useMemo(() => totaisPorCategoria(lancamentos, intervalo, tipo), [lancamentos, intervalo, tipo])
+  const maior = t.categorias[0]?.total || 1
+  const nome = (id) => (id == null ? 'Sem categoria' : categoriaPorId.get(id)?.nome ?? 'Categoria apagada')
+  const textoPeriodo = `${rotuloData(intervalo.de)} a ${rotuloData(intervalo.ate)}`
+
+  return (
+    <>
+      <Chips rolavel opcoes={PERIODOS_CATEGORIA} valor={periodo} aoMudar={setPeriodo} />
+      {periodo === 'livre' && (
+        <div className="duas-colunas">
+          <label className="campo"><span className="rotulo">De</span><input type="date" value={datas.de} max={datas.ate} onChange={(e) => e.target.value && setDatas((d) => ({ ...d, de: e.target.value }))} /></label>
+          <label className="campo"><span className="rotulo">Até</span><input type="date" value={datas.ate} min={datas.de} onChange={(e) => e.target.value && setDatas((d) => ({ ...d, ate: e.target.value }))} /></label>
+        </div>
+      )}
+      <Abas pequenas opcoes={TIPOS} valor={tipo} aoMudar={(v) => { setTipo(v); setAberta(undefined) }} />
+
+      {aberta !== undefined
+        ? <DetalheCategoria categoriaId={aberta} nome={nome(aberta)} intervalo={intervalo} tipo={tipo} textoPeriodo={textoPeriodo} aoVoltar={() => setAberta(undefined)} />
+        : <>
+          <div className="blocos">
+            <Bloco rotulo={tipo === 'despesa' ? 'Gasto' : 'Entrou'} valor={formatar(t.total)} tom={tipo === 'despesa' ? 'saida' : 'entrada'} extra={textoPeriodo} />
+            <Bloco rotulo="Por mês" valor={formatar(Math.round(t.total / meses))} extra={meses === 1 ? '1 mês' : `média de ${meses} meses`} />
+          </div>
+          <section className="painel">
+            <h3>{tipo === 'despesa' ? 'Gastos' : 'Entradas'} por categoria</h3>
+            {t.categorias.length === 0 && <p className="vazio">Nada neste período.</p>}
+            <ul className="barras">
+              {t.categorias.map((c) => {
+                const pct = Math.round((c.total / (t.total || 1)) * 100)
+                return (
+                  <li key={c.categoriaId ?? 'sem'}>
+                    <button className="barra-linha linha-categoria" onClick={() => setAberta(c.categoriaId)} aria-label={`${nome(c.categoriaId)}: ${formatar(c.total)}, ${pct}%. Ver os lançamentos`}>
+                      <IconeCategoria categoria={c.categoriaId == null ? null : categoriaPorId.get(c.categoriaId)} pequeno />
+                      <div className="barra-corpo">
+                        <div className="barra-topo">
+                          <span>{nome(c.categoriaId)}</span>
+                          <span className="barra-valor">{formatar(c.total)} <small>{pct}%</small></span>
+                        </div>
+                        <div className="barra-trilho"><div className="barra" style={{ width: `${Math.max((c.total / maior) * 100, 2)}%` }} /></div>
+                        <small className="linha-categoria-qtd">{c.quantidade} {c.quantidade === 1 ? 'lançamento' : 'lançamentos'}</small>
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            {t.categorias.length > 0 && <p className="dica">Toque numa categoria para ver tudo o que entrou nela. Compras no cartão contam pela data da compra.</p>}
+          </section>
+        </>}
+    </>
+  )
+}
+
+function DetalheCategoria({ categoriaId, nome, intervalo, tipo, textoPeriodo, aoVoltar }) {
+  const { lancamentos, categoriaPorId } = useDados()
+  const d = useMemo(() => detalheDaCategoria(lancamentos, categoriaId, intervalo, tipo), [lancamentos, categoriaId, intervalo, tipo])
+  return (
+    <>
+      <button className="link voltar-categorias" onClick={aoVoltar}>‹ Todas as categorias</button>
+      <section className="painel">
+        <div className="detalhe-categoria-topo">
+          <IconeCategoria categoria={categoriaId == null ? null : categoriaPorId.get(categoriaId)} />
+          <div><h3>{nome}</h3><small className="discreto">{textoPeriodo}</small></div>
+        </div>
+        <div className="blocos">
+          <Bloco rotulo="Total" valor={formatar(d.total)} tom={tipo === 'despesa' ? 'saida' : 'entrada'} extra={`${d.itens.length} ${d.itens.length === 1 ? 'lançamento' : 'lançamentos'}`} />
+          <Bloco rotulo="Por mês" valor={formatar(d.mediaPorMes)} extra={d.meses === 1 ? '1 mês' : `média de ${d.meses} meses`} />
+        </div>
+        {d.meses > 1 && (
+          <GraficoBarras rotuloAcessivel={`${nome} por mês`} series={[{ nome, cor: tipo === 'despesa' ? 'var(--serie-2)' : 'var(--serie-1)' }]} formatar={formatar}
+            pontos={d.porMes.map((x) => ({ rotulo: nomeMes(x.mes, true), titulo: nomeMes(x.mes), valores: [x.total] }))} />
+        )}
+      </section>
+      <section className="painel">
+        <h3>Lançamentos</h3>
+        {d.itens.length === 0 && <p className="vazio">Nada neste período.</p>}
+        {d.itens.map((l) => <ItemLancamento key={l.id} l={l} mostrarData />)}
+      </section>
+    </>
   )
 }
 

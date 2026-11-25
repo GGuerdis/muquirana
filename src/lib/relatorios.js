@@ -1,6 +1,6 @@
-// Relatórios: resumo para o Imposto de Renda e o fluxo do dinheiro no mês.
+// Relatórios: resumo para o Imposto de Renda, o fluxo do dinheiro no mês e os gastos por categoria num período.
 import { normalizar } from './cores.js'
-import { mesDe } from './datas.js'
+import { mesDe, somarMeses, hoje as hojeTexto, dataValida } from './datas.js'
 import { saldoConta } from './calculos.js'
 
 // ---------- Imposto de Renda ----------
@@ -100,4 +100,70 @@ export function desenhoFluxo(fluxo, { altura: alturaMinima = 280, espaco = 8 } =
     })
   }
   return { esquerda: posicionarRotulos(pilha(esquerda), altura), direita: posicionarRotulos(pilha(direita), altura), total, altura }
+}
+
+// ---------- Por categoria, num período ----------
+export const PERIODOS_CATEGORIA = [
+  { valor: 'mes', rotulo: 'Este mês' },
+  { valor: '3m', rotulo: '3 meses' },
+  { valor: '6m', rotulo: '6 meses' },
+  { valor: 'ano', rotulo: 'Este ano' },
+  { valor: 'livre', rotulo: 'Escolher datas' },
+]
+
+// Datas do período até hoje ("3 meses" = este mês e os 2 anteriores, inteiros). No livre, as datas que você escolheu.
+export function intervaloDoPeriodo(periodo, { dia = hojeTexto(), de, ate } = {}) {
+  const mes = mesDe(dia)
+  if (periodo === 'livre') {
+    const a = dataValida(de || '') ? de : `${mes}-01`
+    const b = dataValida(ate || '') ? ate : dia
+    return a <= b ? { de: a, ate: b } : { de: b, ate: a }
+  }
+  const voltar = { mes: 0, '3m': 2, '6m': 5 }[periodo]
+  if (periodo === 'ano') return { de: `${dia.slice(0, 4)}-01-01`, ate: dia }
+  return { de: `${somarMeses(mes, -(voltar ?? 0))}-01`, ate: dia }
+}
+
+// Quantos meses (do calendário) o período toca: de 10/09 a 05/11 = 3
+export const mesesNoIntervalo = ({ de, ate }) => {
+  let n = 0
+  for (let m = mesDe(de); m <= mesDe(ate); m = somarMeses(m, 1)) n++
+  return n
+}
+
+const noIntervalo = (l, { de, ate }) => l.data >= de && l.data <= ate
+
+/**
+ * Total de cada categoria no período (despesas ou receitas), da maior para a menor.
+ * Compras no cartão contam pela data da compra (ou da parcela), como no resto do app.
+ * Sem categoria vira categoriaId null.
+ */
+export function totaisPorCategoria(lancamentos, intervalo, tipo = 'despesa') {
+  const g = new Map()
+  for (const l of lancamentos) {
+    if (l.tipo !== tipo || !noIntervalo(l, intervalo)) continue
+    const k = l.categoriaId ?? null
+    if (!g.has(k)) g.set(k, { categoriaId: k, total: 0, quantidade: 0 })
+    const x = g.get(k)
+    x.total += l.valor
+    x.quantidade += 1
+  }
+  const categorias = [...g.values()].sort((a, b) => b.total - a.total || a.quantidade - b.quantidade)
+  return { total: categorias.reduce((s, x) => s + x.total, 0), categorias }
+}
+
+/**
+ * Tudo de uma categoria no período: os lançamentos (mais recentes primeiro), o total,
+ * a média por mês (pelos meses do período) e o total de cada mês.
+ */
+export function detalheDaCategoria(lancamentos, categoriaId, intervalo, tipo = 'despesa') {
+  const itens = lancamentos
+    .filter((l) => l.tipo === tipo && (l.categoriaId ?? null) === categoriaId && noIntervalo(l, intervalo))
+    .sort((a, b) => b.data.localeCompare(a.data) || (b.criadoEm || 0) - (a.criadoEm || 0))
+  const total = itens.reduce((s, l) => s + l.valor, 0)
+  const meses = mesesNoIntervalo(intervalo)
+  const porMes = []
+  for (let m = mesDe(intervalo.de); m <= mesDe(intervalo.ate); m = somarMeses(m, 1)) porMes.push({ mes: m, total: 0 })
+  for (const l of itens) porMes.find((x) => x.mes === mesDe(l.data)).total += l.valor
+  return { itens, total, meses, mediaPorMes: Math.round(total / meses), porMes }
 }

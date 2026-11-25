@@ -977,3 +977,10 @@ body:has(.folha-fundo) .botao-sol { opacity: 0; scale: 0.6; pointer-events: none
 .renda-marca { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--marca-2); flex: none; }
 .renda-mudou p { margin: 0; font-size: 0.9rem; }
 .renda-mudou .com-icone { align-items: flex-start; }
+
+/* ---------- Relatórios: por categoria ---------- */
+.linha-categoria { width: 100%; text-align: left; color: var(--texto); padding: 2px 0; }
+.linha-categoria-qtd { display: block; margin-top: 4px; font-size: 0.75rem; color: var(--texto-3); }
+.voltar-categorias { align-self: flex-start; padding: 4px 0; }
+.detalhe-categoria-topo { display: flex; align-items: center; gap: 10px; }
+.detalhe-categoria-topo h3 { margin: 0; }
