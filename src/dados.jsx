@@ -29,7 +29,10 @@ export function ProvedorDados({ children, acoes }) {
     if (tabelas.some((t) => !t) || !config || !realms || !membros) return null
     const compartilhados = new Set(realms.map((r) => r.realmId))
     const filtra = (lista) => doEspaco(lista, espacoAtual, compartilhados)
-    const [contas, cartoes, categorias, lancamentos, regras, recorrentes, orcamentos] = tabelas.map(filtra)
+    const [contas, cartoes, categorias, lancamentos, regras, todasFixas, orcamentos] = tabelas.map(filtra)
+    // as partes da renda moram na mesma tabela das contas fixas, mas aparecem à parte
+    const recorrentes = todasFixas.filter((r) => !r.renda)
+    const rendas = todasFixas.filter((r) => r.renda)
     const indice = (lista) => new Map(lista.map((x) => [x.id, x]))
     const meuId = usuario?.userId
     const espacos = realms.filter((r) => r.realmId !== 'rlm-public' && r.realmId !== meuId).map((r) => ({
@@ -41,7 +44,8 @@ export function ProvedorDados({ children, acoes }) {
     const eu = espaco?.membros.find((m) => m.userId === meuId || (usuario?.email && (m.email || '').toLowerCase() === usuario.email.toLowerCase()))
     const papel = !espaco ? 'dono' : espaco.souDono ? 'dono' : papelDe(eu)
     return {
-      contas, cartoes, categorias, lancamentos, config, regras, recorrentes, orcamentos,
+      contas, cartoes, categorias, lancamentos, config, regras, recorrentes, rendas, orcamentos,
+      fixasERenda: todasFixas, // para a previsão: contas fixas + renda
       categoriaPorId: indice(categorias),
       contaPorId: indice(contas),
       cartaoPorId: indice(cartoes),

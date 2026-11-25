@@ -8,6 +8,7 @@ import { CampoValor } from './Campos.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { nomeMes, mesAtual } from '../lib/datas.js'
 import { orcamentoDoMes, definirOrcamento, alertasDoOrcamento, textoAlerta } from '../lib/orcamento.js'
+import { rendaMensal } from '../lib/renda.js'
 
 // Situação sempre com ícone + texto (nunca só cor)
 function textoSituacao(i) {
@@ -66,12 +67,14 @@ export function OrcamentoDoMes({ mes, irPara }) {
           const largura = Math.min(100, (i.gasto / i.limite) * 100)
           return (
             <li key={i.categoriaId} className="barra-linha">
-              <div className="barra-topo">
-                <span className="com-icone"><IconeCategoria categoria={cat} pequeno />{cat?.nome}</span>
-                <span className="barra-valor">{formatar(i.gasto)} <small>de {formatar(i.limite)}</small></span>
+              <div className="barra-corpo">
+                <div className="barra-topo">
+                  <span className="com-icone"><IconeCategoria categoria={cat} pequeno />{cat?.nome}</span>
+                  <span className="barra-valor">{formatar(i.gasto)} <small>de {formatar(i.limite)}</small></span>
+                </div>
+                <div className="barra-trilho"><div className={`barra orc-${i.situacao}`} style={{ width: `${Math.max(largura, i.gasto ? 2 : 0)}%` }} /></div>
+                <span className={`orc-texto orc-texto-${i.situacao}`}>{s.icone}{s.icone ? ' ' : ''}{s.texto}</span>
               </div>
-              <div className="barra-trilho"><div className={`barra orc-${i.situacao}`} style={{ width: `${Math.max(largura, i.gasto ? 2 : 0)}%` }} /></div>
-              <span className={`orc-texto orc-texto-${i.situacao}`}>{s.icone}{s.icone ? ' ' : ''}{s.texto}</span>
             </li>
           )
         })}
@@ -80,8 +83,12 @@ export function OrcamentoDoMes({ mes, irPara }) {
   )
 }
 
+// "12%" (com uma casa quando é menos de 1%)
+export const porcentagemDaRenda = (valor, renda) => { const p = (valor / renda) * 100; return `${p < 1 ? p.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : Math.round(p)}%` }
+
 export function FormOrcamento({ categoria, aoFechar }) {
-  const { orcamentos, avisar } = useDados()
+  const { orcamentos, rendas, avisar } = useDados()
+  const renda = rendaMensal(rendas)
   const atual = orcamentos.find((o) => o.categoriaId === categoria.id)
   const [limite, setLimite] = useState(atual?.limite || 0)
   const [erro, setErro] = useState('')
@@ -111,6 +118,7 @@ export function FormOrcamento({ categoria, aoFechar }) {
       </>
     }>
       <CampoValor grande rotulo="Limite por mês" valor={limite} aoMudar={(v) => { setErro(''); setLimite(v) }} />
+      {renda > 0 && limite > 0 && <p className="dica orc-renda">É <b>{porcentagemDaRenda(limite, renda)}</b> da sua renda por mês ({formatar(renda)}).</p>}
       <p className="dica">Vale para todos os meses. Você recebe um aviso ao passar de 80% e outro se estourar. Compras parceladas contam no mês de cada parcela.</p>
     </Folha>
   )

@@ -6,6 +6,7 @@ import { dataNoMes, hoje as hojeTexto, mesDe } from './datas.js'
 import { diaValido, faturaDaCompra, faturasPendentes, vencimentoDaFatura } from './fatura.js'
 import { saldoConta } from './calculos.js'
 import { compararIds } from './ids.js'
+import { recebimentosDaRenda } from './renda.js'
 
 const MES_VALIDO = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -39,6 +40,15 @@ export async function salvarRecorrente(dados) {
     fim: dados.fim || null,
     pulados: Array.isArray(dados.pulados) ? dados.pulados : [],
   }
+  // parte da renda (ver renda.js): guarda só o que é dela
+  if (dados.renda) {
+    r.renda = {
+      aprendida: dados.renda.aprendida === true,
+      ignorados: Array.isArray(dados.renda.ignorados) ? dados.renda.ignorados.filter((x) => x != null) : [],
+      ...(Number.isSafeInteger(dados.renda.recusado) ? { recusado: dados.renda.recusado } : {}),
+    }
+    if (r.tipo !== 'receita') throw new Error('A renda é sempre uma receita.')
+  }
   return db.transaction('rw', db.recorrentes, db.contas, db.cartoes, db.categorias, async () => {
     const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
     const erro = validarRecorrente(r, { contas, cartoes, categorias })
@@ -67,12 +77,15 @@ export async function pularMes(id, mes, pular = true) {
 const ativaNoMes = (r, mes) => r.inicio <= mes && (!r.fim || mes <= r.fim)
 
 // Situação das contas fixas num mês: lancada | pulada | atrasada | pendente
+// As partes da renda contam como lançadas quando o crédito delas chegou (pelo extrato, sem ligação manual).
 export function contasDoMes(mes, recorrentes, lancamentos, dia = hojeTexto()) {
+  const rendas = recorrentes.filter((r) => r.renda)
+  const rec = rendas.length ? recebimentosDaRenda(rendas, lancamentos) : null
   return recorrentes
     .filter((r) => ativaNoMes(r, mes))
     .map((r) => {
       const vencimento = dataNoMes(mes, r.dia)
-      const lancamento = lancamentos.find((l) => l.recorrenteId === r.id && l.competencia === mes) || null
+      const lancamento = (r.renda ? rec.porRenda.get(r.id)?.get(mes)?.lancamento : lancamentos.find((l) => l.recorrenteId === r.id && l.competencia === mes)) || null
       let situacao = 'pendente'
       if (lancamento) situacao = 'lancada'
       else if ((r.pulados || []).includes(mes)) situacao = 'pulada'

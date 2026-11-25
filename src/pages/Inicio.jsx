@@ -16,12 +16,13 @@ import { blocosVisiveis } from '../lib/inicio.js'
 import { OrcamentoDoMes, AlertasOrcamento } from '../components/Orcamento.jsx'
 import { SeloSincronizacao } from '../components/Nuvem.jsx'
 import { SeletorEspaco, ConvitesRecebidos } from '../components/Espacos.jsx'
+import { rendaDoMes, aprenderRenda } from '../lib/renda.js'
 
 const ROTULO_FATURA = { aberta: 'aberta', fechada: 'fechada', atrasada: 'atrasada', paga: 'paga' }
 const OCULTO = 'R$ •••••'
 
 export default function Inicio({ mes, setMes, irPara }) {
-  const { contas, cartoes, lancamentos, recorrentes, orcamentos, config } = useDados()
+  const { contas, cartoes, lancamentos, recorrentes, rendas, fixasERenda, categorias, orcamentos, config } = useDados()
   const [verPrevisao, setVerPrevisao] = useState(false)
   const ocultar = config.ocultarValores === true
   // "Só o essencial": mostra só o saldo e os blocos que você marcou (escolha fica guardada)
@@ -30,11 +31,22 @@ export default function Inicio({ mes, setMes, irPara }) {
   const [escolhendo, setEscolhendo] = useState(false)
   const fecharEscolha = useCallback(() => setEscolhendo(false), [])
   const mostrar = (v) => (ocultar ? OCULTO : formatar(v))
-  const previsao = useMemo(() => saldoPrevisto({ mes: mesAtual(), contas, cartoes, recorrentes, lancamentos }), [contas, cartoes, recorrentes, lancamentos])
+  const previsao = useMemo(() => saldoPrevisto({ mes: mesAtual(), contas, cartoes, recorrentes: fixasERenda, lancamentos }), [contas, cartoes, fixasERenda, lancamentos])
 
   const saldos = useMemo(() => contas.map((c) => ({ ...c, saldo: saldoConta(c, lancamentos) })), [contas, lancamentos])
   const saldoTotal = saldos.reduce((s, c) => s + c.saldo, 0)
   const resumo = useMemo(() => resumoMes(mes, lancamentos), [mes, lancamentos])
+  // Com a renda: o mês em andamento conta o salário que ainda vai entrar ("deve sobrar"),
+  // e o salário que caiu no mês seguinte (ex.: dia 1º) conta no mês a que pertence.
+  const renda = useMemo(() => (rendas.length && mes <= mesAtual() ? rendaDoMes(mes, rendas, lancamentos) : null), [mes, rendas, lancamentos])
+  const fecho = useMemo(() => {
+    if (!renda) return null
+    const valor = resumo.entrou + renda.ajuste + renda.falta - resumo.saiu
+    if (mes === mesAtual()) return { valor, previsto: renda.falta > 0, extra: renda.falta > 0 ? 'se não gastar mais' : 'no mês' }
+    return renda.ajuste ? { valor, extra: 'com o salário do mês' } : null
+  }, [renda, resumo, mes])
+  // Sem renda cadastrada: se o app achou o salário nos extratos, convida a confirmar
+  const achouRenda = useMemo(() => !rendas.length && config.rendaSugestaoDispensada !== mesAtual() && aprenderRenda({ lancamentos, categorias }).some((p) => p.principal), [rendas, lancamentos, categorias, config.rendaSugestaoDispensada])
   const faturas = useMemo(
     () => cartoes.flatMap((c) => faturasPendentes(c, lancamentos).map((r) => ({ cartao: c, ...r }))),
     [cartoes, lancamentos],
@@ -95,9 +107,21 @@ export default function Inicio({ mes, setMes, irPara }) {
 
       {ver.has('resumo') && <>
         <SeletorMes mes={mes} aoMudar={setMes} />
-        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} aoTocar={(tipo) => irPara('lancamentos', { filtro: { tipo } })} quarto={proximaFatura && (
+        <ResumoEntradasSaidas entrou={resumo.entrou} saiu={resumo.saiu} fecho={fecho} extraEntrou={renda && renda.esperado > 0 ? `renda: ${Math.round((renda.recebido / renda.esperado) * 100)}% recebida` : undefined} aoTocar={(tipo) => irPara('lancamentos', { filtro: { tipo } })} quarto={proximaFatura && (
           <Bloco rotulo={`Fatura ${proximaFatura.cartao.nome}`} valor={mostrar(proximaFatura.restante)} extra={`vence ${dataCurta(proximaFatura.vencimento)}`} aoTocar={() => irPara('cartoes')} />
         )} />
+        {renda && renda.pendentes.length > 0 && (
+          <button className="renda-falta" onClick={() => irPara('renda')}>
+            <span>Ainda deve entrar <strong>{mostrar(renda.falta)}</strong></span>
+            <small>{renda.pendentes.map((p) => `${p.renda.descricao}, ${p.situacao === 'atrasada' ? `era para ${dataCurta(p.previsto)}` : `até ${dataCurta(p.previsto)}`}`).join(' · ')}</small>
+          </button>
+        )}
+        {achouRenda && mes === mesAtual() && (
+          <button className="renda-falta" onClick={() => irPara('renda')}>
+            <span>O app encontrou seu salário nos extratos</span>
+            <small>Confirme a renda para o mês mostrar quanto ainda deve entrar</small>
+          </button>
+        )}
       </>}
 
       {ver.has('contas') && <>

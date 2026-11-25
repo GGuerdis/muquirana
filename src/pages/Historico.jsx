@@ -233,9 +233,11 @@ export default function Historico({ irPara }) {
                     const max = Math.max(...cmpMeses.categorias.map((x) => Math.max(x.a, x.b)), 1)
                     return (
                       <li key={c.categoriaId ?? 'sem'} className="barra-linha">
-                        <div className="barra-topo"><span className="com-icone"><IconeCategoria categoria={cat} pequeno />{cat.nome}</span><span className="barra-valor">{formatar(c.a)} → {formatar(c.b)}</span></div>
-                        <div className="barra-trilho dupla"><div className="barra" style={{ width: `${(c.a / max) * 100}%`, background: COR.a }} /></div>
-                        <div className="barra-trilho dupla"><div className="barra" style={{ width: `${(c.b / max) * 100}%`, background: COR.b }} /></div>
+                        <div className="barra-corpo">
+                          <div className="barra-topo"><span className="com-icone"><IconeCategoria categoria={cat} pequeno />{cat.nome}</span><span className="barra-valor">{formatar(c.a)} → {formatar(c.b)}</span></div>
+                          <div className="barra-trilho dupla"><div className="barra" style={{ width: `${(c.a / max) * 100}%`, background: COR.a }} /></div>
+                          <div className="barra-trilho dupla"><div className="barra" style={{ width: `${(c.b / max) * 100}%`, background: COR.b }} /></div>
+                        </div>
                       </li>
                     )
                   })}

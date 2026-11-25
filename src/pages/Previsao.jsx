@@ -7,16 +7,19 @@ import { GraficoLinha } from '../components/Graficos.jsx'
 import { IconeAlerta, Ic } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { dataCurta, nomeMes, mesDe, partes } from '../lib/datas.js'
-import { previsaoSaldo } from '../lib/previsao.js'
+import { previsaoSaldo, gastoMensalMedio } from '../lib/previsao.js'
 
 const PERIODOS = [{ valor: 3, rotulo: '3 meses' }, { valor: 6, rotulo: '6 meses' }, { valor: 12, rotulo: '12 meses' }]
-const ORIGEM = { agendado: 'agendado', fixa: 'conta fixa', fatura: 'fatura' }
+const ORIGEM = { agendado: 'agendado', fixa: 'conta fixa', renda: 'renda', fatura: 'fatura', media: 'média dos últimos 3 meses' }
 const sinal = (v) => (v === 0 ? formatar(0) : `${v > 0 ? '+' : '−'} ${formatar(Math.abs(v))}`)
 
 export default function Previsao({ irPara }) {
-  const { contas, cartoes, recorrentes, lancamentos } = useDados()
+  const { contas, cartoes, fixasERenda, rendas, lancamentos } = useDados()
   const [meses, setMeses] = useState(6)
-  const p = useMemo(() => previsaoSaldo({ contas, cartoes, recorrentes, lancamentos, meses }), [contas, cartoes, recorrentes, lancamentos, meses])
+  // Com a renda cadastrada, a previsão também desconta o gasto médio do dia a dia
+  // (sem isso, a linha só subiria: entra o salário e não sai nada além das contas conhecidas)
+  const gastoMensal = useMemo(() => (rendas.length ? gastoMensalMedio(lancamentos) : 0), [rendas, lancamentos])
+  const p = useMemo(() => previsaoSaldo({ contas, cartoes, recorrentes: fixasERenda, lancamentos, meses, gastoMensal }), [contas, cartoes, fixasERenda, lancamentos, meses, gastoMensal])
 
   const pontos = useMemo(() => p.dias.map((d, i) => {
     const [a, m, dia] = partes(d.data)
@@ -73,7 +76,7 @@ export default function Previsao({ irPara }) {
 
       <section className="painel">
         <h3>O que vem por aí</h3>
-        {porMes.length === 0 && <p className="vazio">Nada agendado, nenhuma conta fixa pendente e nenhuma fatura a pagar no período.</p>}
+        {porMes.length === 0 && <p className="vazio">Nada agendado, nenhuma conta fixa ou renda pendente e nenhuma fatura a pagar no período.</p>}
         {porMes.map(([m, itens]) => (
           <div key={m} className="dia-bloco">
             <div className="dia-topo"><span>{nomeMes(m)}</span></div>
@@ -86,7 +89,9 @@ export default function Previsao({ irPara }) {
             ))}
           </div>
         ))}
-        <p className="dica">A previsão usa o que já está no app: lançamentos com data futura, contas fixas e faturas. Gastos do dia a dia que você ainda não lançou não entram.</p>
+        <p className="dica">{gastoMensal > 0
+          ? `A previsão usa lançamentos com data futura, contas fixas, a renda, faturas e o gasto médio do dia a dia (${formatar(gastoMensal)} por mês, média dos últimos 3 meses, sem contas fixas e parcelas).`
+          : 'A previsão usa o que já está no app: lançamentos com data futura, contas fixas e faturas. Gastos do dia a dia que você ainda não lançou não entram. Cadastre a renda para a previsão contar o salário e o gasto médio.'}</p>
       </section>
     </div>
   )

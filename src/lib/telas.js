@@ -5,6 +5,7 @@ export const TELAS = [
   { id: 'lancamentos', rotulo: 'Lançamentos', desenho: 'lista', tom: 200 },
   { id: 'cartoes', rotulo: 'Cartões', desenho: 'fatura', tom: 30 },
   { id: 'historico', rotulo: 'Histórico', desenho: 'historico', tom: 276 },
+  { id: 'renda', rotulo: 'Renda', desenho: 'salario', tom: 95, novo: true },
   { id: 'previsao', rotulo: 'Previsão', desenho: 'previsao', tom: 185, novo: true },
   { id: 'metas', rotulo: 'Metas', desenho: 'meta', tom: 160, novo: true },
   { id: 'assinaturas', rotulo: 'Assinaturas', desenho: 'assinaturas', tom: 255, novo: true },

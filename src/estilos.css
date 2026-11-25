@@ -969,3 +969,11 @@ body:has(.folha-fundo) .botao-sol { opacity: 0; scale: 0.6; pointer-events: none
 .linha-patrimonio + .linha-patrimonio { border-top: 1px solid var(--linha); }
 .linha-patrimonio .com-marca small { display: block; color: var(--texto-3); font-size: 0.75rem; margin-left: 4px; }
 .linha-patrimonio b { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 650; }
+
+/* ---------- Renda ---------- */
+.renda-falta { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 14px; border-radius: 14px; background: var(--superficie); box-shadow: var(--sombra); color: var(--texto); font-size: 0.9rem; }
+.renda-falta strong { color: var(--entrada); font-variant-numeric: tabular-nums; }
+.renda-falta small { color: var(--texto-3); font-size: 0.78rem; }
+.renda-marca { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--marca-2); flex: none; }
+.renda-mudou p { margin: 0; font-size: 0.9rem; }
+.renda-mudou .com-icone { align-items: flex-start; }

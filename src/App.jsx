@@ -11,6 +11,7 @@ import Assinaturas from './pages/Assinaturas.jsx'
 import Relatorios from './pages/Relatorios.jsx'
 import Metas from './pages/Metas.jsx'
 import Patrimonio from './pages/Patrimonio.jsx'
+import Renda from './pages/Renda.jsx'
 import BoasVindas from './pages/BoasVindas.jsx'
 import AvisoNavegador from './components/AvisoNavegador.jsx'
 import AvisoRecusa from './components/AvisoRecusa.jsx'
@@ -123,6 +124,7 @@ function Telas() {
           {aba === 'lancamentos' && <Lancamentos mes={mes} setMes={setMes} irPara={irPara} filtroInicial={filtroLanc} />}
           {aba === 'historico' && <Historico irPara={irPara} />}
           {aba === 'cartoes' && <Cartoes irPara={irPara} />}
+          {aba === 'renda' && <Renda irPara={irPara} />}
           {aba === 'previsao' && <Previsao irPara={irPara} />}
           {aba === 'assinaturas' && <Assinaturas irPara={irPara} />}
           {aba === 'relatorios' && <Relatorios irPara={irPara} />}

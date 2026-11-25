@@ -5,7 +5,7 @@
 //  - faturas de cartão a pagar, no vencimento (as atrasadas entram hoje), com as parcelas futuras
 //    e as contas fixas que caem no cartão.
 // Não adivinha gastos do dia a dia que ainda não foram lançados.
-import { hoje as hojeTexto, mesDe, somarMeses, dataNoMes, partes, paraTexto } from './datas.js'
+import { hoje as hojeTexto, mesDe, somarMeses, dataNoMes, partes, paraTexto, diasNoMes } from './datas.js'
 import { saldoConta } from './calculos.js'
 import { contasDoMes } from './recorrentes.js'
 import { faturaDaCompra, resumoFatura, vencimentoDaFatura } from './fatura.js'
@@ -22,7 +22,20 @@ export function efeitoNasContas(l, contaIds) {
 
 const diaSeguinte = (data) => { const [a, m, d] = partes(data); return paraTexto(new Date(a, m - 1, d + 1)) }
 
-export function previsaoSaldo({ contas, cartoes, recorrentes, lancamentos, meses = 6, dia = hojeTexto() }) {
+/**
+ * Quanto costuma sair por mês no dia a dia: média das despesas dos últimos 3 meses completos,
+ * sem as contas fixas lançadas e sem as parcelas (essas a previsão já conhece uma a uma).
+ */
+export function gastoMensalMedio(lancamentos, dia = hojeTexto()) {
+  const meses = [1, 2, 3].map((n) => somarMeses(mesDe(dia), -n))
+  const totais = meses.map((m) => lancamentos.filter((l) => l.tipo === 'despesa' && mesDe(l.data) === m && !l.recorrenteId && !l.grupoParcelaId).reduce((s, l) => s + l.valor, 0))
+  const comGasto = totais.filter((v) => v > 0)
+  return comGasto.length ? Math.round(comGasto.reduce((s, v) => s + v, 0) / comGasto.length) : 0
+}
+
+// `gastoMensal`: gasto do dia a dia esperado por mês (ver gastoMensalMedio); sai um pouco a cada dia,
+// a partir de amanhã. Aparece em "O que vem por aí" como uma linha por mês (origem 'media').
+export function previsaoSaldo({ contas, cartoes, recorrentes, lancamentos, meses = 6, dia = hojeTexto(), gastoMensal = 0 }) {
   const mesHoje = mesDe(dia)
   const ultimoMes = somarMeses(mesHoje, meses - 1)
   const fim = dataNoMes(ultimoMes, 31)
@@ -46,7 +59,7 @@ export function previsaoSaldo({ contas, cartoes, recorrentes, lancamentos, meses
       const r = x.recorrente
       if (r.contaId != null) {
         if (!contaIds.has(r.contaId)) continue
-        eventos.push({ data: quando(x.vencimento), valor: r.tipo === 'receita' ? r.valor : -r.valor, descricao: r.descricao, origem: 'fixa' })
+        eventos.push({ data: quando(x.vencimento), valor: r.tipo === 'receita' ? r.valor : -r.valor, descricao: r.descricao, origem: r.renda ? 'renda' : 'fixa' })
       } else if (r.cartaoId != null) {
         const cartao = cartoes.find((c) => c.id === r.cartaoId)
         if (!cartao) continue
@@ -75,11 +88,17 @@ export function previsaoSaldo({ contas, cartoes, recorrentes, lancamentos, meses
   // saldo dia a dia (hoje até o fim), o dia mais apertado e o fim de cada mês
   const porDia = new Map()
   for (const e of eventos) porDia.set(e.data, (porDia.get(e.data) || 0) + e.valor)
+  const doDia = (d) => { const [a, m] = partes(d); return Math.round(gastoMensal / diasNoMes(a, m)) }
+  const mediaPorMes = new Map()
   const dias = []
   let saldo = saldoHoje
   let menor = null
   for (let d = dia; d <= fim; d = diaSeguinte(d)) {
     saldo += porDia.get(d) || 0
+    if (gastoMensal > 0 && d > dia) {
+      saldo -= doDia(d)
+      mediaPorMes.set(mesDe(d), (mediaPorMes.get(mesDe(d)) || 0) + doDia(d))
+    }
     dias.push({ data: d, saldo })
     if (!menor || saldo < menor.saldo) menor = { data: d, saldo }
   }
@@ -88,5 +107,8 @@ export function previsaoSaldo({ contas, cartoes, recorrentes, lancamentos, meses
     const ultimo = dias.filter((x) => mesDe(x.data) === m).pop()
     if (ultimo) fimDosMeses.push({ mes: m, saldo: ultimo.saldo })
   }
-  return { saldoHoje, eventos, dias, menor, fimDosMeses, saldoFinal: saldo, fim }
+  // uma linha por mês com o gasto do dia a dia (só para mostrar: o saldo acima já desconta dia a dia)
+  for (const [m, valor] of mediaPorMes) eventos.push({ data: dataNoMes(m, 31), valor: -valor, descricao: 'Gastos do dia a dia', origem: 'media' })
+  eventos.sort((a, b) => a.data.localeCompare(b.data) || a.valor - b.valor)
+  return { saldoHoje, eventos, dias, menor, fimDosMeses, saldoFinal: saldo, fim, gastoMensal }
 }

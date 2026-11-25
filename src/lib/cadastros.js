@@ -77,7 +77,7 @@ export async function salvarConta({ id, nome, emoji, cor, saldoAtual }, hoje) {
 
 export async function excluirConta(id) {
   return db.transaction('rw', db.contas, db.cartoes, db.lancamentos, db.recorrentes, async () => {
-    if ((await db.recorrentes.filter((r) => r.contaId === id).count()) > 0) throw new Error('Esta conta é usada numa conta fixa. Troque ou exclua a conta fixa antes.')
+    if ((await db.recorrentes.filter((r) => r.contaId === id).count()) > 0) throw new Error('Esta conta é usada numa conta fixa ou na renda. Troque ou exclua antes.')
     const usada = await db.lancamentos.filter((l) => l.contaId === id || l.contaDestinoId === id).count()
     if (usada > 0) throw new Error('Esta conta tem lançamentos. Apague-os antes de excluir a conta.')
     if ((await db.cartoes.filter((c) => c.contaPagamentoId === id).count()) > 0) throw new Error('Esta conta paga a fatura de um cartão. Troque a conta no cartão antes.')
@@ -99,7 +99,7 @@ export async function salvarCategoria({ id, nome, emoji, desenho, tipo }) {
 export async function excluirCategoria(id) {
   return db.transaction('rw', db.categorias, db.lancamentos, db.regras, db.recorrentes, db.orcamentos, async () => {
     if ((await db.lancamentos.where('categoriaId').equals(id).count()) > 0) throw new Error('Esta categoria já foi usada em lançamentos. Renomeie em vez de excluir.')
-    if ((await db.recorrentes.filter((r) => r.categoriaId === id).count()) > 0) throw new Error('Esta categoria é usada numa conta fixa. Troque a categoria da conta fixa antes.')
+    if ((await db.recorrentes.filter((r) => r.categoriaId === id).count()) > 0) throw new Error('Esta categoria é usada numa conta fixa ou na renda. Troque a categoria antes.')
     await db.regras.filter((r) => r.categoriaId === id).delete()
     await db.orcamentos.where('categoriaId').equals(id).delete()
     await db.categorias.delete(id)

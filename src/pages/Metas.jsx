@@ -8,14 +8,17 @@ import { IconeMais, IconeAlerta, IconeOk, Ic } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { nomeMes, mesAtual, somarMeses } from '../lib/datas.js'
 import { progressoMeta, categoriasComMeta, salvarMeta, tirarMeta, validarMeta } from '../lib/metas.js'
+import { sobraMedia } from '../lib/renda.js'
 
 export default function Metas({ irPara }) {
-  const { categorias, lancamentos, podeEditar } = useDados()
+  const { categorias, lancamentos, rendas, podeEditar } = useDados()
   const [editando, setEditando] = useState(null) // null | 'nova' | categoria
   const metas = useMemo(() => categoriasComMeta(categorias)
     .map((c) => ({ categoria: c, p: progressoMeta(c, lancamentos) }))
     .sort((a, b) => Number(a.p.concluida) - Number(b.p.concluida) || (a.p.prazo || '9999').localeCompare(b.p.prazo || '9999') || a.categoria.nome.localeCompare(b.categoria.nome)),
   [categorias, lancamentos])
+  // Quanto costuma sobrar da renda por mês (sem contar o que já vai para as metas)
+  const sobra = useMemo(() => (rendas.length ? sobraMedia({ rendas, lancamentos, fora: new Set(metas.map((m) => m.categoria.id)) }) : null), [rendas, lancamentos, metas])
   const total = metas.reduce((s, m) => ({ guardado: s.guardado + Math.min(m.p.guardado, m.p.alvo), alvo: s.alvo + m.p.alvo }), { guardado: 0, alvo: 0 })
 
   return (
@@ -29,6 +32,9 @@ export default function Metas({ irPara }) {
           <strong className="valor-grande">{formatar(total.guardado)}</strong>
           <span className="previsao">de <strong>{formatar(total.alvo)}</strong> · {metas.length} {metas.length === 1 ? 'meta' : 'metas'}</span>
         </section>
+      )}
+      {sobra && metas.length > 0 && (
+        <p className="dica metas-sobra">Pela sua renda, costuma sobrar <b>{sobra.sobra >= 0 ? formatar(sobra.sobra) : `− ${formatar(-sobra.sobra)}`}</b> por mês: renda de {formatar(sobra.renda)} menos {formatar(sobra.gastoMedio)} de gastos (média dos últimos 3 meses, sem as metas).</p>
       )}
 
       {metas.map(({ categoria: c, p }) => (
@@ -48,7 +54,7 @@ export default function Metas({ irPara }) {
           <p className="meta-texto">
             {p.concluida && <><Ic i={IconeOk} className="bom" /> Meta alcançada.</>}
             {!p.concluida && p.atrasada && <><Ic i={IconeAlerta} className="atencao" /> O prazo passou e faltam {formatar(p.falta)}.</>}
-            {!p.concluida && !p.atrasada && p.prazo && <>Faltam {formatar(p.falta)}: <b>{formatar(p.porMesNecessario)} por mês</b> até {nomeMes(p.prazo)}.</>}
+            {!p.concluida && !p.atrasada && p.prazo && <>Faltam {formatar(p.falta)}: <b>{formatar(p.porMesNecessario)} por mês</b> até {nomeMes(p.prazo)}.{sobra && (p.porMesNecessario <= sobra.sobra ? ' Cabe no que costuma sobrar.' : ' É mais do que costuma sobrar.')}</>}
             {!p.concluida && !p.prazo && <>Faltam {formatar(p.falta)}.</>}
             {!p.concluida && (p.ritmo > 0
               ? <> No ritmo dos últimos 3 meses ({formatar(p.ritmo)}/mês), chega em {nomeMes(p.chegaEm)}.</>

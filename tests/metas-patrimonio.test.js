@@ -98,7 +98,7 @@ describe('patrimônio', () => {
 })
 
 describe('menu completo', () => {
-  it('9 telas: grade 3×3 fechada', () => {
-    expect(TELAS.map((t) => t.id)).toEqual(['inicio', 'lancamentos', 'cartoes', 'historico', 'previsao', 'metas', 'assinaturas', 'patrimonio', 'relatorios'])
+  it('10 telas, na ordem do menu (a Renda vem antes da Previsão, que usa ela)', () => {
+    expect(TELAS.map((t) => t.id)).toEqual(['inicio', 'lancamentos', 'cartoes', 'historico', 'renda', 'previsao', 'metas', 'assinaturas', 'patrimonio', 'relatorios'])
   })
 })
