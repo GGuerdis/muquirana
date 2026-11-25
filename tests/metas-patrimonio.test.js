@@ -14,7 +14,6 @@ describe('criar e editar meta', () => {
     const id = await salvarMeta({ nome: 'Entrada do apartamento', alvo: 5000000, prazo: '2027-12' })
     const c = await db.categorias.get(id)
     expect(c).toMatchObject({ nome: 'Entrada do apartamento', tipo: 'despesa', desenho: 'meta', meta: { alvo: 5000000, prazo: '2027-12' } })
-    expect(c.meta.criadaEm).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
   it('se já existe uma categoria de despesa com esse nome, usa ela (não duplica)', async () => {
     const existente = await salvarCategoria({ nome: 'Apartamento', tipo: 'despesa' })
@@ -22,12 +21,11 @@ describe('criar e editar meta', () => {
     expect(id).toBe(existente)
     expect((await db.categorias.where('nome').equals('apartamento').count()) + (await db.categorias.where('nome').equals('Apartamento').count())).toBe(1)
   })
-  it('pode ligar a uma categoria que já existe; editar mantém a data de criação; tirar mantém a categoria', async () => {
+  it('pode ligar a uma categoria que já existe; editar troca nome, alvo e prazo; tirar mantém a categoria', async () => {
     const cat = b.cat('despesa', 'Moradia')
     await salvarMeta({ categoriaId: cat, nome: 'Moradia', alvo: 100000 })
-    const criada = (await db.categorias.get(cat)).meta.criadaEm
     await salvarMeta({ categoriaId: cat, nome: 'Reforma', alvo: 200000, prazo: '2027-01' })
-    expect((await db.categorias.get(cat))).toMatchObject({ nome: 'Reforma', meta: { alvo: 200000, prazo: '2027-01', criadaEm: criada } })
+    expect((await db.categorias.get(cat))).toMatchObject({ nome: 'Reforma', meta: { alvo: 200000, prazo: '2027-01' } })
     await tirarMeta(cat)
     const c = await db.categorias.get(cat)
     expect(c.meta).toBeUndefined()

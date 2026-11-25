@@ -35,7 +35,7 @@ export async function salvarMeta({ categoriaId = null, nome, alvo, prazo = null 
     const cat = await db.categorias.get(id)
     if (!cat) throw new Error('Categoria não encontrada.')
     if (cat.tipo !== 'despesa') throw new Error('A meta precisa de uma categoria de despesa.')
-    await db.categorias.update(id, { nome, meta: { ...meta, criadaEm: cat.meta?.criadaEm ?? hojeTexto() } })
+    await db.categorias.update(id, { nome, meta })
     return id
   })
 }
