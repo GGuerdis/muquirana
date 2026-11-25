@@ -27,7 +27,7 @@ describe('telas do menu do sol', () => {
     expect(TELAS.length % 3 === 0 || TELAS.length % 3 === 2 || TELAS.length <= 4).toBe(true)
   })
   it('toda tela que o App desenha está no menu (nenhuma fica sem caminho)', () => {
-    const ids = [...ler('App.jsx').matchAll(/aba === '(w+)' &&/g)].map((m) => m[1])
+    const ids = [...ler('App.jsx').matchAll(/aba === '(\w+)' &&/g)].map((m) => m[1])
     expect(ids.length).toBeGreaterThan(4)
     for (const id of ids) expect(telaExiste(id), id).toBe(true)
   })
