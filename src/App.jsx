@@ -18,12 +18,14 @@ import { DialogoNuvem, useNuvem } from './components/Nuvem.jsx'
 import { salvarConfig } from './lib/db.js'
 import { juntarRepetidos } from './lib/repetidos.js'
 import MenuSol from './components/MenuSol.jsx'
+import { TelaTrava, useTrava } from './components/Trava.jsx'
 import { useArrastoTelas } from './components/useArrastoTelas.js'
 import { ladoDaEntrada } from './lib/gesto.js'
 import { telaExiste } from './lib/telas.js'
 
 export default function App({ migrou = null }) {
   const [lancAberto, setLancAberto] = useState(null) // null | 'novo' | lançamento | { modelo }
+  const [trancado, destrancar] = useTrava()
   const [aviso, setAviso] = useState(null)
   const timer = useRef(null)
 
@@ -41,8 +43,8 @@ export default function App({ migrou = null }) {
 
   return (
     <ProvedorDados acoes={acoes}>
-      <Telas />
-      {lancAberto && (
+      {trancado ? <><Cenario /><TelaTrava aoDesbloquear={destrancar} /></> : <Telas />}
+      {lancAberto && !trancado && (
         <NovoLancamento
           key={lancAberto === 'novo' ? 'novo' : lancAberto.modelo ? `m-${lancAberto.modelo.recorrenteId}-${lancAberto.modelo.competencia}` : `l-${lancAberto.id}`}
           original={lancAberto === 'novo' || lancAberto.modelo ? null : lancAberto}

@@ -61,7 +61,7 @@ export default function MenuSol({ aba, irPara, novoLancamento }) {
           </div>
           <button className="menu-sol-ajustes anima" style={{ '--i': 3 }} onClick={() => ir(AJUSTES.id)} aria-current={aba === AJUSTES.id ? 'page' : undefined}>
             <IconeCategoria desenho={AJUSTES.desenho} tom={AJUSTES.tom} />
-            <span>Ajustes<small>Contas, cartões, categorias, nuvem e backup</small></span>
+            <span>Ajustes<small>Contas, categorias, nuvem, backup, importações e trava</small></span>
           </button>
         </div>
       </nav>

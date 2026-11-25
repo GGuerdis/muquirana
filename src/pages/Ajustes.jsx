@@ -17,8 +17,9 @@ import { PainelEspaco } from '../components/Espacos.jsx'
 import { gerarAgenda } from '../lib/agenda.js'
 import { FormOrcamento } from '../components/Orcamento.jsx'
 import { hoje, dataCurta } from '../lib/datas.js'
-import { IconeNuvem, IconeCartao, IconeEtiqueta, IconeArquivo, IconeCalendario, IconeImportar, Ic } from '../components/Icones.jsx'
+import { IconeNuvem, IconeCartao, IconeEtiqueta, IconeArquivo, IconeCalendario, IconeImportar, IconeCadeado, Ic } from '../components/Icones.jsx'
 import Importacoes from '../components/Importacoes.jsx'
+import { SecaoTrava } from '../components/Trava.jsx'
 
 const contar = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
 
@@ -212,6 +213,10 @@ export default function Ajustes({ irPara }) {
           <RestaurarBackup avisar={avisar} />
         </div>
       </section>
+      </Grupo>
+
+      <Grupo titulo="Segurança" resumo="Trava com a digital neste aparelho" icone={<IconeCadeado />}>
+        <SecaoTrava avisar={avisar} />
       </Grupo>
 
       <p className="rodape-app">Mukirana · versão {VERSAO}</p>
