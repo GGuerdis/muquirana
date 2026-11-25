@@ -7,6 +7,7 @@ import Cartoes from './pages/Cartoes.jsx'
 import Ajustes from './pages/Ajustes.jsx'
 import Historico from './pages/Historico.jsx'
 import Previsao from './pages/Previsao.jsx'
+import Assinaturas from './pages/Assinaturas.jsx'
 import BoasVindas from './pages/BoasVindas.jsx'
 import AvisoNavegador from './components/AvisoNavegador.jsx'
 import AvisoRecusa from './components/AvisoRecusa.jsx'
@@ -118,6 +119,7 @@ function Telas() {
           {aba === 'historico' && <Historico irPara={irPara} />}
           {aba === 'cartoes' && <Cartoes irPara={irPara} />}
           {aba === 'previsao' && <Previsao irPara={irPara} />}
+          {aba === 'assinaturas' && <Assinaturas irPara={irPara} />}
           {aba === 'ajustes' && <Ajustes irPara={irPara} />}
         </div>
       </main>

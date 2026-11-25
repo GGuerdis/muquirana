@@ -887,3 +887,16 @@ body:has(.folha-fundo) .botao-sol { opacity: 0; scale: 0.6; pointer-events: none
 .linha-previsao-nome { min-width: 0; font-weight: 600; overflow-wrap: anywhere; display: flex; flex-direction: column; }
 .linha-previsao-nome small { color: var(--texto-3); font-weight: 400; font-size: 0.75rem; }
 .linha-previsao strong { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 650; }
+
+/* ---------- Assinaturas ---------- */
+.linha-assinatura { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; }
+.linha-assinatura + .linha-assinatura { border-top: 1px solid var(--linha); }
+.linha-assinatura-textos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.linha-assinatura-textos strong { font-weight: 600; overflow-wrap: anywhere; }
+.linha-assinatura-textos small { color: var(--texto-3); font-size: 0.78rem; }
+.linha-assinatura-textos small.subiu { color: var(--perigo); font-weight: 600; }
+.linha-assinatura-acoes { display: flex; column-gap: 16px; row-gap: 0; flex-wrap: wrap; margin-top: 2px; }
+.linha-assinatura-acoes .link { padding: 4px 0; font-size: 0.85rem; }
+.linha-assinatura-acoes .discreto { color: var(--texto-3); }
+.linha-assinatura-valor { display: flex; flex-direction: column; align-items: flex-end; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.linha-assinatura-valor small { color: var(--texto-3); font-weight: 400; font-size: 0.72rem; }

@@ -6,6 +6,7 @@ export const TELAS = [
   { id: 'cartoes', rotulo: 'Cartões', desenho: 'fatura', tom: 30 },
   { id: 'historico', rotulo: 'Histórico', desenho: 'historico', tom: 276 },
   { id: 'previsao', rotulo: 'Previsão', desenho: 'previsao', tom: 185, novo: true },
+  { id: 'assinaturas', rotulo: 'Assinaturas', desenho: 'assinaturas', tom: 255, novo: true },
 ]
 
 export const AJUSTES = { id: 'ajustes', rotulo: 'Ajustes', desenho: 'ajustes', tom: 250 }

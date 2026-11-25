@@ -141,12 +141,13 @@ export function FormCategoria({ categoria, tipo, aoFechar }) {
 }
 
 // ---------- Conta fixa (recorrente) ----------
-export function FormRecorrente({ recorrente, aoFechar }) {
+// `modelo`: abre uma conta fixa nova já preenchida (ex.: vinda de uma assinatura achada no histórico)
+export function FormRecorrente({ recorrente, modelo = null, aoFechar }) {
   const { contas, cartoes, categorias, avisar } = useDados()
   const atual = mesAtual()
   const [f, setF] = useState(() => recorrente
     ? { ...recorrente, origem: recorrente.cartaoId != null ? `cartao:${recorrente.cartaoId}` : `conta:${recorrente.contaId}` }
-    : { tipo: 'despesa', descricao: '', valor: 0, dia: '', categoriaId: null, origem: contas[0] ? `conta:${contas[0].id}` : null, inicio: atual, fim: null })
+    : { tipo: 'despesa', descricao: '', valor: 0, dia: '', categoriaId: null, origem: contas[0] ? `conta:${contas[0].id}` : null, inicio: atual, fim: null, ...(modelo || {}) })
   const acoes = useAcoes(aoFechar)
   const mudar = (campo, v) => { acoes.setErro(''); setF((x) => ({ ...x, [campo]: v })) }
 
