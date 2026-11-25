@@ -1,9 +1,9 @@
 // O saldo da conta importada precisa bater com o banco mesmo quando ainda não há cartões cadastrados,
-// e contas que só receberam dinheiro de outro extrato aparecem como "saldo estimado". Dados FICTÍCIOS.
+// e salvar a conta marca a hora em que o saldo foi conferido. Dados FICTÍCIOS.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { lerConsolidado, juntarExtratos } from '../src/lib/santander.js'
 import { prepararImportacao, executarImportacao, conferirSaldo, novoCartao, diasEstimados } from '../src/lib/importacao.js'
-import { saldoConta, contasEstimadas } from '../src/lib/calculos.js'
+import { saldoConta } from '../src/lib/calculos.js'
 import { salvarConta, salvarCartao } from '../src/lib/cadastros.js'
 import { db } from '../src/lib/db.js'
 import { bancoNovo } from './ajuda.js'
@@ -100,41 +100,9 @@ describe('importar sem cartões cadastrados', () => {
   })
 })
 
-describe('saldo estimado', () => {
+describe('saldo conferido', () => {
   let b
   beforeEach(async () => { b = await bancoNovo() })
-
-  it('conta que só recebeu do extrato de outra conta fica marcada; a importada não', async () => {
-    const dados = { lancamentos: [], contas: await db.contas.toArray(), cartoes: [], categorias: await db.categorias.toArray() }
-    const ex = extrato()
-    const { itens } = prepararImportacao({ extrato: ex, destino: { tipo: 'conta', id: b.conta('Santander') }, dados, regras: { titular: EU, contaPixProprio: b.conta('Inter'), historico: true } })
-    await executarImportacao({ itens, destino: { tipo: 'conta', id: b.conta('Santander') } })
-    const contas = await db.contas.toArray()
-    const est = contasEstimadas(contas, await db.lancamentos.toArray())
-    expect([...est]).toEqual([b.conta('Inter')])
-  })
-
-  it('informar o saldo real da conta tira o aviso; uma importação nova depois traz de volta', async () => {
-    const inter = b.conta('Inter')
-    const L1 = [{ tipo: 'transferencia', contaId: 'sant', contaDestinoId: inter, valor: 100, data: '2025-01-01', idExterno: 'conta:sant:p:1', criadoEm: 1000 }]
-    const contas = (c) => [{ id: 'sant' }, { id: inter, ...c }]
-    expect(contasEstimadas(contas({}), L1).has(inter)).toBe(true)
-    expect(contasEstimadas(contas({ saldoConferidoEm: 2000 }), L1).has(inter)).toBe(false)
-    const L2 = [...L1, { ...L1[0], idExterno: 'conta:sant:p:2', criadoEm: 3000 }]
-    expect(contasEstimadas(contas({ saldoConferidoEm: 2000 }), L2).has(inter)).toBe(true)
-    // depois de importar o extrato do próprio Inter, não é mais estimado
-    const L3 = [...L2, { tipo: 'despesa', contaId: inter, valor: 5, data: '2025-01-02', idExterno: `conta:${inter}:p:9`, criadoEm: 4000 }]
-    expect(contasEstimadas(contas({}), L3).has(inter)).toBe(false)
-  })
-
-  it('lançamentos manuais e de cartão não contam', () => {
-    const L = [
-      { tipo: 'transferencia', contaId: 'a', contaDestinoId: 'b', valor: 1, data: '2025-01-01', idExterno: 'outro:formato', criadoEm: 1 },
-      { tipo: 'transferencia', contaId: 'a', contaDestinoId: 'b', valor: 1, data: '2025-01-01', criadoEm: 1 },
-      { tipo: 'despesa', cartaoId: 'k', contaId: null, valor: 1, data: '2025-01-01', idExterno: 'cartao:k:p:1', criadoEm: 1 },
-    ]
-    expect(contasEstimadas([{ id: 'a' }, { id: 'b' }], L).size).toBe(0)
-  })
 
   it('salvar a conta com o saldo marca a hora da conferência', async () => {
     await salvarConta({ id: b.conta('Inter'), nome: 'Inter', emoji: '🟠', saldoAtual: 12345 })

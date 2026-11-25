@@ -58,7 +58,7 @@ export const DESENHOS_CATEGORIA = {
   academia: <><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></>,
   telefone: <><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M11 18.5h2" /></>,
   roupa: <><path d="M9 3.5 4 6l1.5 4.5L7 10v10.5h10V10l1.5.5L20 6l-5-2.5a3 3 0 0 1-6 0z" /></>,
-  beleza: <><path d="M12 3c2 3 5 5.5 5 9.5a5 5 0 0 1-10 0C7 8.5 10 6 12 3z" /></>,
+  beleza: <><circle cx="6" cy="6.5" r="2.5" /><circle cx="6" cy="17.5" r="2.5" /><path d="M8.2 7.8 20 18M8.2 16.2 20 6" /></>, // tesoura (salão, barbearia)
   banco: <><path d="m3 9 9-5.5L21 9" /><path d="M5 9.5v8M9.7 9.5v8M14.3 9.5v8M19 9.5v8M3.5 20.5h17" /></>,
 }
 // Desenhos que a pessoa pode escolher para uma categoria nova (na ordem do formulário)

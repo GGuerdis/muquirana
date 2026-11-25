@@ -4,7 +4,7 @@ import { CabecaPagina, SeletorMes, ItemLancamento, BarrasCategorias, ResumoEntra
 import { IconeOlho, IconeOlhoFechado, IconeEssencial, IconeTudo, IconeAjustar } from '../components/Icones.jsx'
 import { formatar } from '../lib/dinheiro.js'
 import { mesAtual, dataCurta, nomeMes, hoje } from '../lib/datas.js'
-import { saldoConta, resumoMes, contasEstimadas } from '../lib/calculos.js'
+import { saldoConta, resumoMes } from '../lib/calculos.js'
 import { faturasPendentes } from '../lib/fatura.js'
 import { compararIds } from '../lib/ids.js'
 import { saldoPrevisto } from '../lib/recorrentes.js'
@@ -34,7 +34,6 @@ export default function Inicio({ mes, setMes, irPara }) {
 
   const saldos = useMemo(() => contas.map((c) => ({ ...c, saldo: saldoConta(c, lancamentos) })), [contas, lancamentos])
   const saldoTotal = saldos.reduce((s, c) => s + c.saldo, 0)
-  const estimadas = useMemo(() => contasEstimadas(contas, lancamentos), [contas, lancamentos])
   const resumo = useMemo(() => resumoMes(mes, lancamentos), [mes, lancamentos])
   const faturas = useMemo(
     () => cartoes.flatMap((c) => faturasPendentes(c, lancamentos).map((r) => ({ cartao: c, ...r }))),
@@ -104,7 +103,7 @@ export default function Inicio({ mes, setMes, irPara }) {
         <span className="rotulo-secao">Contas</span>
         <div className="blocos">
           {saldos.map((c) => (
-            <Bloco key={c.id} marca={<MarcaConta conta={c} />} rotulo={c.nome} estimada={estimadas.has(c.id)} valor={(estimadas.has(c.id) && !ocultar ? '≈ ' : '') + mostrar(c.saldo)} aoTocar={() => irPara('lancamentos', { filtro: { contaId: c.id } })} />
+            <Bloco key={c.id} marca={<MarcaConta conta={c} />} rotulo={c.nome} valor={mostrar(c.saldo)} aoTocar={() => irPara('lancamentos', { filtro: { contaId: c.id } })} />
           ))}
         </div>
       </>}

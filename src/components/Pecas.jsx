@@ -127,10 +127,10 @@ export function BarrasCategorias({ categorias, limite = 6 }) {
 
 // Cartão "Entrou / Saiu" com a barra de proporção e o que sobrou (Início e Histórico)
 // Um bloco do painel: título pequeno, número e uma linha opcional embaixo
-export function Bloco({ rotulo, valor, extra, tom, marca, largo = false, estimada = false, titulo, aoTocar }) {
+export function Bloco({ rotulo, valor, extra, tom, marca, largo = false, titulo, aoTocar }) {
   const Tag = aoTocar ? 'button' : 'div'
   return (
-    <Tag className={`bloco ${largo ? 'largo' : ''} ${estimada ? 'estimada' : ''} ${aoTocar ? 'tocavel' : ''}`} title={titulo} onClick={aoTocar}>
+    <Tag className={`bloco ${largo ? 'largo' : ''} ${aoTocar ? 'tocavel' : ''}`} title={titulo} onClick={aoTocar}>
       <span className="bloco-rot">{marca}{rotulo}</span>
       <strong className={tom || ''}>{valor}</strong>
       {extra && <small>{extra}</small>}

@@ -137,3 +137,26 @@ describe('estilo', () => {
     expect(Number(regra.match(/font-size: ([\d.]+)rem/)[1])).toBeGreaterThanOrEqual(0.7)
   })
 })
+
+describe('ajustes depois dos prints do celular', () => {
+  const css = readFileSync(new URL('estilos.css', SRC), 'utf8')
+  it('Barbearia e salão usam a tesoura (não a gota)', () => {
+    expect(desenhoParaCategoria({ nome: 'Barbearia' })).toBe('beleza')
+    const chave = (el) => JSON.stringify(el.props.children.map((c) => c.type + JSON.stringify(c.props)))
+    expect(DESENHOS_CATEGORIA.beleza.props.children.filter((c) => c.type === 'circle')).toHaveLength(2)
+    expect(chave(DESENHOS_CATEGORIA.beleza)).not.toMatch(/M12 3c2 3/)
+  })
+  it('título do lançamento quebra em até 2 linhas em vez de cortar', () => {
+    const regra = [...css.matchAll(/\.item-titulo \{([^}]*)\}/g)].pop()[1]
+    expect(regra).toMatch(/white-space: normal/)
+    expect(regra).toMatch(/-webkit-line-clamp: 2/)
+  })
+  it('contas no Início sem "≈" nem borda tracejada de saldo estimado', () => {
+    const inicio = readFileSync(new URL('pages/Inicio.jsx', SRC), 'utf8')
+    expect(inicio).not.toMatch(/≈|estimad/)
+    expect(css).not.toMatch(/\.bloco\.estimada/)
+  })
+  it('sol do cartão no canto de cima, igual ao do Início', () => {
+    expect(css).not.toMatch(/\.cartao-credito \.sol-canto/)
+  })
+})

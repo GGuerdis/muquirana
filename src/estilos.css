@@ -721,7 +721,6 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .bloco-rot .bloco-emoji { letter-spacing: 0; font-size: 0.8rem; }
 .bloco strong { font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bloco small { font-size: 0.75rem; color: var(--texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bloco.estimada { outline: 1.5px dashed color-mix(in srgb, var(--texto-3) 60%, transparent); outline-offset: -1.5px; }
 
 /* Linha de status do Início: texto simples, sem chips */
 .inicio-status { margin-top: -8px; font-size: 0.85rem; }
@@ -734,7 +733,6 @@ main { position: relative; padding-bottom: calc(var(--nav-altura) + 44px + env(s
 .heroi.cartao-credito small { color: var(--texto-3); }
 .configurar-mais { text-align: center; color: var(--texto-3); font-size: 0.85rem; margin: 0; }
 .configurar-mais .link { font-size: 0.85rem; }
-.heroi.cartao-credito .sol-canto { top: auto; bottom: -125px; }
 
 /* Troca de tela: a nova entra pelo lado (do gesto de arrastar ou do toque na barra) */
 @media (prefers-reduced-motion: no-preference) {
@@ -823,9 +821,6 @@ button.bloco { font: inherit; cursor: pointer; position: relative; }
 /* ---------- Barra de baixo: nomes maiores e sem caixa-alta (mais fáceis de ler) ---------- */
 .nav-item { text-transform: none; letter-spacing: 0.01em; font-size: 0.7rem; }
 
-/* ---------- Cartões: o sol fica só no cantinho, longe do "Disponível" ---------- */
-.heroi.cartao-credito .sol-canto { bottom: -165px; right: -115px; }
-
 /* ---------- Saldo grande no tema claro: sombra leve (os números ficavam borrados) ---------- */
 .heroi strong.valor-grande, .saldo-total strong.valor-grande { filter: drop-shadow(0 1px 0 rgba(91, 10, 82, 0.22)); }
 @media (prefers-color-scheme: dark) {
@@ -844,3 +839,9 @@ button.bloco { font: inherit; cursor: pointer; position: relative; }
 .dia-bloco .dia-topo + .item-lanc { border-top: 0; }
 /* Linha de baixo do lançamento pode ir para 2 linhas em vez de cortar o nome da conta */
 .item-sub { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Título do lançamento quebra em até 2 linhas em vez de cortar com "…" */
+.item-titulo { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+
+/* Cartão: o sol fica no canto de cima (igual ao Início); o "Editar" ganha um fundo para não ficar sobre as listras */
+.heroi.cartao-credito .painel-titulo .link { background: var(--superficie); box-shadow: var(--sombra); padding: 5px 12px; border-radius: 999px; }
