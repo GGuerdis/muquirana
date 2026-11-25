@@ -148,5 +148,6 @@ describe('rótulos do fluxo não se sobrepõem', () => {
     const r = posicionarRotulos([{ y: 0, h: 2 }, { y: 10, h: 2 }, { y: 20, h: 200 }], 260)
     expect(r[1].rotuloY - r[0].rotuloY).toBeGreaterThanOrEqual(26)
     expect(r[2].rotuloY - r[1].rotuloY).toBeGreaterThanOrEqual(26)
+    for (const n of r) expect(n.rotuloY).toBeGreaterThanOrEqual(8) // nenhum rótulo sai por cima do desenho
   })
 })
