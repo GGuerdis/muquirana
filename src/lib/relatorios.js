@@ -74,10 +74,11 @@ export function fluxoDoMes(mes, lancamentos, categorias, maximo = 5) {
 // Rótulos (nome + valor) a pelo menos `folga` px um do outro: nós pequenos em sequência não se sobrepõem
 export function posicionarRotulos(nos, altura, folga = 26) {
   const ys = nos.map((n) => n.y + n.h / 2)
+  if (ys.length) ys[0] = Math.max(ys[0], 8)
   for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + folga)
   const limite = altura - 8
   for (let i = ys.length - 1; i >= 0; i--) ys[i] = Math.min(ys[i], i === ys.length - 1 ? limite : ys[i + 1] - folga)
-  return nos.map((n, i) => ({ ...n, rotuloY: Math.max(ys[i], 8) }))
+  return nos.map((n, i) => ({ ...n, rotuloY: ys[i] }))
 }
 
 export function desenhoFluxo(fluxo, { altura: alturaMinima = 280, espaco = 8 } = {}) {
