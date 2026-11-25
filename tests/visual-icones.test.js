@@ -160,3 +160,24 @@ describe('ajustes depois dos prints do celular', () => {
     expect(css).not.toMatch(/\.cartao-credito \.sol-canto/)
   })
 })
+
+describe('botão + com cara de sol', () => {
+  const css = readFileSync(new URL('estilos.css', SRC), 'utf8')
+  const regra = [...css.matchAll(/\.botao-novo::before \{([^}]*)\}/g)].map((m) => m[1])
+  const base = regra.find((r) => r.includes('background')) ?? ''
+  const mascara = base.match(/[^-]mask: ([^;]*);/)?.[1] ?? ''
+  it('usa o mesmo degradê dos sóis, inteiro em cima e listrado embaixo', () => {
+    expect(base).toMatch(/background: var\(--sol\)/)
+    expect(base).toMatch(/border-radius: 50%/)
+    const topo = Number(mascara.match(/^linear-gradient\(180deg, #000 0 (\d+)%, transparent/)?.[1])
+    expect(topo).toBeGreaterThanOrEqual(50) // metade de cima inteira (o + fica nela)
+    expect(topo).toBeLessThan(80)
+    expect(mascara).toMatch(/repeating-linear-gradient\(180deg, #000 0 \d+px, transparent \d+px \d+px\)/)
+  })
+  it('as listras descem sem parar (e ficam paradas para quem pede menos movimento)', () => {
+    const periodo = mascara.match(/transparent \d+px (\d+)px\)$/)?.[1]
+    const quadro = css.match(/@keyframes sol-botao-listras \{(.*)\}/)?.[1] ?? ''
+    expect(quadro).toMatch(new RegExp(`to \\{[^}]*[^-]mask-position: 0 0, 0 ${periodo}px;`)) // anda um período inteiro: sem pulo
+    expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.botao-novo::before \{ animation: sol-botao-listras [\d.]+s linear infinite; \}/)
+  })
+})

@@ -845,3 +845,13 @@ button.bloco { font: inherit; cursor: pointer; position: relative; }
 
 /* Cartão: o sol fica no canto de cima (igual ao Início); o "Editar" ganha um fundo para não ficar sobre as listras */
 .heroi.cartao-credito .painel-titulo .link { background: var(--superficie); box-shadow: var(--sombra); padding: 5px 12px; border-radius: 999px; }
+
+/* Botão + como um sol synthwave: mesmo degradê dos sóis dos cartões; na metade de baixo as listras descem sem parar */
+.botao-novo { background: none; isolation: isolate; }
+.botao-novo::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 50%; background: var(--sol);
+  -webkit-mask: linear-gradient(180deg, #000 0 60%, transparent 60%), repeating-linear-gradient(180deg, #000 0 5px, transparent 5px 8px);
+  mask: linear-gradient(180deg, #000 0 60%, transparent 60%), repeating-linear-gradient(180deg, #000 0 5px, transparent 5px 8px); }
+@keyframes sol-botao-listras { from { -webkit-mask-position: 0 0, 0 0; mask-position: 0 0, 0 0; } to { -webkit-mask-position: 0 0, 0 8px; mask-position: 0 0, 0 8px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .botao-novo::before { animation: sol-botao-listras 2.5s linear infinite; }
+}
