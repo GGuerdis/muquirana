@@ -873,3 +873,17 @@ body:has(.folha-fundo) .botao-sol { opacity: 0; scale: 0.6; pointer-events: none
 .filtro-ativo .icone-cat { width: 26px; height: 26px; }
 .filtro-ativo .icone-cat::before { inset: 4px; }
 .filtro-ativo .icone-cat svg { width: 13px; height: 13px; }
+
+/* ---------- Previsão ---------- */
+.ponto-destaque { fill: var(--saida); stroke: var(--fundo); stroke-width: 2; }
+.aviso-linha { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--superficie); box-shadow: var(--sombra); font-size: 0.9rem; }
+.fim-dos-meses { display: flex; gap: 14px; overflow-x: auto; padding-top: 4px; scrollbar-width: none; }
+.fim-dos-meses span { display: flex; flex-direction: column; flex: none; font-variant-numeric: tabular-nums; }
+.fim-dos-meses small { color: var(--texto-3); font-size: 0.72rem; }
+.fim-dos-meses b { font-size: 0.9rem; font-weight: 650; }
+.linha-previsao { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; }
+.linha-previsao + .linha-previsao { border-top: 1px solid var(--linha); }
+.linha-previsao-data { color: var(--texto-3); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.linha-previsao-nome { min-width: 0; font-weight: 600; overflow-wrap: anywhere; display: flex; flex-direction: column; }
+.linha-previsao-nome small { color: var(--texto-3); font-weight: 400; font-size: 0.75rem; }
+.linha-previsao strong { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 650; }

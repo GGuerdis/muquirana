@@ -115,7 +115,8 @@ export function GraficoBarras({ pontos, series, formatar, rotuloAcessivel }) {
   )
 }
 
-export function GraficoLinha({ pontos, series, formatar, rotuloAcessivel }) {
+// `marca` num ponto força (true) ou esconde (false) o rótulo do eixo; `destaque` marca um ponto fixo (ex.: o dia mais apertado)
+export function GraficoLinha({ pontos, series, formatar, rotuloAcessivel, destaque = null }) {
   const [ref, largura] = useLargura()
   const [ativo, setAtivo] = useState(null)
   const todos = pontos.flatMap((p) => p.valores.filter((v) => v != null))
@@ -149,11 +150,12 @@ export function GraficoLinha({ pontos, series, formatar, rotuloAcessivel }) {
             <text x={M.esq - 6} y={y(m) + 4} className="rotulo-eixo" textAnchor="end">{compacto(m)}</text>
           </g>
         ))}
-        {pontos.map((p, i) => i % pularRotulo === 0 && (
+        {pontos.map((p, i) => (p.marca ?? i % pularRotulo === 0) && (
           <text key={i} x={x(i)} y={ALTURA - 8} className="rotulo-eixo" textAnchor="middle">{p.rotulo}</text>
         ))}
         {ativo != null && <line x1={x(ativo)} x2={x(ativo)} y1={M.topo} y2={M.topo + h} className="mira" />}
         {series.map((s, si) => <path key={s.nome} d={caminho(si)} fill="none" stroke={s.cor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" className="linha-serie" style={{ color: s.cor }} />)}
+        {destaque != null && pontos[destaque]?.valores[0] != null && <circle cx={x(destaque)} cy={y(pontos[destaque].valores[0])} r="5" className="ponto-destaque" />}
         {ativo != null && series.map((s, si) => pontos[ativo].valores[si] != null && (
           <circle key={s.nome} cx={x(ativo)} cy={y(pontos[ativo].valores[si])} r="5" fill={s.cor} className="marcador" />
         ))}
