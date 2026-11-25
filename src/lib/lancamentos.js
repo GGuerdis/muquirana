@@ -5,6 +5,7 @@ import { semControle } from './texto.js'
 import { dividirParcelas, valorValido, formatar } from './dinheiro.js'
 import { somarMeses, somarMesesData, dataValida } from './datas.js'
 import { faturaDaCompra, resumoFatura } from './fatura.js'
+import { normalizarEtiquetas } from './etiquetas.js'
 
 export const MAX_PARCELAS = 48
 const TIPOS = ['despesa', 'receita', 'transferencia']
@@ -61,6 +62,9 @@ function validarExtras(form) {
   return null
 }
 
+// etiquetas só entram no registro quando há alguma
+const etiquetasDo = (form) => { const e = normalizarEtiquetas(form.etiquetas); return e.length ? { etiquetas: e } : {} }
+
 async function carregarRefs() {
   const [contas, cartoes, categorias] = await Promise.all([db.contas.toArray(), db.cartoes.toArray(), db.categorias.toArray()])
   return { contas, cartoes, categorias }
@@ -102,6 +106,8 @@ export async function salvarLancamento(form, original = null) {
       data: form.data,
       criadoEm: original?.criadoEm || Date.now(),
       ...(recorrenteId != null ? { recorrenteId, competencia } : {}),
+      ...(original?.lote ? { lote: original.lote } : {}),
+      ...etiquetasDo(form),
       ...(original?.realmId ? { realmId: original.realmId } : {}), // continua no mesmo espaço (pessoal ou compartilhado)
     }
     const comId = (r) => (idExterno ? { ...r, idExterno } : r)
@@ -184,6 +190,7 @@ export function formDoLancamento(l) {
     cartaoId: l.cartaoId ?? null,
     data: l.data,
     parcelas: 1,
+    etiquetas: l.etiquetas || [],
   }
   if (l.grupoParcelaId) return { ...form, valor: l.valorTotal, data: l.dataCompra, parcelas: l.totalParcelas }
   return form

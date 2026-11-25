@@ -12,6 +12,7 @@ import { salvarLancamento, apagarLancamento, formDoLancamento, validarLancamento
 import { faturaDaCompra } from '../lib/fatura.js'
 import { sugerirCategoria, aprender } from '../lib/categorizar.js'
 import { db, salvarConfig } from '../lib/db.js'
+import { normalizarEtiquetas, etiquetasUsadas, MAX_ETIQUETAS } from '../lib/etiquetas.js'
 
 const TIPOS = [
   { valor: 'despesa', rotulo: 'Despesa', tom: 'tom-saida' },
@@ -31,6 +32,7 @@ function estadoInicial(original, dados, modelo) {
       data: f.data,
       descricao: f.descricao || '',
       parcelas: f.parcelas || 1,
+      etiquetas: f.etiquetas || [],
     }
   }
   const ultima = dados.config.ultimaOrigem
@@ -44,6 +46,7 @@ function estadoInicial(original, dados, modelo) {
     data: hoje(),
     descricao: '',
     parcelas: 1,
+    etiquetas: [],
   }
 }
 
@@ -108,6 +111,7 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
       cartaoId: ehCartao ? idOrigem : null,
       contaDestinoId: f.tipo === 'transferencia' ? f.contaDestinoId : null,
       parcelas: ehCartao ? f.parcelas : 1,
+      etiquetas: f.etiquetas,
       // conta fixa: liga o lançamento à conta fixa e ao mês
       ...(modelo ? { recorrenteId: modelo.recorrenteId, competencia: modelo.competencia } : {}),
     }
@@ -263,6 +267,8 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
         <input type="text" value={f.descricao} placeholder={f.tipo === 'despesa' ? 'Ex.: almoço, Uber, farmácia' : ''} onChange={(e) => mudarDescricao(e.target.value)} maxLength={80} />
       </Campo>
 
+      <CampoEtiquetas valor={f.etiquetas} aoMudar={(e) => setF((x) => ({ ...x, etiquetas: e }))} sugestoes={etiquetasUsadas(lancamentos)} />
+
       {original && podeDividir(original) && (
         divisao ? (
           <div className="painel dividir">
@@ -285,5 +291,38 @@ export default function NovoLancamento({ original, modelo = null, aoFechar }) {
         )
       )}
     </Folha>
+  )
+}
+
+// Etiquetas do lançamento: digite e toque em "+" (ou vírgula); as já usadas aparecem para tocar
+function CampoEtiquetas({ valor, aoMudar, sugestoes }) {
+  const [texto, setTexto] = useState('')
+  const lista = valor || []
+  const cheio = lista.length >= MAX_ETIQUETAS
+  const adicionar = (t) => { const nova = normalizarEtiquetas([...lista, ...normalizarEtiquetas(t)]); aoMudar(nova); setTexto('') }
+  const tirar = (e) => aoMudar(lista.filter((x) => x !== e))
+  const outras = sugestoes.filter((s) => !lista.includes(s)).slice(0, 6)
+  return (
+    <div className="campo campo-etiquetas">
+      <span className="rotulo">Etiquetas (opcional)</span>
+      {lista.length > 0 && (
+        <div className="etiquetas">
+          {lista.map((e) => <button key={e} type="button" className="etiqueta ativa" onClick={() => tirar(e)} aria-label={`Tirar a etiqueta ${e}`}>#{e} <span aria-hidden="true">✕</span></button>)}
+        </div>
+      )}
+      {!cheio && (
+        <div className="etiqueta-nova">
+          <input type="text" value={texto} placeholder="Ex.: obra-apto, viagem-2026" maxLength={30}
+            onChange={(e) => { const v = e.target.value; if (/[,;]$/.test(v)) adicionar(v); else setTexto(v) }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && texto.trim()) { e.preventDefault(); adicionar(texto) } }} />
+          <button type="button" className="botao-acao" disabled={!texto.trim()} onClick={() => adicionar(texto)} aria-label="Adicionar etiqueta">+</button>
+        </div>
+      )}
+      {!cheio && outras.length > 0 && (
+        <div className="etiquetas">
+          {outras.map((e) => <button key={e} type="button" className="etiqueta" onClick={() => adicionar(e)}>#{e}</button>)}
+        </div>
+      )}
+    </div>
   )
 }

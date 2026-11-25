@@ -86,6 +86,7 @@ export function ItemLancamento({ l, mostrarData = false }) {
       <span className="item-textos">
         <span className="item-titulo">{titulo}</span>
         <span className="item-sub">{mostrarData ? `${dataCurta(l.data)} · ` : ''}{onde}</span>
+        {l.etiquetas?.length > 0 && <span className="item-etiquetas">{l.etiquetas.map((e) => <span key={e}>#{e}</span>)}</span>}
       </span>
       <span className={`item-valor ${classe}`}>{sinal ? `${sinal} ` : ''}{formatar(l.valor)}</span>
     </button>

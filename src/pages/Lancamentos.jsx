@@ -40,7 +40,7 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
       .filter((l) => mesDe(l.data) === mes)
       .filter((l) => contaFiltro == null || l.contaId === contaFiltro || l.contaDestinoId === contaFiltro)
       .filter((l) => categoriaFiltro == null || l.categoriaId === categoriaFiltro)
-      .filter((l) => !termo || normalizar(`${l.descricao || ''} ${categoriaPorId.get(l.categoriaId)?.nome || ''}`).includes(termo))
+      .filter((l) => !termo || normalizar(`${l.descricao || ''} ${categoriaPorId.get(l.categoriaId)?.nome || ''} ${(l.etiquetas || []).map((e) => `#${e}`).join(' ')}`).includes(termo))
   }, [lancamentos, mes, busca, categoriaPorId, contaFiltro, categoriaFiltro])
 
   const dias = useMemo(() => {
@@ -70,7 +70,7 @@ export default function Lancamentos({ mes, setMes, irPara, filtroInicial }) {
           <Bloco rotulo="Saiu" valor={formatar(totais.saiu)} tom="saida" extra={`${totais.nSaiu} ${totais.nSaiu === 1 ? 'saída' : 'saídas'}`} />
         </div>
       )}
-      <input className="busca" type="search" placeholder="Buscar por descrição ou categoria" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      <input className="busca" type="search" placeholder="Buscar por descrição, categoria ou #etiqueta" value={busca} onChange={(e) => setBusca(e.target.value)} />
       <Chips rolavel opcoes={FILTROS} valor={filtro} aoMudar={setFiltro} />
       {contaDoFiltro && (
         <button className="filtro-ativo" onClick={() => setContaFiltro(null)} aria-label={`Tirar filtro da conta ${contaDoFiltro.nome}`}>

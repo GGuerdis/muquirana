@@ -23,8 +23,11 @@ describe('telas do menu do sol', () => {
     expect(telaExiste('ajustes')).toBe(true)
     expect(telaExiste('xyz')).toBe(false)
   })
-  it('a grade de 3 colunas fica sem buraco no fim (ou com no máximo um)', () => {
-    expect(TELAS.length % 3 === 0 || TELAS.length % 3 === 2 || TELAS.length <= 4).toBe(true)
+  it('a grade fecha sem buraco no fim, com qualquer número de telas (as que sobram se alargam)', () => {
+    expect(css).toMatch(/\.menu-sol-grade \{[^}]*grid-template-columns: repeat\(6, 1fr\)/)
+    expect(css).toMatch(/\.menu-sol-item \{[^}]*grid-column: span 2/)
+    expect(css).toContain('.menu-sol-item:last-child:nth-child(3n + 1) { grid-column: span 6; }')
+    expect(css).toContain('.menu-sol-item:nth-last-child(-n + 2):nth-child(3n + 1), .menu-sol-item:last-child:nth-child(3n + 2) { grid-column: span 3; }')
   })
   it('toda tela que o App desenha está no menu (nenhuma fica sem caminho)', () => {
     const ids = [...ler('App.jsx').matchAll(/aba === '(\w+)' &&/g)].map((m) => m[1])
